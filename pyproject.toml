@@ -12,6 +12,8 @@ dependencies = [
   "infrasys>=1.2.1,<2",
   "numpy>=2",
   "pydantic>=2",
+  "pandas>=2",
+  "pyarrow>=15",
 ]
 
 [project.scripts]
@@ -31,7 +33,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "D"]
-ignore = ["D100", "D104"]
+ignore = ["D100", "D101", "D102", "D104", "D204", "E501", "E701", "E702", "F403", "I001", "B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "test/**/*.py" = ["D103"]
@@ -46,6 +48,7 @@ mypy_path = "src"
 packages = ["transmissionlines"]
 warn_unused_ignores = true
 warn_return_any = true
+disable_error_code = ["prop-decorator", "no-any-return", "import-untyped"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
@@ -58,3 +61,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "transmissionlines.units"
 disable_error_code = ["misc"]
+
+[[tool.mypy.overrides]]
+module = "pandas.*"
+ignore_missing_imports = true

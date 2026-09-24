@@ -39,10 +39,10 @@ class TowerGeometry(LineDataModel):
         groups: dict[str, list[str]] = {}
         for position in self.phase_positions:
             groups.setdefault(position.circuit_id, []).append(position.phase)
-        if not groups or any(sorted(phases) != ["A", "B", "C"] for phases in groups.values()):
-            raise ValueError("each configured circuit must have exactly A, B, and C phase positions")
         if len({(p.circuit_id, p.phase) for p in self.phase_positions}) != len(self.phase_positions):
             raise ValueError("duplicate phase positions are not allowed")
+        if not groups or any(sorted(phases) != ["A", "B", "C"] for phases in groups.values()):
+            raise ValueError("each configured circuit must have exactly A, B, and C phase positions")
         if not self.ground_wire_positions:
             raise ValueError("at least one ground-wire position is required")
         if len({p.wire_id for p in self.ground_wire_positions}) != len(self.ground_wire_positions):

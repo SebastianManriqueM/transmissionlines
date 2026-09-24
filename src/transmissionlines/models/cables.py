@@ -60,42 +60,23 @@ class PhaseConductorSpec(CableSpec):
     @property
     def bundle_gmr(self) -> CableGMR | None:
         """Return the bundle GMR when source GMR and spacing are available."""
-        gmr = self.conductor.conductor_gmr
-        if gmr is None or self.subconductor_count == 1:
-            return gmr
-        assert self.subconductor_spacing is not None
-        from transmissionlines.calculations.cable import bundle_gmr
+        from transmissionlines.calculations.cable import derived_bundle_values
 
-        spacing = self.subconductor_spacing.to("inch").magnitude
-        return CableGMR(
-            bundle_gmr(gmr.to("foot").magnitude, self.subconductor_count, spacing), "foot"
+        bundle, _ = derived_bundle_values(
+            self.conductor, self.subconductor_count, self.subconductor_spacing
         )
+        return bundle
 
     @computed_field
     @property
     def equivalent_radius(self) -> EquivalentRadius | None:
-        """Return equivalent conductor radius when diameter is known."""
-        diameter = self.conductor.conductor_diameter
-        radius_source = self.conductor.capacitance_radius
-        if diameter is None and radius_source is None:
-            return None
-        if self.subconductor_count == 1:
-            if radius_source is not None:
-                return EquivalentRadius(radius_source.to("foot").magnitude, "foot")
-            assert diameter is not None
-            return EquivalentRadius(diameter.to("foot").magnitude / 2, "foot")
-        assert self.subconductor_spacing is not None
-        from transmissionlines.calculations.cable import equivalent_radius
+        """Return the derived physical or parity capacitance radius."""
+        from transmissionlines.calculations.cable import derived_bundle_values
 
-        spacing = self.subconductor_spacing.to("inch").magnitude
-        if radius_source is not None:
-            radius = radius_source.to("foot").magnitude
-        else:
-            assert diameter is not None
-            radius = diameter.to("foot").magnitude / 2
-        return EquivalentRadius(
-            equivalent_radius(radius, self.subconductor_count, spacing), "foot"
+        _, radius = derived_bundle_values(
+            self.conductor, self.subconductor_count, self.subconductor_spacing
         )
+        return radius
 
 
 __all__ = [

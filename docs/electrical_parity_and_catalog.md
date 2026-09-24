@@ -55,6 +55,21 @@ flowchart TD
     Scalars --> Results[JSON safe ElectricalParameters]
 ```
 
+### Optional parity capacitance radius
+
+`BareConductorEquipment.capacitance_radius` is an optional parity-only field.
+The catalog builder derives it from `C_60Hz_Mohm_kft` using the Julia
+capacitance-radius equation. It is not a user override and is absent when the
+source field is unavailable. Bundle derivation prefers this radius for the
+potential matrix and falls back to physical conductor diameter for general
+runtime data. Ground wires remain unbundled and use their physical radius.
+
+The result model stores canonical Julia names such as `Zabcg`, `Z_kron_nt`,
+`Z012_nt`, `Z_kron_ft`, and `Z012_ft`. The original short names
+`Z_primitive`, `P_primitive`, `Z_kron`, `Z_transposed`, and `Z_sequence` remain aliases for the non-transposed
+Kron matrix, fully transposed Kron matrix, and fully transposed sequence matrix
+respectively; equivalent Y and P aliases are also retained.
+
 The parity contract is retained at the calculation boundary:
 
 - coordinates, distances, GMR, and equivalent radius: feet;

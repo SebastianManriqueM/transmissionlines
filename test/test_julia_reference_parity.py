@@ -73,12 +73,12 @@ def test_kersting_reference_matrices_are_reproduced() -> None:
     phase = phase_spec_from_record(ConductorRecord.model_validate(conductor.to_dict()), circuit_id="circuit-1", catalog_version="v1")
     wire = ground_wire_from_record(GroundWireRecord.model_validate(ground.to_dict()), catalog_version="v1")
     result = calculate_electrical(geometry, phase_specs=[phase], ground_wire_spec=wire, voltage=VoltageKV(33, "kilovolt"), frequency=Frequency(60, "hertz"), earth_resistivity=100.0)
-    z = np.array([[cell["real"] + 1j * cell["imag"] for cell in row] for row in result.matrices["Z_primitive"]])
+    z = np.array([[cell["real"] + 1j * cell["imag"] for cell in row] for row in result.matrices["Z_primitive"].cells])
     expected = np.array([[0.4013+1.4133j, .0953+.8515j, .0953+.7266j, .0953+.7524j], [.0953+.8515j, .4013+1.4133j, .0953+.7802j, .0953+.7865j], [.0953+.7266j, .0953+.7802j, .4013+1.4133j, .0953+.7674j], [.0953+.7524j, .0953+.7865j, .0953+.7674j, .6873+1.5465j]])
     assert z == pytest.approx(expected, rel=0.005)
     assert {item["table_name"] for item in result.provenance} == {"conductors", "ground_wires"}
     def matrix(name: str) -> np.ndarray:
-        return np.array([[cell["real"] + 1j * cell["imag"] for cell in row] for row in result.matrices[name]])
+        return np.array([[cell["real"] + 1j * cell["imag"] for cell in row] for row in result.matrices[name].cells])
     assert matrix("Z_kron") == pytest.approx(np.array([[.4576+1.0780j, .1560+.5017j, .1535+.3849j], [.1560+.5017j, .4666+1.0482j, .1580+.4236j], [.1535+.3849j, .1580+.4236j, .4615+1.0651j]]), rel=0.005)
     assert matrix("Z_transposed") == pytest.approx(np.array([[.4619+1.0638j, .1558+.4368j, .1558+.4368j], [.1558+.4368j, .4619+1.0638j, .1558+.4368j], [.1558+.4368j, .1558+.4368j, .4619+1.0638j]]), rel=0.005)
     assert matrix("Z_sequence") == pytest.approx(np.diag([.7735+1.9373j, .3061+.6270j, .3061+.6270j]), rel=0.005)

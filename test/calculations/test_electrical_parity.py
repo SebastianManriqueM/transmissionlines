@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -5,7 +8,7 @@ from transmissionlines.builders.line import ground_wire_from_record, phase_spec_
 from transmissionlines.calculations.electrical import calculate_electrical
 from transmissionlines.catalog.repository import CatalogRepository
 from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, GroundWirePositionRecord, PhasePositionRecord
-from transmissionlines.units import Frequency, VoltageKV
+from transmissionlines.units import BundleSpacing, Frequency, VoltageKV
 
 CATALOG = CatalogRepository("data/catalog/v1")
 
@@ -25,6 +28,48 @@ def _kersting_inputs():
     phase = phase_spec_from_record(ConductorRecord.model_validate(conductor.to_dict()), circuit_id="circuit-1", catalog_version="v1")
     ground = ground_wire_from_record(GroundWireRecord.model_validate(wire.to_dict()), catalog_version="v1")
     return geometry, phase, ground
+
+
+def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs() -> None:
+    fixture = json.loads(Path("test/reference/julia/two_circuit_3l11_cardinal.json").read_text(encoding="utf-8"))
+    code = "3L11"
+    phase_table = CATALOG.table("phase_positions")
+    ground_table = CATALOG.table("ground_wire_positions")
+    geometry = geometry_from_records(
+        [PhasePositionRecord.model_validate(row) for row in phase_table[phase_table.geometry_id == code].to_dict("records")],
+        [GroundWirePositionRecord.model_validate(row) for row in ground_table[ground_table.geometry_id == code].to_dict("records")],
+    )
+    conductors = CATALOG.table("conductors")
+    wires = CATALOG.table("ground_wires")
+    conductor = ConductorRecord.model_validate(conductors[(conductors.family == "ACSR") & (conductors.codeword == "Cardinal")].iloc[0].to_dict())
+    wire = GroundWireRecord.model_validate(wires[(wires.family == "Alumoweld") & (wires.awg_or_stranding == "7/8")].iloc[0].to_dict())
+    phases = [
+        phase_spec_from_record(conductor, circuit_id=circuit, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+        for circuit in ("circuit-1", "circuit-2")
+    ]
+    ground = ground_wire_from_record(wire, catalog_version="v1")
+    result = calculate_electrical(geometry, phase_specs=phases, ground_wire_spec=ground, voltage=VoltageKV(345, "kilovolt"), frequency=Frequency(60, "hertz"), earth_resistivity=100.0)
+    assert result.topology == fixture["topology"] == "two-circuit"
+    assert result.labels == fixture["labels"]
+    assert {item["table_name"] for item in result.provenance} == {"conductors", "ground_wires"}
+    for name, expected in fixture["matrices"].items():
+        actual = result.matrices[name]
+        assert actual.name == expected["name"] == name
+        assert actual.row_count == expected["row_count"]
+        assert actual.column_count == expected["column_count"]
+        assert actual.row_labels == expected["row_labels"]
+        assert actual.column_labels == expected["column_labels"]
+        assert actual.unit == expected["unit"]
+        tolerance = fixture["tolerance"]["shunt"] if name.startswith(("P", "Y")) else fixture["tolerance"]["series"]
+        np.testing.assert_allclose(actual.real, expected["real"], rtol=tolerance, atol=1e-12)
+        np.testing.assert_allclose(actual.imaginary, expected["imaginary"], rtol=tolerance, atol=1e-12)
+    for name, expected in fixture["scalars"].items():
+        assert result.scalars[name] == pytest.approx(expected, rel=fixture["tolerance"]["shunt"] if name.startswith("b") else fixture["tolerance"]["scalars"])
+        assert result.scalar_units[name] == fixture["scalar_units"][name]
+    assert result.scalars["r1"] == pytest.approx(0.06041707268316814, rel=0.005)
+    assert result.scalars["x1"] == pytest.approx(0.571814216468555, rel=0.005)
+    assert result.scalars["b1"] == pytest.approx(7.540921284378496, rel=0.028)
+    assert result.scalars["sil_mw"] == pytest.approx(432.2379746677453, rel=0.005)
 
 
 def test_kersting_nontransposed_and_transposed_matrix_outputs() -> None:

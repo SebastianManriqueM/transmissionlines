@@ -1,7 +1,11 @@
 """Pure Julia-parity electrical calculation orchestration."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from math import log, pi
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from transmissionlines.calculations.cable import ground_wire_gmr
@@ -13,9 +17,12 @@ from transmissionlines.calculations.matrices import (
     shunt_admittance,
 )
 from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
-from transmissionlines.models.electrical import ElectricalParameters
+from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
 from transmissionlines.units import Frequency, VoltageKV
+
+if TYPE_CHECKING:
+    from transmissionlines.models.assets import TransmissionLine
 
 R_C = 0.00158836
 L_C = 0.00202237
@@ -23,8 +30,25 @@ L_F = 7.6786
 EPSILON_AIR = 1.4240e-2
 
 
-def _complex_json(matrix: np.ndarray) -> list[list[dict[str, float]]]:
-    return [[{"real": float(cell.real), "imag": float(cell.imag)} for cell in row] for row in matrix]
+def _matrix_result(
+    name: str,
+    matrix: np.ndarray,
+    *,
+    unit: str,
+    labels: list[str],
+) -> MatrixResult:
+    """Convert a NumPy result into an explicitly typed JSON-safe matrix."""
+    value = np.asarray(matrix, dtype=complex)
+    return MatrixResult(
+        name=name,
+        row_count=value.shape[0],
+        column_count=value.shape[1],
+        row_labels=list(labels),
+        column_labels=list(labels),
+        unit=unit,
+        real=value.real.tolist(),
+        imaginary=value.imag.tolist(),
+    )
 
 
 def build_primitive_z(
@@ -38,8 +62,10 @@ def build_primitive_z(
 ) -> np.ndarray:
     """Build the primitive series impedance matrix in ohm/mile."""
     n = len(positions)
-    if not (len(gmrs) == len(resistances) == len(bundle_counts) == n):
-        raise ValueError("primitive Z inputs must have equal lengths")
+    if n < 1 or not (len(gmrs) == len(resistances) == len(bundle_counts) == n):
+        raise ValueError("primitive Z inputs must have equal non-empty lengths")
+    if any(gmr <= 0 for gmr in gmrs) or any(count < 1 for count in bundle_counts):
+        raise ValueError("GMR values must be positive and bundle counts must be positive")
     if frequency <= 0 or earth_resistivity <= 0:
         raise ValueError("frequency and earth resistivity must be positive")
     result = np.zeros((n, n), dtype=complex)
@@ -67,8 +93,10 @@ def build_primitive_p(
 ) -> np.ndarray:
     """Build the primitive potential matrix in the Julia micro-unit contract."""
     del frequency  # retained in the signature to make the unit boundary explicit
-    if len(radii) != len(positions):
-        raise ValueError("potential radii and positions must have equal lengths")
+    if not positions or len(radii) != len(positions):
+        raise ValueError("potential radii and positions must have equal non-empty lengths")
+    if any(radius <= 0 for radius in radii):
+        raise ValueError("potential radii must be positive")
     result = np.zeros((len(positions), len(positions)), dtype=float)
     for i, position in enumerate(positions):
         result[i, i] = log(image_distance(position, position) / radii[i]) / (2 * pi * EPSILON_AIR)
@@ -112,6 +140,52 @@ def _ordered_inputs(
     return positions, gmrs, radii, resistances, counts, labels, len(phases)
 
 
+def calculate_line_electrical_parameters(line: TransmissionLine) -> TransmissionLine:
+    """Return a new line with Julia-parity electrical parameters attached.
+
+    Routing is deliberately not consulted: v3 electrical parameters describe
+    the tower cross-section and terminal technical inputs only. The source line
+    and any existing mechanical result remain unchanged.
+    """
+    from transmissionlines.exceptions import CalculationInputError
+    from transmissionlines.models.parameters import LineParameters
+
+    geometry = line.tower_configuration.geometry
+    geometry_ids = {position.circuit_id for position in geometry.phase_positions}
+    specs = line.tower_configuration.phase_conductor_specs
+    spec_ids = [spec.circuit_id for spec in specs]
+    spec_id_set = set(spec_ids)
+    missing = sorted(geometry_ids - spec_id_set)
+    unexpected = sorted(spec_id_set - geometry_ids)
+    duplicates = sorted({item for item in spec_ids if spec_ids.count(item) > 1})
+    if missing or unexpected or duplicates:
+        details = []
+        if missing:
+            details.append(f"missing={missing}")
+        if unexpected:
+            details.append(f"unexpected={unexpected}")
+        if duplicates:
+            details.append(f"duplicates={duplicates}")
+        raise CalculationInputError("phase conductor circuit mapping is invalid: " + ", ".join(details))
+    technical = line.technical_info
+    result = calculate_electrical(
+        geometry,
+        phase_specs=specs,
+        ground_wire_spec=line.tower_configuration.ground_wire_spec,
+        voltage=technical.nominal_voltage,
+        frequency=technical.nominal_frequency,
+        earth_resistivity=technical.earth_resistivity.magnitude,
+    )
+    parameters = line.line_parameters or LineParameters()
+    updated_parameters = parameters.model_copy(update={"electrical_parameters": result})
+    return line.model_copy(update={"line_parameters": updated_parameters})
+
+
+def calculate_electrical_parameters(line: TransmissionLine) -> TransmissionLine:
+    """Backward-compatible public alias for line-level orchestration."""
+    return calculate_line_electrical_parameters(line)
+
+
 def calculate_electrical(
     geometry: TowerGeometry,
     *,
@@ -143,7 +217,23 @@ def calculate_electrical(
     scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage.magnitude**2 / z_sil)}
     if circuits == 2:
         scalars.update({"r0_mutual": float(z_sequence[3, 0].real), "x0_mutual": float(z_sequence[3, 0].imag), "b0_mutual": float(y_sequence[3, 0].imag)})
-    matrices = {"Z_primitive": _complex_json(z_primitive), "P_primitive": _complex_json(p_primitive), "Z_kron": _complex_json(z_kron), "P_kron": _complex_json(p_kron), "Y_kron": _complex_json(y_kron), "Z_transposed": _complex_json(z_transposed), "Y_transposed": _complex_json(y_transposed), "Z_sequence": _complex_json(z_sequence), "Y_sequence": _complex_json(y_sequence)}
+    phase_labels = labels[:phase_count]
+    sequence_labels = [
+        f"{circuit}:{sequence}"
+        for circuit in range(1, circuits + 1)
+        for sequence in ("zero", "positive", "negative")
+    ]
+    matrices = {
+        "Z_primitive": _matrix_result("Z_primitive", z_primitive, unit="ohm/mile", labels=labels),
+        "P_primitive": _matrix_result("P_primitive", p_primitive, unit="1/(microSiemens/mile)", labels=labels),
+        "Z_kron": _matrix_result("Z_kron", z_kron, unit="ohm/mile", labels=phase_labels),
+        "P_kron": _matrix_result("P_kron", p_kron, unit="1/(microSiemens/mile)", labels=phase_labels),
+        "Y_kron": _matrix_result("Y_kron", y_kron, unit="microsiemens/mile", labels=phase_labels),
+        "Z_transposed": _matrix_result("Z_transposed", z_transposed, unit="ohm/mile", labels=phase_labels),
+        "Y_transposed": _matrix_result("Y_transposed", y_transposed, unit="microsiemens/mile", labels=phase_labels),
+        "Z_sequence": _matrix_result("Z_sequence", z_sequence, unit="ohm/mile", labels=sequence_labels),
+        "Y_sequence": _matrix_result("Y_sequence", y_sequence, unit="microsiemens/mile", labels=sequence_labels),
+    }
     provenance = [
         spec.catalog_reference.model_dump()
         for spec in phase_specs
@@ -151,7 +241,14 @@ def calculate_electrical(
     ]
     if ground_wire_spec.catalog_reference is not None:
         provenance.append(ground_wire_spec.catalog_reference.model_dump())
-    return ElectricalParameters(labels=labels, matrices=matrices, scalars=scalars, provenance=provenance, calculated_at=datetime.now(UTC))
+    scalar_units = {
+        "r1": "ohm/mile", "x1": "ohm/mile", "r0": "ohm/mile", "x0": "ohm/mile",
+        "b1": "microsiemens/mile", "b0": "microsiemens/mile",
+        "surge_impedance_ohm": "ohm", "sil_mw": "MW",
+    }
+    if circuits == 2:
+        scalar_units.update({"r0_mutual": "ohm/mile", "x0_mutual": "ohm/mile", "b0_mutual": "microsiemens/mile"})
+    return ElectricalParameters(labels=labels, matrices=matrices, scalars=scalars, scalar_units=scalar_units, provenance=provenance, calculated_at=datetime.now(UTC))
 
 
-__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical"]
+__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters"]

@@ -5,7 +5,11 @@ from transmissionlines.builders.system import (
     assemble_line_into_system,
     build_transmission_line,
 )
-from transmissionlines.catalog import CatalogRepository, generate_catalog
+from transmissionlines.calculations.electrical import (
+    calculate_electrical_parameters,
+    calculate_line_electrical_parameters,
+)
+from transmissionlines.catalog import CatalogRepository, generate_catalog, generate_julia_workbook_catalog
 from transmissionlines.models import *
 from transmissionlines.system import TransmissionLineSystem
 
@@ -21,6 +25,9 @@ __all__ = [
     "TransmissionLineSystem",
     "assemble_line_into_system",
     "build_transmission_line",
+    "calculate_electrical_parameters",
+    "calculate_line_electrical_parameters",
     "generate_catalog",
+    "generate_julia_workbook_catalog",
     "open_catalog",
 ]

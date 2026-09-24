@@ -114,7 +114,19 @@ def derived_bundle_values(
     count: int,
     spacing: Any,
 ) -> tuple[CableGMR | None, EquivalentRadius | None]:
-    """Derive typed bundle values from a runtime conductor."""
+    """Derive typed bundle values from a runtime conductor.
+
+    ``capacitance_radius`` is parity-only catalog data derived from
+    ``C_60Hz_Mohm_kft`` and takes precedence over physical diameter for the
+    equivalent-radius calculation. It is intentionally optional at the model
+    boundary because general runtime models may not have that catalog field.
+    """
+    if count < 1:
+        raise ValueError("subconductor count must be positive")
+    if count == 1 and spacing is not None:
+        raise ValueError("single subconductor spacing must be None")
+    if count > 1 and (spacing is None or spacing.to("inch").magnitude <= 0):
+        raise ValueError("positive spacing is required for a bundle")
     spacing_value = None if spacing is None else spacing.to("inch").magnitude
     gmr = None if conductor.conductor_gmr is None else bundle_gmr(
         conductor.conductor_gmr.to("foot").magnitude, count, spacing_value

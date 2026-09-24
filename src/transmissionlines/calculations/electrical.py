@@ -204,6 +204,8 @@ def calculate_electrical(
     z_kron = kron_reduce(z_primitive, phase_count, ground_count)
     p_kron = kron_reduce(p_primitive, phase_count, ground_count)
     y_kron = shunt_admittance(p_kron, frequency.magnitude)
+    z_sequence_nt = sequence_matrix(z_kron)
+    y_sequence_nt = sequence_matrix(y_kron)
     circuits = phase_count // 3
     z_transposed = fully_transpose(z_kron, circuits)
     y_transposed = fully_transpose(y_kron, circuits)
@@ -224,16 +226,24 @@ def calculate_electrical(
         for sequence in ("zero", "positive", "negative")
     ]
     matrices = {
-        "Z_primitive": _matrix_result("Z_primitive", z_primitive, unit="ohm/mile", labels=labels),
-        "P_primitive": _matrix_result("P_primitive", p_primitive, unit="1/(microSiemens/mile)", labels=labels),
-        "Z_kron": _matrix_result("Z_kron", z_kron, unit="ohm/mile", labels=phase_labels),
-        "P_kron": _matrix_result("P_kron", p_kron, unit="1/(microSiemens/mile)", labels=phase_labels),
-        "Y_kron": _matrix_result("Y_kron", y_kron, unit="microsiemens/mile", labels=phase_labels),
-        "Z_transposed": _matrix_result("Z_transposed", z_transposed, unit="ohm/mile", labels=phase_labels),
-        "Y_transposed": _matrix_result("Y_transposed", y_transposed, unit="microsiemens/mile", labels=phase_labels),
-        "Z_sequence": _matrix_result("Z_sequence", z_sequence, unit="ohm/mile", labels=sequence_labels),
-        "Y_sequence": _matrix_result("Y_sequence", y_sequence, unit="microsiemens/mile", labels=sequence_labels),
+        "Zabcg": _matrix_result("Zabcg", z_primitive, unit="ohm/mile", labels=labels),
+        "Pabcg": _matrix_result("Pabcg", p_primitive, unit="1/(microSiemens/mile)", labels=labels),
+        "Z_kron_nt": _matrix_result("Z_kron_nt", z_kron, unit="ohm/mile", labels=phase_labels),
+        "P_kron_nt": _matrix_result("P_kron_nt", p_kron, unit="1/(microSiemens/mile)", labels=phase_labels),
+        "Y_kron_nt": _matrix_result("Y_kron_nt", y_kron, unit="microsiemens/mile", labels=phase_labels),
+        "Z012_nt": _matrix_result("Z012_nt", z_sequence_nt, unit="ohm/mile", labels=sequence_labels),
+        "Y012_nt": _matrix_result("Y012_nt", y_sequence_nt, unit="microsiemens/mile", labels=sequence_labels),
+        "Z_kron_ft": _matrix_result("Z_kron_ft", z_transposed, unit="ohm/mile", labels=phase_labels),
+        "Y_kron_ft": _matrix_result("Y_kron_ft", y_transposed, unit="microsiemens/mile", labels=phase_labels),
+        "Z012_ft": _matrix_result("Z012_ft", z_sequence, unit="ohm/mile", labels=sequence_labels),
+        "Y012_ft": _matrix_result("Y012_ft", y_sequence, unit="microsiemens/mile", labels=sequence_labels),
     }
+    matrices.update({
+        "Z_primitive": matrices["Zabcg"], "P_primitive": matrices["Pabcg"],
+        "Z_kron": matrices["Z_kron_nt"], "P_kron": matrices["P_kron_nt"], "Y_kron": matrices["Y_kron_nt"],
+        "Z_transposed": matrices["Z_kron_ft"], "Y_transposed": matrices["Y_kron_ft"],
+        "Z_sequence": matrices["Z012_ft"], "Y_sequence": matrices["Y012_ft"],
+    })
     provenance = [
         spec.catalog_reference.model_dump()
         for spec in phase_specs
@@ -248,7 +258,16 @@ def calculate_electrical(
     }
     if circuits == 2:
         scalar_units.update({"r0_mutual": "ohm/mile", "x0_mutual": "ohm/mile", "b0_mutual": "microsiemens/mile"})
-    return ElectricalParameters(labels=labels, matrices=matrices, scalars=scalars, scalar_units=scalar_units, provenance=provenance, calculated_at=datetime.now(UTC))
+    return ElectricalParameters(
+        labels=labels,
+        matrices=matrices,
+        scalars=scalars,
+        scalar_units=scalar_units,
+        provenance=provenance,
+        topology="one-circuit" if circuits == 1 else "two-circuit",
+        status="complete",
+        calculated_at=datetime.now(UTC),
+    )
 
 
 __all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters"]

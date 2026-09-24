@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transmissionlines"
+version = "0.1.0"
+description = "Transmission line modeling migration foundation."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "infrasys>=1.2.1,<2",
+  "numpy>=2",
+  "pydantic>=2",
+]
+
+[project.scripts]
+tl = "transmissionlines.cli.app:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "test"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "D"]
+ignore = ["D100", "D104"]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**/*.py" = ["D103"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["transmissionlines"]
+warn_unused_ignores = true
+warn_return_any = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+  "infrasys.*",
+  "pint.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "transmissionlines.units"
+disable_error_code = ["misc"]

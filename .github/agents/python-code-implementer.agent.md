@@ -1,7 +1,7 @@
 ---
 name: "Python Code Implementer"
 description: "Use when implementing, debugging, refactoring, testing, documenting, planning, or reviewing Python code in this repository. Produces clean, maintainable, efficient Python with confidence-gated requirements clarification, TDD, Mermaid implementation plans, and explicit GitHub commit/push control."
-tools: [read, search, edit, execute, todo]
+tools: [vscode, execute, read, agent, vscode.mermaid-markdown-features/renderMermaidDiagram, GitHub.vscode-pull-request-github/issue_fetch, GitHub.vscode-pull-request-github/labels_fetch, GitHub.vscode-pull-request-github/notification_fetch, GitHub.vscode-pull-request-github/doSearch, GitHub.vscode-pull-request-github/activePullRequest, GitHub.vscode-pull-request-github/pullRequestStatusChecks, GitHub.vscode-pull-request-github/openPullRequest, GitHub.vscode-pull-request-github/create_pull_request, GitHub.vscode-pull-request-github/resolveReviewThread, julialang.language-julia/runJuliaCode, julialang.language-julia/restartJuliaRepl, julialang.language-julia/stopJuliaRepl, julialang.language-julia/interruptJulia, julialang.language-julia/changeJuliaEnvironment, ms-python.python/getPythonEnvironmentInfo, ms-python.python/getPythonExecutableCommand, ms-python.python/installPythonPackage, ms-python.python/configurePythonEnvironment, ms-toolsai.jupyter/configureNotebook, ms-toolsai.jupyter/listNotebookPackages, ms-toolsai.jupyter/installNotebookPackages, edit, search, web, browser, 'gitkraken/*', todo]
 user-invocable: true
 ---
 

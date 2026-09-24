@@ -1,0 +1,120 @@
+{
+  "catalog_version": "v1",
+  "generated_at": "2026-09-24T08:46:07.499628+00:00",
+  "schema_version": "3.0.0",
+  "source_workbook": "Tower_geometries_DB.xlsx",
+  "sources": [
+    {
+      "path": "C:\\Users\\smachado\\repos\\transmissionlines\\data\\raw\\Tower_geometries_DB.xlsx",
+      "sha256": "e032d8c2f2a78066ceca461270990b02bdb8a91d76e3c83cee47b4d3947bcd0f"
+    }
+  ],
+  "tables": {
+    "actual_lines": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "structure_code",
+        "structure_type",
+        "state_id",
+        "miles",
+        "voltage_kv"
+      ],
+      "row_count": 240
+    },
+    "conductors": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "family",
+        "codeword",
+        "stranding",
+        "size_kcmil",
+        "diameter_inch",
+        "ac_resistance_ohm_kft",
+        "ac_resistance_25_ohm_kft",
+        "ac_resistance_50_ohm_kft",
+        "ac_resistance_75_ohm_kft",
+        "dc_resistance_ohm_kft",
+        "capacitance_reactance_mohm_kft",
+        "internal_reactance_ohm_kft",
+        "ampacity_a"
+      ],
+      "row_count": 161
+    },
+    "ground_wire_positions": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "geometry_id",
+        "state_id",
+        "wire_id",
+        "x",
+        "y"
+      ],
+      "row_count": 129
+    },
+    "ground_wires": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "family",
+        "awg_or_stranding",
+        "size_kcmil",
+        "strand_diameter_inch",
+        "diameter_inch",
+        "dc_resistance_ohm_kft",
+        "breaking_load_lb",
+        "weight_lb_kft",
+        "area_inches"
+      ],
+      "row_count": 27
+    },
+    "phase_positions": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "geometry_id",
+        "state_id",
+        "circuit_id",
+        "phase",
+        "x",
+        "y"
+      ],
+      "row_count": 282
+    },
+    "state_borders": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "state_code",
+        "border_state_code"
+      ],
+      "row_count": 215
+    },
+    "states": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "code",
+        "usps_code",
+        "canonical_name"
+      ],
+      "row_count": 50
+    },
+    "tower_geometries": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "structure_code",
+        "structure_type",
+        "company",
+        "state",
+        "voltage_kv",
+        "n_circuits",
+        "n_ground_w"
+      ],
+      "row_count": 70
+    }
+  }
+}

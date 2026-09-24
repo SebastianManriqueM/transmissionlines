@@ -1,6 +1,6 @@
 """Versioned reference catalog services."""
 
-from transmissionlines.catalog.importer import generate_catalog, sha256_file
+from transmissionlines.catalog.importer import generate_catalog, generate_julia_workbook_catalog, sha256_file
 from transmissionlines.catalog.repository import (
     AmbiguousCatalogMatch,
     CatalogRepository,
@@ -15,6 +15,7 @@ __all__ = [
     "NoCatalogMatch",
     "expand_states",
     "generate_catalog",
+    "generate_julia_workbook_catalog",
     "require_valid_catalog",
     "select_state",
     "sha256_file",

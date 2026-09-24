@@ -72,9 +72,10 @@ def test_two_circuit_orchestration_dimensions_labels_and_mutual_scalars() -> Non
     config = line.tower_configuration.model_copy(update={"geometry": geometry, "phase_conductor_specs": phase_specs})
     result = calculate_line_electrical_parameters(line.model_copy(update={"tower_configuration": config})).line_parameters.electrical_parameters
     assert result is not None
-    assert result.matrices["Z_primitive"].row_count == 8
+    assert result.matrices["Zabcg"].row_count == 8
     assert result.matrices["Z_kron"].row_count == 6
-    assert result.matrices["Z_sequence"].row_labels == ["1:zero", "1:positive", "1:negative", "2:zero", "2:positive", "2:negative"]
+    assert result.matrices["Z012_ft"].row_labels == ["1:zero", "1:positive", "1:negative", "2:zero", "2:positive", "2:negative"]
+    assert result.matrices["Z_kron"] is result.matrices["Z_kron_nt"]
     assert "r0_mutual" in result.scalars
 
 
@@ -92,7 +93,16 @@ def test_high_level_calculation_does_not_need_routing_and_preserves_mechanical()
     repeated = calculate_line_electrical_parameters(original)
     assert repeated.line_parameters is not calculated.line_parameters
     restored = ElectricalParameters.model_validate_json(calculated.line_parameters.electrical_parameters.model_dump_json())
-    assert restored.matrices["Z_primitive"].unit == "ohm/mile"
+    assert restored.matrices["Zabcg"].unit == "ohm/mile"
+
+
+def test_completed_result_rejects_missing_canonical_matrix() -> None:
+    result = calculate_line_electrical_parameters(_line()).line_parameters.electrical_parameters
+    assert result is not None
+    data = result.model_dump()
+    data["matrices"].pop("Y012_nt")
+    with pytest.raises(ValueError, match="missing matrices"):
+        ElectricalParameters.model_validate(data)
 
 
 def test_high_level_calculation_reports_missing_conductor_fields() -> None:

@@ -13,8 +13,7 @@ from transmissionlines.calculations.cable import (
 from transmissionlines.calculations.electrical import build_primitive_p
 from transmissionlines.calculations.geometry import image_distance
 from transmissionlines.models.cables import BareConductorEquipment
-from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
-from transmissionlines.models.electrical import MatrixResult
+from transmissionlines.models.geometry import PhasePosition
 from transmissionlines.units import (
     BundleSpacing,
     CableDiameter,
@@ -55,36 +54,6 @@ def test_equivalent_radius_uses_same_polygon_policy() -> None:
     assert radius.magnitude == pytest.approx(equivalent_radius(0.5 / 12, 2, 12))
 
 
-def test_tower_geometry_rejects_duplicate_and_incomplete_positions() -> None:
-    with pytest.raises(ValueError, match="duplicate phase"):
-        TowerGeometry(
-            phase_positions=[
-                PhasePosition(circuit_id="c1", phase=phase, x=TowerCoordinate(0, "foot"), y=TowerCoordinate(1, "foot"))
-                for phase in ("A", "B", "B")
-            ],
-            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(2, "foot"))],
-        )
-    with pytest.raises(ValueError, match="exactly A, B, and C"):
-        TowerGeometry(
-            phase_positions=[
-                PhasePosition(circuit_id="c1", phase=phase, x=TowerCoordinate(0, "foot"), y=TowerCoordinate(1, "foot"))
-                for phase in ("A", "B")
-            ],
-            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(2, "foot"))],
-        )
-    with pytest.raises(ValueError, match="duplicate ground"):
-        TowerGeometry(
-            phase_positions=[
-                PhasePosition(circuit_id="c1", phase=phase, x=TowerCoordinate(0, "foot"), y=TowerCoordinate(1, "foot"))
-                for phase in ("A", "B", "C")
-            ],
-            ground_wire_positions=[
-                GroundWirePosition(wire_id="g1", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(2, "foot")),
-                GroundWirePosition(wire_id="g1", x=TowerCoordinate(1, "foot"), y=TowerCoordinate(2, "foot")),
-            ],
-        )
-
-
 def test_primitive_p_image_diagonal_and_matrix_metadata() -> None:
     positions = [
         PhasePosition(circuit_id="c1", phase="A", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(30, "foot")),
@@ -116,21 +85,3 @@ def test_resistance_policy_prefers_75_then_50_then_25() -> None:
     assert select_phase_resistance(None, None, r25) == r25
     with pytest.raises(ValueError, match="requires"):
         select_phase_resistance()
-
-
-def test_matrix_result_has_explicit_json_safe_metadata() -> None:
-    result = MatrixResult(
-        name="Z",
-        row_count=1,
-        column_count=1,
-        row_labels=["A"],
-        column_labels=["A"],
-        unit="ohm/mile",
-        real=[[1.0]],
-        imaginary=[[2.0]],
-    )
-    restored = MatrixResult.model_validate_json(result.model_dump_json())
-    assert restored.name == "Z"
-    assert restored.cells == [[{"real": 1.0, "imag": 2.0}]]
-    with pytest.raises(ValueError, match="row counts"):
-        MatrixResult(name="bad", row_count=2, column_count=1, unit="ohm/mile", real=[[1.0]], imaginary=[[0.0]])

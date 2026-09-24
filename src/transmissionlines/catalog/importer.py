@@ -110,6 +110,8 @@ def generate_julia_workbook_catalog(
     *,
     catalog_version: str = "v1",
     schema_version: str = "3.0.0",
+    source_identifier: str = "data/raw/Tower_geometries_DB.xlsx",
+    generated_at: str | None = None,
 ) -> dict[str, Any]:
     """Normalize the original ``Tower_geometries_DB.xlsx`` into the v3 catalog.
 
@@ -149,7 +151,10 @@ def generate_julia_workbook_catalog(
                 ground_rows.append({"record_id": f"{code}:ground-{wire}", "source_id": code, "geometry_id": code, "state_id": clean(row.state), "wire_id": f"ground-{wire}", "x": x, "y": y})
     state_rows = [{"record_id": str(clean(row.abreviation) or row.state), "source_id": str(row.number), "code": str(clean(row.abreviation) or row.state), "usps_code": clean(row.abreviation), "canonical_name": str(row.state)} for row in neighboring.itertuples()]
     border_rows = []
-    state_code = {str(row.state): str(row.abreviation or row.state) for row in neighboring.itertuples()}
+    state_code = {
+        str(row.state): str(clean(row.abreviation) or row.state)
+        for row in neighboring.itertuples()
+    }
     for row in neighboring.itertuples():
         for neighbor in str(row.bordering_states).split(","):
             if neighbor.strip() in state_code:
@@ -166,7 +171,9 @@ def generate_julia_workbook_catalog(
     for name, frame in frames.items():
         frame.to_parquet(destination / f"{name}.parquet", index=False, engine="pyarrow", compression="snappy")
         table_info[name] = {"row_count": len(frame), "columns": list(frame.columns)}
-    manifest = {"catalog_version": catalog_version, "schema_version": schema_version, "generated_at": datetime.now(UTC).isoformat(), "sources": [{"path": str(path), "sha256": sha256_file(path)}], "tables": table_info, "source_workbook": "Tower_geometries_DB.xlsx"}
+    manifest = {"catalog_version": catalog_version, "schema_version": schema_version, "sources": [{"path": source_identifier, "sha256": sha256_file(path)}], "tables": table_info, "source_workbook": "Tower_geometries_DB.xlsx"}
+    if generated_at is not None:
+        manifest["generated_at"] = generated_at
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest
 

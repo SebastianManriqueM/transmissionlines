@@ -144,7 +144,14 @@ def calculate_electrical(
     if circuits == 2:
         scalars.update({"r0_mutual": float(z_sequence[3, 0].real), "x0_mutual": float(z_sequence[3, 0].imag), "b0_mutual": float(y_sequence[3, 0].imag)})
     matrices = {"Z_primitive": _complex_json(z_primitive), "P_primitive": _complex_json(p_primitive), "Z_kron": _complex_json(z_kron), "P_kron": _complex_json(p_kron), "Y_kron": _complex_json(y_kron), "Z_transposed": _complex_json(z_transposed), "Y_transposed": _complex_json(y_transposed), "Z_sequence": _complex_json(z_sequence), "Y_sequence": _complex_json(y_sequence)}
-    return ElectricalParameters(labels=labels, matrices=matrices, scalars=scalars, calculated_at=datetime.now(UTC))
+    provenance = [
+        spec.catalog_reference.model_dump()
+        for spec in phase_specs
+        if spec.catalog_reference is not None
+    ]
+    if ground_wire_spec.catalog_reference is not None:
+        provenance.append(ground_wire_spec.catalog_reference.model_dump())
+    return ElectricalParameters(labels=labels, matrices=matrices, scalars=scalars, provenance=provenance, calculated_at=datetime.now(UTC))
 
 
 __all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical"]

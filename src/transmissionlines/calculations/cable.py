@@ -18,7 +18,7 @@ def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray
     if count < 1:
         raise ValueError("subconductor count must be positive")
     if count == 1:
-        if spacing is not None and spacing != 0:
+        if spacing is not None:
             raise ValueError("a single subconductor has no spacing")
         return np.zeros((1, 2), dtype=float)
     if spacing is None or spacing <= 0:
@@ -119,8 +119,11 @@ def derived_bundle_values(
     gmr = None if conductor.conductor_gmr is None else bundle_gmr(
         conductor.conductor_gmr.to("foot").magnitude, count, spacing_value
     )
-    radius = None if conductor.conductor_diameter is None else equivalent_radius(
-        conductor.conductor_diameter.to("foot").magnitude / 2, count, spacing_value
+    radius_source = conductor.capacitance_radius or conductor.conductor_diameter
+    radius = None if radius_source is None else equivalent_radius(
+        radius_source.to("foot").magnitude if conductor.capacitance_radius is not None else radius_source.to("foot").magnitude / 2,
+        count,
+        spacing_value,
     )
     return (None if gmr is None else CableGMR(gmr, "foot"),
             None if radius is None else EquivalentRadius(radius, "foot"))

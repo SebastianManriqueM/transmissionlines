@@ -19,9 +19,25 @@ def test_direct_and_image_distances_use_tower_local_feet() -> None:
 
 
 def test_regular_polygon_and_bundle_gmr() -> None:
+    with pytest.raises(ValueError, match="no spacing"):
+        regular_polygon_coordinates(1, 0)
     coordinates = regular_polygon_coordinates(4, 12)
     assert np.allclose(np.linalg.norm(coordinates, axis=1), 12 / np.sqrt(2))
     assert bundle_gmr(0.1, 2, 12) == pytest.approx(np.sqrt(0.1))
+
+
+def test_capacitance_radius_is_preferred_for_bundle_derivation() -> None:
+    from transmissionlines.calculations.cable import derived_bundle_values
+    from transmissionlines.models.cables import BareConductorEquipment
+    from transmissionlines.units import CableGMR, CableDiameter
+
+    conductor = BareConductorEquipment(
+        conductor_diameter=CableDiameter(1, "inch"),
+        capacitance_radius=CableGMR(0.02, "foot"),
+    )
+    _, radius = derived_bundle_values(conductor, 1, None)
+    assert radius is not None
+    assert radius.magnitude == pytest.approx(0.02)
 
 
 def test_ground_wire_gmr_uses_overall_diameter() -> None:

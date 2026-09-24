@@ -1,11 +1,10 @@
 {
   "catalog_version": "v1",
-  "generated_at": "2026-09-24T08:46:07.499628+00:00",
   "schema_version": "3.0.0",
   "source_workbook": "Tower_geometries_DB.xlsx",
   "sources": [
     {
-      "path": "C:\\Users\\smachado\\repos\\transmissionlines\\data\\raw\\Tower_geometries_DB.xlsx",
+      "path": "data/raw/Tower_geometries_DB.xlsx",
       "sha256": "e032d8c2f2a78066ceca461270990b02bdb8a91d76e3c83cee47b4d3947bcd0f"
     }
   ],

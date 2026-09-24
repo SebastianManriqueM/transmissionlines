@@ -19,6 +19,7 @@ class BareConductorEquipment(LineDataModel):
 
     conductor_diameter: CableDiameter | None = None
     conductor_gmr: CableGMR | None = None
+    capacitance_radius: CableGMR | None = None
     ampacity: Current | None = None
     ac_resistance: ResistancePerKft | None = None
     emergency_ampacity: Current | None = None
@@ -63,11 +64,11 @@ class PhaseConductorSpec(CableSpec):
         if gmr is None or self.subconductor_count == 1:
             return gmr
         assert self.subconductor_spacing is not None
-        spacing = self.subconductor_spacing.to("foot")
+        from transmissionlines.calculations.cable import bundle_gmr
+
+        spacing = self.subconductor_spacing.to("inch").magnitude
         return CableGMR(
-            (gmr.to("foot").magnitude * spacing.magnitude ** (self.subconductor_count - 1))
-            ** (1 / self.subconductor_count),
-            "foot",
+            bundle_gmr(gmr.to("foot").magnitude, self.subconductor_count, spacing), "foot"
         )
 
     @computed_field
@@ -75,17 +76,25 @@ class PhaseConductorSpec(CableSpec):
     def equivalent_radius(self) -> EquivalentRadius | None:
         """Return equivalent conductor radius when diameter is known."""
         diameter = self.conductor.conductor_diameter
-        if diameter is None:
+        radius_source = self.conductor.capacitance_radius
+        if diameter is None and radius_source is None:
             return None
         if self.subconductor_count == 1:
+            if radius_source is not None:
+                return EquivalentRadius(radius_source.to("foot").magnitude, "foot")
+            assert diameter is not None
             return EquivalentRadius(diameter.to("foot").magnitude / 2, "foot")
         assert self.subconductor_spacing is not None
-        spacing = self.subconductor_spacing.to("foot")
-        radius = diameter.to("foot").magnitude / 2
+        from transmissionlines.calculations.cable import equivalent_radius
+
+        spacing = self.subconductor_spacing.to("inch").magnitude
+        if radius_source is not None:
+            radius = radius_source.to("foot").magnitude
+        else:
+            assert diameter is not None
+            radius = diameter.to("foot").magnitude / 2
         return EquivalentRadius(
-            (radius * spacing.magnitude ** (self.subconductor_count - 1))
-            ** (1 / self.subconductor_count),
-            "foot",
+            equivalent_radius(radius, self.subconductor_count, spacing), "foot"
         )
 
 

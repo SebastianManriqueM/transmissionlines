@@ -1,11 +1,10 @@
 """Common immutable v3 value models."""
 
-from typing import Literal
-
 from infrasys import Component
 
 from transmissionlines.models.base import LineDataModel
-from transmissionlines.units import Angle, Distance, TowerCoordinate
+from transmissionlines.units import Angle, Distance
+from transmissionlines.models.geometry import CablePosition, GroundWirePosition, PhasePosition
 
 
 class GeographicPoint(LineDataModel):
@@ -37,26 +36,6 @@ class Bus(Component):
     """Named network terminal."""
 
     location: GeographicPoint
-
-
-class CablePosition(LineDataModel):
-    """Tower-local cable position."""
-
-    x: TowerCoordinate
-    y: TowerCoordinate
-
-
-class PhasePosition(CablePosition):
-    """Position for one phase of one circuit."""
-
-    circuit_id: str
-    phase: Literal["A", "B", "C"]
-
-
-class GroundWirePosition(CablePosition):
-    """Position for one ground wire."""
-
-    wire_id: str
 
 
 __all__ = [

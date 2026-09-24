@@ -20,12 +20,32 @@ dependencies = [
 [project.scripts]
 tl = "transmissionlines.cli.app:app"
 
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+  "pytest-cov>=5",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-addopts = "-ra"
+addopts = "-ra --cov=transmissionlines --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["transmissionlines"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 [tool.ruff]
 line-length = 100

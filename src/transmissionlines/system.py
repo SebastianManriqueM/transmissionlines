@@ -35,6 +35,20 @@ class TransmissionLineSystem(System):
         self.data_format_version = SCHEMA_VERSION
         self._schema_version = SCHEMA_VERSION
 
+    def resolve_component_references(self) -> None:
+        """Resolve component references nested in v3 value models after deserialization.
+
+        Infrasys preserves UUIDs for nested references but does not automatically
+        replace nested copies with the registered component instances.
+        """
+        from transmissionlines.models.assets import TransmissionLine
+
+        for line in self.get_components(TransmissionLine):
+            resolved = line.resolve_component_references(self)
+            if resolved is not line:
+                self.remove_component(line)
+                self.add_component(resolved)
+
     @property
     def schema_version(self) -> str:
         """Return the transmission-line schema version for this system."""

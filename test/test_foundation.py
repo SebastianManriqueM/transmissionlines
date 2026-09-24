@@ -179,6 +179,58 @@ def test_schema_upgrade_hook_updates_legacy_metadata(tmp_path: Path) -> None:
     assert loaded.get_component(ProbeBus, "bus-a").name == "bus-a"
 
 
+def test_legacy_package_schema_upgrades_when_infrasys_format_is_current(
+    tmp_path: Path,
+) -> None:
+    system = TransmissionLineSystem(name="schema-test")
+    system.add_component(
+        ProbeBus(
+            name="bus-a",
+            location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+        )
+    )
+    path = tmp_path / "legacy-package-schema.json"
+    system.to_json(path, overwrite=True)
+
+    import orjson
+
+    data: dict[str, Any] = orjson.loads(path.read_bytes())
+    data["data_format_version"] = SCHEMA_VERSION
+    data["transmissionlines_schema_version"] = "2.0.0"
+    path.write_bytes(orjson.dumps(data))
+
+    loaded = TransmissionLineSystem.from_json(path)
+
+    assert loaded.data_format_version == SCHEMA_VERSION
+    assert loaded.schema_version == SCHEMA_VERSION
+
+
+def test_unknown_package_schema_is_rejected_when_infrasys_format_is_current(
+    tmp_path: Path,
+) -> None:
+    system = TransmissionLineSystem(name="schema-test")
+    system.add_component(
+        ProbeBus(
+            name="bus-a",
+            location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+        )
+    )
+    path = tmp_path / "unknown-package-schema.json"
+    system.to_json(path, overwrite=True)
+
+    import orjson
+
+    data: dict[str, Any] = orjson.loads(path.read_bytes())
+    data["data_format_version"] = SCHEMA_VERSION
+    data["transmissionlines_schema_version"] = "99.0.0"
+    path.write_bytes(orjson.dumps(data))
+
+    from infrasys.exceptions import ISOperationNotAllowed
+
+    with pytest.raises(ISOperationNotAllowed, match="Unsupported transmission-line package schema"):
+        TransmissionLineSystem.from_json(path)
+
+
 def test_infrasys_does_not_round_trip_component_references_nested_inside_value_models(
     tmp_path: Path,
 ) -> None:

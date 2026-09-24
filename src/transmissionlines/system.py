@@ -58,8 +58,13 @@ class TransmissionLineSystem(System):
         data : dict[str, Any]
             System JSON dictionary after any schema upgrade hook has run.
         """
-        self._schema_version = data.get("transmissionlines_schema_version", SCHEMA_VERSION)
-        self.data_format_version = data.get("data_format_version", SCHEMA_VERSION)
+        upgrade_transmissionlines_system_data(
+            data,
+            from_version=data.get("data_format_version"),
+            to_version=SCHEMA_VERSION,
+        )
+        self._schema_version = data["transmissionlines_schema_version"]
+        self.data_format_version = data["data_format_version"]
 
     def handle_data_format_upgrade(
         self,
@@ -115,10 +120,16 @@ def upgrade_transmissionlines_system_data(
     target_version = to_version or SCHEMA_VERSION
     if from_version not in _LEGACY_SCHEMA_VERSIONS:
         msg = (
-            "Unsupported transmission-line schema upgrade: "
+            "Unsupported Infrasys data format upgrade: "
             f"{from_version!r} -> {target_version!r}"
         )
         raise ISOperationNotAllowed(msg)
+
+    package_version = data.get("transmissionlines_schema_version")
+    if package_version not in _LEGACY_SCHEMA_VERSIONS:
+        msg = f"Unsupported transmission-line package schema: {package_version!r}"
+        raise ISOperationNotAllowed(msg)
+
     data["data_format_version"] = target_version
     data["transmissionlines_schema_version"] = target_version
 

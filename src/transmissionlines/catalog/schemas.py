@@ -49,6 +49,32 @@ class SourceRecord(CatalogRecord):
     sha256: str
 
 
+class ConductorRecord(CatalogRecord):
+    family: str
+    codeword: str
+    size_kcmil: float | None = None
+    diameter_inch: float | None = None
+    ac_resistance_ohm_kft: float | None = None
+    dc_resistance_ohm_kft: float | None = None
+    ampacity_a: float | None = None
+
+
+class GroundWireRecord(CatalogRecord):
+    family: str
+    awg_or_stranding: str
+    size_kcmil: float | None = None
+    diameter_inch: float | None = None
+    dc_resistance_ohm_kft: float | None = None
+
+
+class ActualLineRecord(CatalogRecord):
+    structure_code: str | None = None
+    structure_type: str | None = None
+    state_id: str | None = None
+    miles: float | None = None
+    voltage_kv: float | None = None
+
+
 TABLE_MODELS: dict[str, type[CatalogRecord]] = {
     "tower_geometries": GeometryRecord,
     "geometry_states": GeometryStateRecord,
@@ -56,16 +82,22 @@ TABLE_MODELS: dict[str, type[CatalogRecord]] = {
     "ground_wire_positions": GroundWirePositionRecord,
     "states": StateRecord,
     "sources": SourceRecord,
+    "conductors": ConductorRecord,
+    "ground_wires": GroundWireRecord,
+    "actual_lines": ActualLineRecord,
 }
 SOURCE_HEADERS: dict[str, dict[str, str]] = {
     name: {field: field for field in model.model_fields} for name, model in TABLE_MODELS.items()
 }
 
 __all__ = [
+    "ActualLineRecord",
     "CatalogRecord",
+    "ConductorRecord",
     "GeometryRecord",
     "GeometryStateRecord",
     "GroundWirePositionRecord",
+    "GroundWireRecord",
     "PhasePositionRecord",
     "SOURCE_HEADERS",
     "SourceRecord",

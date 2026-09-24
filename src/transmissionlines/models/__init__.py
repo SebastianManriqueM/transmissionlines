@@ -1,6 +1,13 @@
 """v3 transmission-line models."""
 
-from transmissionlines.models.assets import LineParameters, LineTechnicalInfo, TransmissionLine
+from transmissionlines.models.assets import (
+    ElectricalParameters,
+    LineParameters,
+    LineTechnicalInfo,
+    MechanicalParameters,
+    TransmissionLine,
+)
+from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
     BareConductorEquipment,
     GroundWireSpec,
@@ -20,6 +27,7 @@ from transmissionlines.models.routing import LineSpan, RoutingInfo, Tower
 
 __all__ = [
     "BareConductorEquipment",
+    "ElectricalParameters",
     "Bus",
     "CatalogReference",
     "GeographicPoint",
@@ -29,7 +37,10 @@ __all__ = [
     "LineParameters",
     "LineSpan",
     "LineTechnicalInfo",
+    "LineDataModel",
     "PhaseConductorSpec",
+    "MechanicalParameters",
+    "OperationAttribute",
     "PhasePosition",
     "RoutingInfo",
     "Tower",

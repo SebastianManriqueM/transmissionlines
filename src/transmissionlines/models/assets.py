@@ -3,6 +3,11 @@
 from infrasys import Component
 from pydantic import model_validator
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from transmissionlines.system import TransmissionLineSystem
+
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import Bus
 from transmissionlines.models.configurations import TowerConfiguration
@@ -61,6 +66,15 @@ class TransmissionLine(Component):
     tower_configuration: TowerConfiguration
     routing_info: RoutingInfo | None = None
     line_parameters: LineParameters | None = None
+
+    def resolve_component_references(self, system: "TransmissionLineSystem") -> "TransmissionLine":
+        """Replace nested bus copies with registered system components after load."""
+        from transmissionlines.models.common import Bus
+
+        from_bus = system.get_component(Bus, self.technical_info.from_bus.name)
+        to_bus = system.get_component(Bus, self.technical_info.to_bus.name)
+        info = self.technical_info.model_copy(update={"from_bus": from_bus, "to_bus": to_bus})
+        return TransmissionLine.model_validate({**self.model_dump(), "technical_info": info})
 
     @model_validator(mode="after")
     def validate_line(self) -> "TransmissionLine":

@@ -97,10 +97,10 @@ class TowerGeometry(LineDataModel):
 
     @model_validator(mode="after")
     def validate_geometry(self) -> "TowerGeometry":
-        groups: dict[str, set[str]] = {}
+        groups: dict[str, list[str]] = {}
         for position in self.phase_positions:
-            groups.setdefault(position.circuit_id, set()).add(position.phase)
-        if not groups or any(phases != {"A", "B", "C"} for phases in groups.values()):
+            groups.setdefault(position.circuit_id, []).append(position.phase)
+        if not groups or any(sorted(phases) != ["A", "B", "C"] for phases in groups.values()):
             raise ValueError(
                 "each configured circuit must have exactly A, B, and C phase positions"
             )

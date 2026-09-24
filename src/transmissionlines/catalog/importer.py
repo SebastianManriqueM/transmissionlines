@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from transmissionlines.catalog.schemas import SOURCE_HEADERS
+from transmissionlines.catalog.schemas import SOURCE_HEADERS, TABLE_MODELS
 
 
 def sha256_file(path: str | Path) -> str:
@@ -57,15 +57,33 @@ def generate_catalog(
         path = Path(source)
         frame = _read(path)
         mapping = mappings.get(table, {})
-        missing = [column for column in mapping if column not in frame.columns]
-        if missing:
-            raise ValueError(f"source {path} is missing mapped headers: {missing}")
+        model = TABLE_MODELS.get(table)
+        if model is None:
+            raise ValueError(f"unsupported catalog table {table!r}")
+        expected = set(model.model_fields)
+        if set(mapping) != expected:
+            missing = sorted(expected - set(mapping))
+            extra = sorted(set(mapping) - expected)
+            raise ValueError(
+                f"incomplete mapping for {table}: missing={missing}, extra={extra}"
+            )
+        missing_headers = [source_name for source_name in mapping.values() if source_name not in frame.columns]
+        if missing_headers:
+            raise ValueError(f"source {path} is missing mapped headers: {missing_headers}")
         normalized = frame.rename(
             columns={source_name: name for name, source_name in mapping.items()}
-        )
-        if set(mapping) - set(normalized.columns):
-            raise ValueError(f"incomplete mapping for {table}")
-        normalized = normalized[list(mapping)]
+        )[list(model.model_fields)]
+        records = []
+        failures = []
+        for index, row in normalized.iterrows():
+            values = {key: (None if pd.isna(value) else value) for key, value in row.to_dict().items()}
+            try:
+                records.append(model.model_validate(values).model_dump())
+            except Exception as exc:
+                failures.append(f"row {index}: {exc}")
+        if failures:
+            raise ValueError(f"invalid {table} records: " + "; ".join(failures[:10]))
+        normalized = pd.DataFrame(records, columns=list(model.model_fields))
         normalized.to_parquet(
             destination / f"{table}.parquet", index=False, engine="pyarrow", compression="snappy"
         )

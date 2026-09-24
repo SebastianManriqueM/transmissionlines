@@ -24,6 +24,16 @@ def _horizontal(a: GeographicPoint, b: GeographicPoint) -> float:
     return 2 * _EARTH_MILES * asin(sqrt(h))
 
 
+def tower_component_name(line_name: str, sequence: int) -> str:
+    """Return the canonical registered name for a tower."""
+    return f"{line_name}:tower:{sequence:03d}"
+
+
+def span_component_name(line_name: str, sequence: int) -> str:
+    """Return the canonical registered name for a span."""
+    return f"{line_name}:span:{sequence:03d}"
+
+
 class Tower(Component):
     """Registered tower on a route."""
 
@@ -74,7 +84,10 @@ class RoutingInfo(LineDataModel):
         ) != len(self.spans):
             raise ValueError("tower_id and span_id values must be unique")
         for i, span in enumerate(self.spans):
-            if span.from_tower is not self.towers[i] or span.to_tower is not self.towers[i + 1]:
+            if (
+                span.from_tower.uuid != self.towers[i].uuid
+                or span.to_tower.uuid != self.towers[i + 1].uuid
+            ):
                 raise ValueError("spans must reference consecutive towers")
         return self
 

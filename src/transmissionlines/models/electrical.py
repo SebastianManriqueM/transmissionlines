@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Any, Literal
 
@@ -43,6 +44,14 @@ class MatrixResult(LineDataModel):
             [{"real": real, "imag": imag} for real, imag in zip(real_row, imag_row)]
             for real_row, imag_row in zip(self.real, self.imaginary)
         ]
+
+    def __iter__(self) -> Iterator[list[dict[str, float]]]:  # type: ignore[override]
+        """Iterate over legacy-compatible matrix rows."""
+        return iter(self.cells)
+
+    def __getitem__(self, index: int) -> list[dict[str, float]]:
+        """Return one legacy-compatible matrix row."""
+        return self.cells[index]
 
 
 class ElectricalParameters(LineDataModel):

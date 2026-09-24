@@ -144,8 +144,63 @@ def upgrade_transmissionlines_system_data(
         msg = f"Unsupported transmission-line package schema: {package_version!r}"
         raise ISOperationNotAllowed(msg)
 
+    _migrate_legacy_matrix_payloads(data)
     data["data_format_version"] = target_version
     data["transmissionlines_schema_version"] = target_version
+
+
+def _migrate_legacy_matrix_payloads(value: Any) -> None:
+    """Convert legacy cell-list matrices to typed JSON matrix payloads in place."""
+    if isinstance(value, list):
+        for item in value:
+            _migrate_legacy_matrix_payloads(item)
+        return
+    if not isinstance(value, dict):
+        return
+    for item in value.values():
+        _migrate_legacy_matrix_payloads(item)
+    matrices = value.get("matrices")
+    if not isinstance(matrices, dict):
+        return
+    raw_labels = value.get("labels")
+    labels: list[str] = [str(item) for item in raw_labels] if isinstance(raw_labels, list) else []
+    raw_units = value.get("units")
+    units: dict[str, Any] = raw_units if isinstance(raw_units, dict) else {}
+    migrated = False
+    for name, matrix in list(matrices.items()):
+        if not isinstance(matrix, list) or not matrix or not isinstance(matrix[0], list):
+            continue
+        rows = len(matrix)
+        columns = len(matrix[0])
+        real: list[list[float]] = []
+        imaginary: list[list[float]] = []
+        for row in matrix:
+            real_row: list[float] = []
+            imaginary_row: list[float] = []
+            for cell in row:
+                if isinstance(cell, dict):
+                    real_row.append(float(cell.get("real", 0.0)))
+                    imaginary_row.append(float(cell.get("imag", 0.0)))
+                else:
+                    real_row.append(float(cell))
+                    imaginary_row.append(0.0)
+            real.append(real_row)
+            imaginary.append(imaginary_row)
+        matrix_labels = labels if len(labels) == rows else [str(index) for index in range(rows)]
+        unit = units.get("y" if name.startswith("Y") else "z", "")
+        matrices[name] = {
+            "name": name,
+            "row_count": rows,
+            "column_count": columns,
+            "row_labels": matrix_labels,
+            "column_labels": list(matrix_labels) if len(matrix_labels) == columns else [str(index) for index in range(columns)],
+            "unit": unit,
+            "real": real,
+            "imaginary": imaginary,
+        }
+        migrated = True
+    if migrated and value.get("status") == "complete":
+        value["status"] = "incomplete"
 
 
 __all__ = [

@@ -172,9 +172,9 @@ def calculate_line_electrical_parameters(line: TransmissionLine) -> Transmission
         geometry,
         phase_specs=specs,
         ground_wire_spec=line.tower_configuration.ground_wire_spec,
-        voltage=technical.nominal_voltage,
-        frequency=technical.nominal_frequency,
-        earth_resistivity=technical.earth_resistivity.magnitude,
+        voltage=technical.nominal_voltage.to("kilovolt"),
+        frequency=technical.nominal_frequency.to("hertz"),
+        earth_resistivity=technical.earth_resistivity.to("ohm * meter").magnitude,
     )
     parameters = line.line_parameters or LineParameters()
     updated_parameters = parameters.model_copy(update={"electrical_parameters": result})
@@ -196,6 +196,8 @@ def calculate_electrical(
     earth_resistivity: float,
 ) -> ElectricalParameters:
     """Calculate and serialize all Julia-parity electrical result matrices."""
+    voltage = voltage.to("kilovolt")
+    frequency = frequency.to("hertz")
     specs = {spec.circuit_id: spec for spec in phase_specs}
     positions, gmrs, radii, resistances, counts, labels, phase_count = _ordered_inputs(geometry, specs, ground_wire_spec)
     ground_count = len(geometry.ground_wire_positions)

@@ -105,6 +105,22 @@ def test_completed_result_rejects_missing_canonical_matrix() -> None:
         ElectricalParameters.model_validate(data)
 
 
+def test_high_level_calculation_normalizes_compatible_technical_units() -> None:
+    original = _line()
+    technical = original.technical_info.model_copy(
+        update={
+            "nominal_voltage": VoltageKV(230000, "volt"),
+            "nominal_frequency": Frequency(0.06, "kilohertz"),
+            "earth_resistivity": EarthResistivity(10000, "ohm * centimeter"),
+        }
+    )
+    alternate = calculate_line_electrical_parameters(original.model_copy(update={"technical_info": technical}))
+    baseline = calculate_line_electrical_parameters(original)
+    assert alternate.line_parameters.electrical_parameters.scalars == pytest.approx(
+        baseline.line_parameters.electrical_parameters.scalars
+    )
+
+
 def test_high_level_calculation_reports_missing_conductor_fields() -> None:
     line = _line()
     phase = line.tower_configuration.phase_conductor_specs[0]

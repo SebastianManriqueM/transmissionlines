@@ -1,19 +1,16 @@
 """v3 transmission-line models."""
 
-from transmissionlines.models.assets import (
-    ElectricalParameters,
-    LineParameters,
-    LineTechnicalInfo,
-    MechanicalParameters,
-    TransmissionLine,
-)
+from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
+from transmissionlines.models.electrical import ElectricalParameters
+from transmissionlines.models.mechanical import MechanicalParameters
+from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
     BareConductorEquipment,
     GroundWireSpec,
     PhaseConductorSpec,
-    TowerGeometry,
 )
+from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.common import (
     Bus,
     CatalogReference,

@@ -3,7 +3,8 @@
 from infrasys import Component
 from pydantic import model_validator
 
-from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec, TowerGeometry
+from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
+from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.common import IdentificationInfo
 
 

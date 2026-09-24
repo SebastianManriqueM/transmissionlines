@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import Bus
 from transmissionlines.models.configurations import TowerConfiguration
+from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.routing import RoutingInfo
 from transmissionlines.units import EarthResistivity, Frequency, VoltageKV
 
@@ -36,27 +37,6 @@ class LineTechnicalInfo(LineDataModel):
         if self.from_bus.name == self.to_bus.name:
             raise ValueError("from_bus and to_bus must be distinct")
         return self
-
-
-class ElectricalParameters(LineDataModel):
-    """Optional electrical result placeholder."""
-
-    method: str
-    version: str
-
-
-class MechanicalParameters(LineDataModel):
-    """Optional mechanical result placeholder."""
-
-    method: str
-    version: str
-
-
-class LineParameters(LineDataModel):
-    """Independent electrical and mechanical result container."""
-
-    electrical_parameters: ElectricalParameters | None = None
-    mechanical_parameters: MechanicalParameters | None = None
 
 
 class TransmissionLine(Component):
@@ -91,9 +71,6 @@ class TransmissionLine(Component):
 
 
 __all__ = [
-    "ElectricalParameters",
-    "LineParameters",
     "LineTechnicalInfo",
-    "MechanicalParameters",
     "TransmissionLine",
 ]

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from transmissionlines.calculations.cable import ground_wire_gmr
+from transmissionlines.calculations.cable import derived_bundle_values, ground_wire_gmr
 from transmissionlines.calculations.geometry import direct_distance, image_distance
 from transmissionlines.calculations.matrices import (
     fully_transpose,
@@ -22,7 +22,7 @@ from transmissionlines.models.geometry import CablePosition, TowerGeometry
 from transmissionlines.units import Frequency, VoltageKV
 
 if TYPE_CHECKING:
-    from transmissionlines.models.assets import TransmissionLine
+    from transmissionlines.models import TransmissionLine
 
 R_C = 0.00158836
 L_C = 0.00202237
@@ -123,11 +123,19 @@ def _ordered_inputs(
     labels = [f"{p.circuit_id}:{p.phase}" for p in phases] + [f"ground:{p.wire_id}" for p in grounds]
     for phase in phases:
         spec = phase_specs[phase.circuit_id]
-        if spec.bundle_gmr is None or spec.equivalent_radius is None or spec.conductor.ac_resistance is None:
+        bundle, radius = derived_bundle_values(
+            spec.conductor, spec.subconductor_count, spec.subconductor_spacing
+        )
+        if bundle is None or radius is None or spec.conductor.ac_resistance is None:
             raise ValueError(f"missing required conductor value for circuit {phase.circuit_id}")
-        gmrs.append(spec.bundle_gmr.to("foot").magnitude)
-        radii.append(spec.equivalent_radius.to("foot").magnitude)
-        resistances.append(spec.conductor.ac_resistance.to("ohm / kilofoot").magnitude)
+        gmrs.append(bundle.to("foot").magnitude)
+        radii.append(radius.to("foot").magnitude)
+        resistance = spec.conductor.ac_resistance
+        resistances.append(
+            resistance.to("ohm / kilofoot").magnitude
+            if hasattr(resistance, "to")
+            else resistance
+        )
         counts.append(spec.subconductor_count)
     if ground_spec.conductor.conductor_diameter is None or ground_spec.conductor.dc_resistance is None:
         raise ValueError("ground wire requires diameter and dc_resistance")
@@ -148,11 +156,10 @@ def calculate_line_electrical_parameters(line: TransmissionLine) -> Transmission
     and any existing mechanical result remain unchanged.
     """
     from transmissionlines.exceptions import CalculationInputError
-    from transmissionlines.models.parameters import LineParameters
-
-    geometry = line.tower_configuration.geometry
+    configuration = line.spans[0].start_end.start.configuration
+    geometry = configuration.geometry
     geometry_ids = {position.circuit_id for position in geometry.phase_positions}
-    specs = line.tower_configuration.phase_conductor_specs
+    specs = configuration.phase_conductor_specs
     spec_ids = [spec.circuit_id for spec in specs]
     spec_id_set = set(spec_ids)
     missing = sorted(geometry_ids - spec_id_set)
@@ -167,16 +174,15 @@ def calculate_line_electrical_parameters(line: TransmissionLine) -> Transmission
         if duplicates:
             details.append(f"duplicates={duplicates}")
         raise CalculationInputError("phase conductor circuit mapping is invalid: " + ", ".join(details))
-    technical = line.technical_info
     result = calculate_electrical(
         geometry,
         phase_specs=specs,
-        ground_wire_spec=line.tower_configuration.ground_wire_spec,
-        voltage=technical.nominal_voltage.to("kilovolt"),
-        frequency=technical.nominal_frequency.to("hertz"),
-        earth_resistivity=technical.earth_resistivity.to("ohm * meter").magnitude,
+        ground_wire_spec=configuration.ground_wire_spec,
+        voltage=line.nominal_voltage,
+        frequency=line.nominal_frequency,
+        earth_resistivity=line.earth_resistivity,
     )
-    parameters = line.line_parameters or LineParameters()
+    parameters = line.line_parameters
     updated_parameters = parameters.model_copy(update={"electrical_parameters": result})
     return line.model_copy(update={"line_parameters": updated_parameters})
 

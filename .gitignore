@@ -1,1 +1,18 @@
 plans
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build and local environment
+build/
+dist/
+*.egg-info/
+.venv/
+
+# Operating-system metadata
+.DS_Store

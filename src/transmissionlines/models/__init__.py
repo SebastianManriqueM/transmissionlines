@@ -1,47 +1,79 @@
-"""v3 transmission-line models."""
+"""Canonical Infrasys domain models."""
 
-from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
-from transmissionlines.models.electrical import ElectricalParameters
-from transmissionlines.models.mechanical import MechanicalParameters
-from transmissionlines.models.parameters import LineParameters
-from transmissionlines.models.base import LineDataModel, OperationAttribute
-from transmissionlines.models.cables import (
-    BareConductorEquipment,
-    GroundWireSpec,
-    PhaseConductorSpec,
-)
-from transmissionlines.models.geometry import TowerGeometry
-from transmissionlines.models.common import (
+from .common import (
     Bus,
     CatalogReference,
+    ConductorMaterial,
+    GeographicLocation,
     GeographicPoint,
     IdentificationInfo,
-    GroundWirePosition,
-    PhasePosition,
+    ParameterDomain,
+    TowerType,
+    WeatherVariable,
 )
-from transmissionlines.models.configurations import TowerConfiguration
-from transmissionlines.models.routing import LineSpan, RoutingInfo, Tower
+from .core import (
+    BareConductorEquipment,
+    CableSpec,
+    Conductor,
+    ConductorParameterSet,
+    DLRComponent,
+    DoubleCircuit,
+    DynamicLineRatingResult,
+    DynamicLineRatingRun,
+    ElectricalConductorParameters,
+    ElectricalTower,
+    GeoJSONMultiLineString,
+    GroundWirePosition,
+    GroundWireSpec,
+    LineParameters,
+    LineSpan,
+    MechanicalConductorParameters,
+    PhaseConductorSpec,
+    PhasePosition,
+    SingleCircuit,
+    StartEnd,
+    ThermalConductorParameters,
+    ThermalRatingParameters,
+    TowerConfiguration,
+    TowerGeometry,
+    TransmissionLine,
+    WeatherStation,
+)
 
 __all__ = [
     "BareConductorEquipment",
-    "ElectricalParameters",
     "Bus",
+    "CableSpec",
     "CatalogReference",
+    "Conductor",
+    "ConductorMaterial",
+    "ConductorParameterSet",
+    "DLRComponent",
+    "DoubleCircuit",
+    "DynamicLineRatingResult",
+    "DynamicLineRatingRun",
+    "ElectricalConductorParameters",
+    "ElectricalTower",
+    "GeographicLocation",
     "GeographicPoint",
+    "GeoJSONMultiLineString",
     "GroundWirePosition",
-    "IdentificationInfo",
     "GroundWireSpec",
+    "IdentificationInfo",
     "LineParameters",
     "LineSpan",
-    "LineTechnicalInfo",
-    "LineDataModel",
+    "MechanicalConductorParameters",
+    "ParameterDomain",
     "PhaseConductorSpec",
-    "MechanicalParameters",
-    "OperationAttribute",
     "PhasePosition",
-    "RoutingInfo",
-    "Tower",
+    "SingleCircuit",
+    "StartEnd",
+    "ThermalConductorParameters",
+    "ThermalRatingParameters",
     "TowerConfiguration",
     "TowerGeometry",
+    "TowerType",
     "TransmissionLine",
+    "WeatherStation",
+    "WeatherVariable",
 ]

@@ -1,13 +1,7 @@
-"""Mechanical calculation result value models."""
+"""Canonical mechanical parameter exports."""
 
-from transmissionlines.models.base import LineDataModel
+from transmissionlines.models.core import MechanicalConductorParameters
 
+MechanicalParameters = MechanicalConductorParameters
 
-class MechanicalParameters(LineDataModel):
-    """Mechanical calculation result and its method metadata."""
-
-    method: str
-    version: str
-
-
-__all__ = ["MechanicalParameters"]
+__all__ = ["MechanicalConductorParameters", "MechanicalParameters"]

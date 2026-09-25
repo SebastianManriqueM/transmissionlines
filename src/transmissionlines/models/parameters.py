@@ -1,15 +1,5 @@
-"""Aggregated line calculation parameters."""
+"""Canonical line parameter export."""
 
-from transmissionlines.models.base import LineDataModel
-from transmissionlines.models.electrical import ElectricalParameters
-from transmissionlines.models.mechanical import MechanicalParameters
-
-
-class LineParameters(LineDataModel):
-    """Independent electrical and mechanical calculation results."""
-
-    electrical_parameters: ElectricalParameters | None = None
-    mechanical_parameters: MechanicalParameters | None = None
-
+from transmissionlines.models.core import LineParameters
 
 __all__ = ["LineParameters"]

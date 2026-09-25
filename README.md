@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml)
 [![Docs build](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml)
-[![Documentation](https://img.shields.io/badge/docs-Sphinx-466A7C?logo=sphinx)](https://github.com/SebastianManriqueM/transmissionlines/tree/main/docs/source)
+[![Documentation](https://img.shields.io/badge/docs-Sphinx-466A7C?logo=sphinx)](https://sebastianmanriquem.github.io/transmissionlines/)
 
 TransmissionLines is a Python package for typed transmission-line models,
 electrical parameter calculations, and positive-sequence St. Clair loadability
@@ -11,12 +11,12 @@ from a repository checkout rather than PyPI.
 
 ## Documentation
 
-Read the [documentation overview](docs/source/index.rst), start with the
-[quick start](docs/source/quickstart.rst), or see the [repository layout and
-responsibilities](docs/source/developer-guide/repository-layout.rst). The docs
-workflow builds the Sphinx site and uploads the HTML as an artifact; it is not
-currently published as a hosted documentation website. Click the Docs build
-badge above to see workflow runs and download the generated site.
+Read the [documentation overview](https://sebastianmanriquem.github.io/transmissionlines/),
+start with the [quick start](https://sebastianmanriquem.github.io/transmissionlines/quickstart.html),
+or see the [repository layout and responsibilities](https://sebastianmanriquem.github.io/transmissionlines/developer-guide/repository-layout.html).
+The docs workflow builds the Sphinx site and deploys it to
+[GitHub Pages](https://sebastianmanriquem.github.io/transmissionlines/). Click the
+Docs build badge above to see workflow runs.
 
 ## Features
 

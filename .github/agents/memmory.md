@@ -15,3 +15,4 @@ Record only durable, repository-specific learnings after completed tasks.
 - 2026-09-25: St. Clair Thevenin sources use separate nonnegative `r_system_*_ohm` and positive `x_system_*_ohm` fields; defaults are `0.1 + j1 ohm` on each end, and the mesh solver must retain the full complex source impedances.
 - 2026-09-25: Keep ordinary imports at module scope. `models.cables` depends on pure bundle derivations, so those helpers live in cycle-free `transmissionlines.bundle`; `calculations.cable` re-exports them for compatibility. Use deferred imports only for demonstrated cycles or optional dependencies.
 - 2026-09-25: Matplotlib is a required project dependency; St. Clair plotting tests import it directly and run with the noninteractive Agg backend rather than skipping when it is absent.
+- 2026-09-25: GitHub Actions runs pytest on Python 3.12 with `ubuntu-latest`, `macos-latest`, and `windows-latest`; use `uv sync --locked` before `uv run pytest`.

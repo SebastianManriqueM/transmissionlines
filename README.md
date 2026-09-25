@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml)
 [![Docs build](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml)
-[![Documentation](https://img.shields.io/badge/docs-Sphinx-466A7C?logo=sphinx)](docs/source/index.rst)
+[![Documentation](https://img.shields.io/badge/docs-Sphinx-466A7C?logo=sphinx)](https://github.com/SebastianManriqueM/transmissionlines/tree/main/docs/source)
 
 TransmissionLines is a Python package for typed transmission-line models,
 electrical parameter calculations, and positive-sequence St. Clair loadability

@@ -1,0 +1,44 @@
+name: Documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Build Sphinx documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --group docs
+
+      - name: Build documentation with warnings as errors
+        run: uv run sphinx-build -W --keep-going -b html docs/source docs/build/html
+
+      - name: Execute documentation examples
+        run: uv run sphinx-build -W --keep-going -b doctest docs/source docs/build/doctest
+
+      - name: Upload HTML artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transmissionlines-docs
+          path: docs/build/html

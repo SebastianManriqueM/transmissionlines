@@ -1,6 +1,9 @@
 name: CI_test
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
 
 permissions:

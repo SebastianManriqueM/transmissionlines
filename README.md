@@ -1,157 +1,63 @@
-# Project Name
+# TransmissionLines
 
-Brief description of what this project does and who it's for. Explain the main purpose and goals of the software package.
+[![Tests](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/tests.yml)
+[![Docs build](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/SebastianManriqueM/transmissionlines/actions/workflows/docs.yml)
+[![Documentation](https://img.shields.io/badge/docs-Sphinx-466A7C?logo=sphinx)](docs/source/index.rst)
 
-## Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Documentation](#documentation)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgments)
-- [Contact](#contact)
-
-## Features
-
-- Feature 1: Brief description
-- Feature 2: Brief description
-- Feature 3: Brief description
-- List key features and capabilities of your software
-
-## Installation
-
-### Prerequisites
-
-List any prerequisites, libraries, OS version, etc., needed before installing:
-
-```bash
-# Example:
-# Python 3.8+
-# Node.js 14+
-# etc.
-```
-
-### Setup
-
-Step-by-step installation instructions:
-
-```bash
-# Clone the repository
-git clone https://github.com/username/project-name.git
-
-# Navigate to project directory
-cd project-name
-
-# Install dependencies
-# Add your specific installation commands here
-```
-
-## Usage
-
-Provide examples of how to use your software. Include code snippets, screenshots, or command-line examples:
-
-```bash
-# Example command
-command --option argument
-
-# Example with output
-command --help
-```
-
-### Basic Example
-
-```python
-# Example code snippet showing basic usage
-from package import module
-
-result = module.function(parameter)
-print(result)
-```
-
-### Advanced Usage
-
-Include more complex examples or use cases here.
-
-## Project Structure
-
-```
-.
-├── src/              # Source code
-│   └── models/       # Data models
-├── test/             # Test files
-├── docs/             # Documentation files
-├── data/             # Data files (raw, processed, etc.)
-├── references/       # Reference materials and papers
-└── README.md         # This file
-```
+TransmissionLines is a Python package for typed transmission-line models,
+electrical parameter calculations, and positive-sequence St. Clair loadability
+curves. It requires Python 3.12 or newer and is currently installed
+from a repository checkout rather than PyPI.
 
 ## Documentation
 
-Detailed documentation can be found in the [docs](./docs) folder or at [link to documentation site].
+Read the [documentation overview](docs/source/index.rst), start with the
+[quick start](docs/source/quickstart.rst), or see the [repository layout and
+responsibilities](docs/source/developer-guide/repository-layout.rst). The docs
+workflow builds the Sphinx site and uploads the HTML as an artifact; it is not
+currently published as a hosted documentation website. Click the Docs build
+badge above to see workflow runs and download the generated site.
 
-Key documentation files:
-- [API Documentation](./docs/api.md)
-- [User Guide](./docs/user-guide.md)
-- [Developer Guide](./docs/developer-guide.md)
+## Features
 
-## Testing
+- Typed line, tower, conductor, geometry, routing, and calculation-result models.
+- Versioned reference catalogs with validation, exact selection, and provenance.
+- Electrical matrices and sequence parameters.
+- Balanced positive-sequence St. Clair loadability curves with voltage, ampacity, and stability limits.
 
-Instructions for running tests:
+## Install
 
-```bash
-# Run all tests
-# Add your test command here
+Install `uv`, then run these commands from a checkout:
 
-# Run specific test suite
-# Add command here
-
-# Run with coverage
-# Add command here
+```console
+uv sync --locked
 ```
+
+## Test
+
+Run the pytest suite, including coverage reporting:
+
+```console
+uv run pytest
+```
+
+The Tests badge links to the workflow that runs this suite on Python 3.12 across
+Linux, macOS, and Windows.
+
+## Build the documentation
+
+Install the documentation dependencies and build the HTML and doctest targets:
+
+```console
+uv sync --locked --group docs
+uv run sphinx-build -W --keep-going -b html docs/source docs/build/html
+uv run sphinx-build -W --keep-going -b doctest docs/source docs/build/doctest
+```
+
+The Docs build badge links to the workflow that runs these checks on pull
+requests to `main` and pushes to `main`.
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the [License Name] - see the [LICENSE](LICENSE) file for details.
-
-## Authors
-
-- **Your Name** - *Initial work* - [YourGitHub](https://github.com/yourusername)
-
-See also the list of [contributors](https://github.com/username/project-name/contributors) who participated in this project.
-
-## Acknowledgments
-
-- Hat tip to anyone whose code was used
-- Inspiration sources
-- References to related projects
-- etc.
-
-## Contact
-
-- **Email**: your.email@example.com
-- **Project Link**: [https://github.com/username/project-name](https://github.com/username/project-name)
-- **Issue Tracker**: [https://github.com/username/project-name/issues](https://github.com/username/project-name/issues)
-
-## Support
-
-If you found this project helpful, please give it a ⭐️!
-
-For support, email your.email@example.com or open an issue in the repository.
+See the [developer guide](docs/source/developer-guide/index.rst) for
+documentation, testing, and contribution workflows.

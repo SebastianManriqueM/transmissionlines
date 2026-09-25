@@ -1,5 +1,8 @@
-import pytest
 import builtins
+
+import matplotlib
+import matplotlib.pyplot as plt
+import pytest
 
 from transmissionlines.calculations.st_clair import (
     _solve_mesh,
@@ -152,9 +155,7 @@ def test_public_explicit_api_and_numerical_import_do_not_require_plotting(monkey
 
 
 def test_plotting_returns_axes_with_noninteractive_backend() -> None:
-    matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg", force=True)
-    import matplotlib.pyplot as plt
 
     result = calculate_st_clair(_input(), options=StClairOptions(line_length_start_mi=20, line_length_stop_mi=20))
     axes = plot_st_clair_result(result, show_limits=True)
@@ -170,9 +171,7 @@ def test_plotting_returns_axes_with_noninteractive_backend() -> None:
 
 
 def test_plotting_shows_voltage_limit_when_stability_is_binding() -> None:
-    matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg", force=True)
-    import matplotlib.pyplot as plt
 
     source = _input(
         r_ohm_per_mile=0.06041707268316814,

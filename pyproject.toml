@@ -15,6 +15,7 @@ dependencies = [
   "pandas>=2",
   "pyarrow>=15",
   "openpyxl>=3.1",
+  "matplotlib>=3.8",
 ]
 
 [project.scripts]
@@ -25,10 +26,6 @@ test = [
   "pytest>=8",
   "pytest-cov>=5",
 ]
-plot = [
-  "matplotlib>=3.8",
-]
-
 [dependency-groups]
 dev = [
   "pytest>=8",

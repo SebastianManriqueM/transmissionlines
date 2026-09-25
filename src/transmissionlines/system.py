@@ -5,6 +5,8 @@ from typing import Any
 from infrasys import System
 from infrasys.exceptions import ISOperationNotAllowed
 
+from transmissionlines.models.assets import TransmissionLine
+
 SCHEMA_VERSION = "3.0.0"
 """Current transmission-line system schema version."""
 
@@ -41,8 +43,6 @@ class TransmissionLineSystem(System):
         Infrasys preserves UUIDs for nested references but does not automatically
         replace nested copies with the registered component instances.
         """
-        from transmissionlines.models.assets import TransmissionLine
-
         for line in self.get_components(TransmissionLine):
             resolved = line.resolve_component_references(self)
             if resolved is not line:

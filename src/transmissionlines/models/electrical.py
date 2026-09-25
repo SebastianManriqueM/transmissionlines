@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from transmissionlines.models.base import LineDataModel
+from transmissionlines.models.st_clair import StClairResult
 
 
 class MatrixResult(LineDataModel):
@@ -74,6 +75,11 @@ class ElectricalParameters(LineDataModel):
     matrices: dict[str, MatrixResult] = Field(default_factory=dict)
     scalars: dict[str, float] = Field(default_factory=dict)
     scalar_units: dict[str, str] = Field(default_factory=dict)
+    circuit_scalars: dict[str, dict[str, float]] = Field(default_factory=dict)
+    circuit_scalar_units: dict[str, dict[str, str]] = Field(default_factory=dict)
+    circuit_ampacity_a: dict[str, float] = Field(default_factory=dict)
+    circuit_subconductor_count: dict[str, int] = Field(default_factory=dict)
+    st_clair_curve: StClairResult | None = None
     provenance: list[Any] = Field(default_factory=list)
     calculated_at: datetime | None = None
 
@@ -109,6 +115,16 @@ class ElectricalParameters(LineDataModel):
         for key, unit in expected_units.items():
             if self.scalar_units.get(key) != unit:
                 raise ValueError(f"scalar {key!r} must have unit {unit!r}")
+        expected_count = 1 if topology == "one-circuit" else 2
+        if len(self.circuit_scalars) != expected_count:
+            raise ValueError(f"complete electrical result requires {expected_count} circuit scalar sets")
+        for circuit_id in self.circuit_scalars:
+            if missing_circuit := {"r1", "x1", "b1"} - self.circuit_scalars.get(circuit_id, {}).keys():
+                raise ValueError(f"{circuit_id} is missing positive-sequence scalars: {sorted(missing_circuit)}")
+            circuit_units = self.circuit_scalar_units.get(circuit_id, {})
+            for key, unit in {"r1": "ohm/mile", "x1": "ohm/mile", "b1": "microsiemens/mile"}.items():
+                if circuit_units.get(key) != unit:
+                    raise ValueError(f"{circuit_id} scalar {key!r} must have unit {unit!r}")
         phase_labels = self.matrices["Z_kron_nt"].row_labels
         phase_size = 3 if topology == "one-circuit" else 6
         circuit_count = 1 if topology == "one-circuit" else 2

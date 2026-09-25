@@ -26,6 +26,8 @@ Reusable workflow for implementing Python code with predictable quality and test
 - Use at most 2 mandatory positional arguments per function.
 - Make all remaining parameters keyword-only.
 - Preserve backward compatibility for public APIs unless explicitly approved.
+- Place imports at module scope, grouped according to PEP 8: standard library, third-party, then local application imports.
+- Do not add function- or method-local imports unless a verified circular dependency or optional/lazy dependency requires deferred loading. Prefer resolving import cycles through module boundaries; use `TYPE_CHECKING` for annotation-only imports. Keep any necessary deferred import narrow, document its reason, and validate the import behavior.
 
 ## Performance Defaults (Vectorization-First)
 
@@ -87,6 +89,7 @@ def function_name(
 2. Confirm no behavior regressions in touched areas.
 3. Verify API compatibility and call-site impact.
 4. Add or update NumPy-style docstrings for changed public functions.
+5. Review imports in every changed module. Confirm imports are at module scope unless a documented cycle or optional-dependency requirement justifies deferral.
 
 ## Patterns and Anti-patterns
 

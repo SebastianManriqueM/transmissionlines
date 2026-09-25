@@ -1,5 +1,7 @@
 """Public v3 API."""
 
+from collections.abc import Mapping
+
 from transmissionlines.builders.system import (
     BusDefinition,
     assemble_line_into_system,
@@ -13,8 +15,10 @@ from transmissionlines.calculations.st_clair import calculate_st_clair, calculat
 from transmissionlines.catalog import CatalogRepository, generate_catalog, generate_julia_workbook_catalog
 from transmissionlines.models import *
 from transmissionlines.system import TransmissionLineSystem
+from transmissionlines.models.assets import TransmissionLine
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.st_clair import StClairResult
+from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_result
 
 
 def open_catalog(path: str, *, catalog_version: str | None = None) -> CatalogRepository:
@@ -34,9 +38,6 @@ def calculate_st_clair_curve(
     A line input must already contain completed electrical parameters. Explicit
     mappings use natural units and return a standalone compact result.
     """
-    from collections.abc import Mapping
-    from transmissionlines.models.assets import TransmissionLine
-
     source = positive_sequence if positive_sequence is not None else line_or_positive_sequence
     if isinstance(source, TransmissionLine):
         return calculate_st_clair_curve_for_line(
@@ -58,8 +59,6 @@ def plot_st_clair_curve(
     show: bool = False,
 ) -> object:
     """Plot a stored result, optionally showing voltage and its limit on a second axis."""
-    from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_result
-
     return plot_result(
         result,
         curves=curves,

@@ -12,6 +12,7 @@ from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.mechanical import MechanicalParameters
 from transmissionlines.models.parameters import LineParameters
+from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.units import (
     Angle,
     CableDiameter,
@@ -115,8 +116,6 @@ def test_high_level_calculation_does_not_need_routing_and_preserves_mechanical()
 
 
 def test_explicit_curve_recalculation_is_immutable_and_keeps_sensitivities() -> None:
-    from transmissionlines.models.st_clair import StClairOptions
-
     original = _line()
     calculated = calculate_line_electrical_parameters(original)
     updated = calculate_st_clair_curve(

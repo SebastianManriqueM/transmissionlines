@@ -2,6 +2,7 @@
 
 from pydantic import computed_field, model_validator
 
+from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.units import (
@@ -60,8 +61,6 @@ class PhaseConductorSpec(CableSpec):
     @property
     def bundle_gmr(self) -> CableGMR | None:
         """Return the bundle GMR when source GMR and spacing are available."""
-        from transmissionlines.calculations.cable import derived_bundle_values
-
         bundle, _ = derived_bundle_values(
             self.conductor, self.subconductor_count, self.subconductor_spacing
         )
@@ -71,8 +70,6 @@ class PhaseConductorSpec(CableSpec):
     @property
     def equivalent_radius(self) -> EquivalentRadius | None:
         """Return the derived physical or parity capacitance radius."""
-        from transmissionlines.calculations.cable import derived_bundle_values
-
         _, radius = derived_bundle_values(
             self.conductor, self.subconductor_count, self.subconductor_spacing
         )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import itertools
 from math import sqrt
 from typing import Any
 
@@ -14,6 +15,7 @@ from transmissionlines.models.st_clair import (
     StClairOptions,
     StClairResult,
 )
+from transmissionlines.models.parameters import LineParameters
 
 
 def _resolve_constants(
@@ -274,8 +276,6 @@ def calculate_st_clair(
     base = [_make_curve(item, active_options, name="base") for item in constants]
     sensitivity_curves: list[StClairCurve] = []
     if sensitivities:
-        import itertools
-
         names, values = zip(*sensitivities.items(), strict=True)
         for scenario_values in itertools.product(*values):
             updates = dict(zip(names, scenario_values, strict=True))
@@ -306,8 +306,6 @@ def calculate_st_clair_curve_for_line(
     sensitivities: Mapping[str, Sequence[float]] | None = None,
 ) -> Any:
     """Return a copied line with curves resolved from its electrical result."""
-    from transmissionlines.models.parameters import LineParameters
-
     parameters = line.line_parameters
     electrical = None if parameters is None else parameters.electrical_parameters
     if electrical is None or electrical.status != "complete":

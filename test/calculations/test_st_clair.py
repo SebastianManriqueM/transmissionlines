@@ -8,6 +8,7 @@ from transmissionlines.calculations.st_clair import (
 )
 from transmissionlines.api import calculate_st_clair_curve, plot_st_clair_curve
 from transmissionlines.models.st_clair import StClairOptions
+from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_st_clair_result
 
 
 def _input(**overrides: float) -> dict[str, float | str]:
@@ -155,10 +156,8 @@ def test_plotting_returns_axes_with_noninteractive_backend() -> None:
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
 
-    from transmissionlines.plotting.st_clair import plot_st_clair_curve
-
     result = calculate_st_clair(_input(), options=StClairOptions(line_length_start_mi=20, line_length_stop_mi=20))
-    axes = plot_st_clair_curve(result, show_limits=True)
+    axes = plot_st_clair_result(result, show_limits=True)
     assert axes.get_xlabel() == "Line length (mi)"
     assert axes.xaxis.label.get_size() == 14
     assert axes.yaxis.label.get_size() == 14

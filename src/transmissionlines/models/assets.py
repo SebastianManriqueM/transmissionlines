@@ -49,8 +49,6 @@ class TransmissionLine(Component):
 
     def resolve_component_references(self, system: "TransmissionLineSystem") -> "TransmissionLine":
         """Replace nested bus copies with registered system components after load."""
-        from transmissionlines.models.common import Bus
-
         from_bus = system.get_component(Bus, self.technical_info.from_bus.name)
         to_bus = system.get_component(Bus, self.technical_info.to_bus.name)
         info = self.technical_info.model_copy(update={"from_bus": from_bus, "to_bus": to_bus})

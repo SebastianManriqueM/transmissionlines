@@ -16,8 +16,11 @@ from transmissionlines.calculations.matrices import (
     sequence_matrix,
     shunt_admittance,
 )
+from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+from transmissionlines.exceptions import CalculationInputError
 from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
 from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
+from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
 from transmissionlines.units import Frequency, VoltageKV
@@ -150,9 +153,6 @@ def calculate_line_electrical_parameters(
     the tower cross-section and terminal technical inputs only. The source line
     and any existing mechanical result remain unchanged.
     """
-    from transmissionlines.exceptions import CalculationInputError
-    from transmissionlines.models.parameters import LineParameters
-
     geometry = line.tower_configuration.geometry
     geometry_ids = {position.circuit_id for position in geometry.phase_positions}
     specs = line.tower_configuration.phase_conductor_specs
@@ -179,8 +179,6 @@ def calculate_line_electrical_parameters(
         frequency=technical.nominal_frequency.to("hertz"),
         earth_resistivity=technical.earth_resistivity.to("ohm * meter").magnitude,
     )
-    from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
-
     result = calculate_st_clair_curve_for_line(
         line.model_copy(update={"line_parameters": LineParameters(electrical_parameters=result)}),
         options=st_clair_options,

@@ -7,7 +7,19 @@ import pandas as pd
 
 
 def validate_catalog(path: str | Path) -> list[str]:
-    """Return explicit integrity errors for a generated catalog."""
+    """Return integrity errors found in a generated catalog.
+
+    Parameters
+    ----------
+    path : str or Path
+        Catalog directory containing a manifest and Parquet tables.
+
+    Returns
+    -------
+    list of str
+        Missing-file, row-count, column-order, and duplicate-ID errors. An
+        empty list indicates that these integrity checks passed.
+    """
     root = Path(path)
     errors: list[str] = []
     manifest_file = root / "manifest.json"
@@ -30,7 +42,18 @@ def validate_catalog(path: str | Path) -> list[str]:
 
 
 def require_valid_catalog(path: str | Path) -> None:
-    """Raise when catalog integrity validation reports errors."""
+    """Raise when catalog integrity validation reports errors.
+
+    Parameters
+    ----------
+    path : str or Path
+        Catalog directory to validate.
+
+    Raises
+    ------
+    ValueError
+        If :func:`validate_catalog` returns one or more integrity errors.
+    """
     errors = validate_catalog(path)
     if errors:
         raise ValueError("catalog validation failed: " + "; ".join(errors))

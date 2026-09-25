@@ -64,7 +64,33 @@ def build_primitive_z(
     frequency: float,
     earth_resistivity: float,
 ) -> np.ndarray:
-    """Build the primitive series impedance matrix in ohm/mile."""
+    """Build the primitive series impedance matrix in ohm/mile.
+
+    Parameters
+    ----------
+    positions : list of CablePosition
+        Ordered phase and ground-wire coordinates.
+    gmrs : list of float
+        Self GMR values in feet, one per position.
+    resistances : list of float
+        Selected phase AC or ground-wire DC resistances in ohm/kilofoot.
+    bundle_counts : list of int
+        Number of subconductors represented by each position.
+    frequency : float
+        System frequency in hertz.
+    earth_resistivity : float
+        Earth resistivity in ohm-meter.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex square primitive series matrix in ohm/mile.
+
+    Raises
+    ------
+    ValueError
+        If array lengths differ or required physical inputs are not positive.
+    """
     n = len(positions)
     if n < 1 or not (len(gmrs) == len(resistances) == len(bundle_counts) == n):
         raise ValueError("primitive Z inputs must have equal non-empty lengths")
@@ -95,7 +121,29 @@ def build_primitive_p(
     radii: list[float],
     frequency: float,
 ) -> np.ndarray:
-    """Build the primitive potential matrix in the Julia micro-unit contract."""
+    """Build the primitive potential matrix in the Julia micro-unit contract.
+
+    Parameters
+    ----------
+    positions : list of CablePosition
+        Ordered phase and ground-wire coordinates in feet.
+    radii : list of float
+        Equivalent phase radii or physical ground-wire radii in feet.
+    frequency : float
+        Retained for the calculation interface; the potential formula does not
+        use frequency.
+
+    Returns
+    -------
+    numpy.ndarray
+        Real square potential coefficient matrix using the parity
+        ``1/(microSiemens/mile)`` contract.
+
+    Raises
+    ------
+    ValueError
+        If positions and radii differ in length or any radius is not positive.
+    """
     del frequency  # retained in the signature to make the unit boundary explicit
     if not positions or len(radii) != len(positions):
         raise ValueError("potential radii and positions must have equal non-empty lengths")
@@ -147,11 +195,34 @@ def _ordered_inputs(
 def calculate_line_electrical_parameters(
     line: TransmissionLine, *, st_clair_options: StClairOptions | None = None
 ) -> TransmissionLine:
-    """Return a new line with Julia-parity electrical parameters attached.
+    """Return a copied line with electrical and default St. Clair results.
 
     Routing is deliberately not consulted: v3 electrical parameters describe
     the tower cross-section and terminal technical inputs only. The source line
     and any existing mechanical result remain unchanged.
+
+    Parameters
+    ----------
+    line : TransmissionLine
+        Line with validated technical information, tower geometry, and cable
+        specifications.
+    st_clair_options : StClairOptions, optional
+        Operating limits and sweep resolution. When omitted, default St. Clair
+        settings are used.
+
+    Returns
+    -------
+    TransmissionLine
+        New line value with complete electrical matrices/scalars and its
+        St. Clair result attached. The input line is unchanged.
+
+    Raises
+    ------
+    CalculationInputError
+        If phase-conductor specifications do not match geometry circuits.
+    ValueError
+        If required conductor or ground-wire calculation values are absent or
+        invalid.
     """
     geometry = line.tower_configuration.geometry
     geometry_ids = {position.circuit_id for position in geometry.phase_positions}
@@ -191,7 +262,22 @@ def calculate_line_electrical_parameters(
 
 
 def calculate_electrical_parameters(line: TransmissionLine) -> TransmissionLine:
-    """Backward-compatible public alias for line-level orchestration."""
+    """Return line electrical results using the current orchestration defaults.
+
+    This backward-compatible alias calculates electrical parameters and the
+    default St. Clair curve. Use :func:`calculate_line_electrical_parameters`
+    to provide explicit St. Clair options.
+
+    Parameters
+    ----------
+    line : TransmissionLine
+        Validated line input.
+
+    Returns
+    -------
+    TransmissionLine
+        A copied line with electrical and St. Clair results attached.
+    """
     return calculate_line_electrical_parameters(line)
 
 
@@ -204,7 +290,35 @@ def calculate_electrical(
     frequency: Frequency,
     earth_resistivity: float,
 ) -> ElectricalParameters:
-    """Calculate and serialize all Julia-parity electrical result matrices."""
+    """Calculate all Julia-parity electrical result matrices and scalars.
+
+    Parameters
+    ----------
+    geometry : TowerGeometry
+        Tower-local phase and ground-wire positions.
+    phase_specs : list of PhaseConductorSpec
+        One conductor/bundle specification per geometry circuit.
+    ground_wire_spec : GroundWireSpec
+        Shared ground-wire conductor properties.
+    voltage : VoltageKV
+        Nominal line-to-line system voltage.
+    frequency : Frequency
+        Power frequency.
+    earth_resistivity : float
+        Earth resistivity in ohm-meter.
+
+    Returns
+    -------
+    ElectricalParameters
+        Completed, JSON-safe primitive/reduced/transposed matrices and scalar
+        sequence values, without an attached St. Clair curve.
+
+    Raises
+    ------
+    ValueError
+        If required physical cable values or positive-sequence SIL inputs are
+        absent or invalid.
+    """
     voltage = voltage.to("kilovolt")
     frequency = frequency.to("hertz")
     specs = {spec.circuit_id: spec for spec in phase_specs}

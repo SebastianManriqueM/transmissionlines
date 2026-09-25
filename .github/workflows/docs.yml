@@ -39,9 +39,30 @@ jobs:
       - name: Execute documentation examples
         run: uv run sphinx-build -W --keep-going -b doctest docs/source docs/build/doctest
 
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/html
+
       - name: Upload HTML artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: transmissionlines-docs
           path: docs/build/html
+
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: docs
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

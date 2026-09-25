@@ -18,6 +18,7 @@ from transmissionlines.calculations.matrices import (
 )
 from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
 from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
+from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
 from transmissionlines.units import Frequency, VoltageKV
 
@@ -140,7 +141,9 @@ def _ordered_inputs(
     return positions, gmrs, radii, resistances, counts, labels, len(phases)
 
 
-def calculate_line_electrical_parameters(line: TransmissionLine) -> TransmissionLine:
+def calculate_line_electrical_parameters(
+    line: TransmissionLine, *, st_clair_options: StClairOptions | None = None
+) -> TransmissionLine:
     """Return a new line with Julia-parity electrical parameters attached.
 
     Routing is deliberately not consulted: v3 electrical parameters describe
@@ -176,7 +179,15 @@ def calculate_line_electrical_parameters(line: TransmissionLine) -> Transmission
         frequency=technical.nominal_frequency.to("hertz"),
         earth_resistivity=technical.earth_resistivity.to("ohm * meter").magnitude,
     )
+    from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+
+    result = calculate_st_clair_curve_for_line(
+        line.model_copy(update={"line_parameters": LineParameters(electrical_parameters=result)}),
+        options=st_clair_options,
+    )
     parameters = line.line_parameters or LineParameters()
+    result = result.line_parameters.electrical_parameters
+    assert result is not None
     updated_parameters = parameters.model_copy(update={"electrical_parameters": result})
     return line.model_copy(update={"line_parameters": updated_parameters})
 
@@ -213,8 +224,16 @@ def calculate_electrical(
     y_transposed = fully_transpose(y_kron, circuits)
     z_sequence = sequence_matrix(z_transposed)
     y_sequence = sequence_matrix(y_transposed)
-    r1, x1 = z_sequence[1, 1].real, z_sequence[1, 1].imag
-    b1 = y_sequence[1, 1].imag
+    circuit_ids = list(dict.fromkeys(position.circuit_id for position in geometry.phase_positions))
+    circuit_scalars = {
+        circuit_ids[index]: {
+            "r1": float(z_sequence[index * 3 + 1, index * 3 + 1].real),
+            "x1": float(z_sequence[index * 3 + 1, index * 3 + 1].imag),
+            "b1": float(y_sequence[index * 3 + 1, index * 3 + 1].imag),
+        }
+        for index in range(circuits)
+    }
+    r1, x1, b1 = (circuit_scalars[circuit_ids[0]][name] for name in ("r1", "x1", "b1"))
     if b1 <= 0 or x1 <= 0:
         raise ValueError("positive sequence reactance and susceptance are required for SIL")
     z_sil = (x1 / (b1 / 1e6)) ** 0.5
@@ -265,6 +284,11 @@ def calculate_electrical(
         matrices=matrices,
         scalars=scalars,
         scalar_units=scalar_units,
+        circuit_scalars=circuit_scalars,
+        circuit_scalar_units={
+            key: {"r1": "ohm/mile", "x1": "ohm/mile", "b1": "microsiemens/mile"}
+            for key in circuit_scalars
+        },
         provenance=provenance,
         topology="one-circuit" if circuits == 1 else "two-circuit",
         status="complete",

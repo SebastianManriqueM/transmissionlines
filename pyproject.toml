@@ -25,6 +25,9 @@ test = [
   "pytest>=8",
   "pytest-cov>=5",
 ]
+plot = [
+  "matplotlib>=3.8",
+]
 
 [dependency-groups]
 dev = [

@@ -3,6 +3,7 @@
 from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.mechanical import MechanicalParameters
+from transmissionlines.models.st_clair import StClairCurve, StClairLineConstants, StClairOptions, StClairResult
 from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
@@ -25,6 +26,10 @@ from transmissionlines.models.routing import LineSpan, RoutingInfo, Tower
 __all__ = [
     "BareConductorEquipment",
     "ElectricalParameters",
+    "StClairCurve",
+    "StClairLineConstants",
+    "StClairOptions",
+    "StClairResult",
     "Bus",
     "CatalogReference",
     "GeographicPoint",

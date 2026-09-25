@@ -47,6 +47,18 @@ def generate_catalog(
         Manifest version labels.
     header_mappings : Mapping, optional
         Normalized-column to source-header mappings. Missing mappings are rejected.
+
+    Returns
+    -------
+    dict[str, Any]
+        Manifest containing catalog/schema versions, source checksums, and
+        normalized table metadata.
+
+    Raises
+    ------
+    ValueError
+        If a table, required normalized field, mapped source header, or record
+        value is invalid.
     """
     destination = Path(output)
     destination.mkdir(parents=True, exist_ok=True)
@@ -117,6 +129,27 @@ def generate_julia_workbook_catalog(
 
     The workbook is treated as an immutable raw source.  This adapter is the
     only place where its legacy column positions/names are interpreted.
+
+    Parameters
+    ----------
+    workbook : str or Path
+        Caller-provided Julia workbook with the expected legacy worksheets.
+    output : str or Path
+        Destination directory for versioned Parquet tables and manifest.
+    catalog_version : str, optional
+        Catalog version label written to the manifest.
+    schema_version : str, optional
+        Runtime catalog schema version written to the manifest.
+    source_identifier : str, optional
+        Stable source label recorded with its SHA-256 digest.
+    generated_at : str, optional
+        Explicit generation timestamp. If omitted, the adapter does not add a
+        timestamp, allowing reproducible manifest content for identical inputs.
+
+    Returns
+    -------
+    dict[str, Any]
+        Manifest metadata for the generated normalized catalog.
     """
     path = Path(workbook)
     geometry = pd.read_excel(path, sheet_name="TL_Geometry")

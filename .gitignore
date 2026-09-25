@@ -1,1 +1,7 @@
 plans
+/docs/build/
+/docs/source/_autosummary/
+.coverage
+.pytest_cache/
+__pycache__/
+*.egg-info/

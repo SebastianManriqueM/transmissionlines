@@ -9,6 +9,11 @@ electrical parameter calculations, and positive-sequence St. Clair loadability
 curves. It requires Python 3.12 or newer and is currently installed
 from a repository checkout rather than PyPI.
 
+The current input-model milestone introduces:
+- Cross-section Line and 
+- Routed line
+
+
 ## Documentation
 
 Read the [documentation overview](https://sebastianmanriquem.github.io/transmissionlines/),

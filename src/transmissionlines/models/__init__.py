@@ -1,6 +1,7 @@
 """Transmission-line input and calculation models."""
 
 from transmissionlines.models.assets import AbstractTransmissionLine, CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.mechanical import MechanicalParameters
 from transmissionlines.models.st_clair import StClairCurve, StClairLineConstants, StClairOptions, StClairResult
@@ -48,6 +49,7 @@ __all__ = [
     "GroundWireSpec",
     "InsulatorStringSpec",
     "LineParameters",
+    "LineCalculationResult",
     "LineSpan",
     "LineDataModel",
     "MechanicalParameters",

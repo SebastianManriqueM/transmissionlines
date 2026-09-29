@@ -8,11 +8,10 @@ from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
-from transmissionlines.models.base import LineDataModel
-from transmissionlines.models.st_clair import StClairResult
+from transmissionlines.models.result_base import CalculationResultModel
 
 
-class MatrixResult(LineDataModel):
+class MatrixResult(CalculationResultModel):
     """A named real/imaginary matrix with complete dimensional metadata."""
 
     name: str
@@ -55,7 +54,7 @@ class MatrixResult(LineDataModel):
         return self.cells[index]
 
 
-class ElectricalParameters(LineDataModel):
+class ElectricalParameters(CalculationResultModel):
     """Julia-parity matrices, scalar results, units, and provenance.
 
     Canonical matrix keys retain the Julia names. The legacy aliases
@@ -79,7 +78,6 @@ class ElectricalParameters(LineDataModel):
     circuit_scalar_units: dict[str, dict[str, str]] = Field(default_factory=dict)
     circuit_ampacity_a: dict[str, float] = Field(default_factory=dict)
     circuit_subconductor_count: dict[str, int] = Field(default_factory=dict)
-    st_clair_curve: StClairResult | None = None
     provenance: list[Any] = Field(default_factory=list)
     calculated_at: datetime | None = None
 

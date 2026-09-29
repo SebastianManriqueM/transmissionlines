@@ -1,9 +1,8 @@
-"""Public v3 API."""
+"""Public API for input-graph calculations and catalog access."""
 
 from collections.abc import Mapping
 
 from transmissionlines.builders.system import (
-    BusDefinition,
     assemble_line_into_system,
     build_transmission_line,
 )
@@ -15,7 +14,9 @@ from transmissionlines.calculations.st_clair import calculate_st_clair, calculat
 from transmissionlines.catalog import CatalogRepository, generate_catalog, generate_julia_workbook_catalog
 from transmissionlines.models import *
 from transmissionlines.system import TransmissionLineSystem
-from transmissionlines.models.assets import TransmissionLine
+from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.calculation_result import LineCalculationResult
+from transmissionlines.models.routing import ElectricalTower
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.st_clair import StClairResult
 from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_result
@@ -43,22 +44,26 @@ def open_catalog(path: str, *, catalog_version: str | None = None) -> CatalogRep
 def calculate_st_clair_curve(
     line_or_positive_sequence: object | None = None,
     *,
+    previous: LineCalculationResult | None = None,
+    tower: ElectricalTower | None = None,
     positive_sequence: object | None = None,
     options: StClairOptions | None = None,
     sensitivities: dict[str, list[float]] | None = None,
-) -> object:
-    """Calculate a St. Clair result or return a copied line with it attached.
+) -> StClairResult:
+    """Calculate a standalone St. Clair result from a line or explicit constants.
 
-    A line input must already contain completed electrical parameters. Explicit
-    input is one positive-sequence mapping in natural units and returns a
-    standalone compact result. The lower-level calculation API additionally
-    supports sequences of mappings for multiple circuits.
+    A line input requires a matching external electrical result. Explicit
+    mappings use natural units; neither path mutates a registered component.
 
     Parameters
     ----------
-    line_or_positive_sequence : TransmissionLine or mapping, optional
-        Completed line or mapping with nominal voltage, positive-sequence
+    line_or_positive_sequence : concrete transmission line or mapping, optional
+        Input line or mapping with nominal voltage, positive-sequence
         resistance/reactance, shunt susceptance, and conductor ampacity.
+    previous : LineCalculationResult, optional
+        Required prior electrical result when the input is a line.
+    tower : ElectricalTower, optional
+        Explicit selected support for a heterogeneous routed line.
     positive_sequence : mapping, optional
         Explicit mapping input. When provided, it takes precedence over
         ``line_or_positive_sequence``.
@@ -69,25 +74,25 @@ def calculate_st_clair_curve(
 
     Returns
     -------
-    StClairResult or TransmissionLine
-        Compact standalone curve result for a mapping, or a copied line with
-        the result attached for a line input.
+    StClairResult
+        Standalone curve result for the selected cross-section or mapping.
 
     Raises
     ------
     TypeError
-        If the input is neither a transmission line nor a positive-sequence
-        mapping.
+        If the input is neither a concrete line nor a positive-sequence mapping.
     ValueError
         If a line lacks complete electrical parameters or required inputs.
     """
     source = positive_sequence if positive_sequence is not None else line_or_positive_sequence
-    if isinstance(source, TransmissionLine):
+    if isinstance(source, (CrossSectionTransmissionLine, RoutedTransmissionLine)):
+        if previous is None:
+            raise ValueError("line calculation requires a previous electrical result")
         return calculate_st_clair_curve_for_line(
-            source, options=options, sensitivities=sensitivities
+            source, previous, tower=tower, options=options, sensitivities=sensitivities
         )
     if not isinstance(source, Mapping):
-        raise TypeError("provide a TransmissionLine or positive-sequence mapping")
+        raise TypeError("provide a concrete line or positive-sequence mapping")
     return calculate_st_clair(source, options=options, sensitivities=sensitivities)
 
 
@@ -145,7 +150,6 @@ def plot_st_clair_curve(
 
 
 __all__ = [
-    "BusDefinition",
     "CatalogRepository",
     "TransmissionLineSystem",
     "assemble_line_into_system",

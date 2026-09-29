@@ -9,8 +9,6 @@ from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, 
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.models.configurations import CircuitConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
-from transmissionlines.models.parameters import LineParameters
-from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc, select_phase_resistance
 from transmissionlines.units import CableDiameter, CableGMR, Current, ResistancePerKft, TowerCoordinate
 
@@ -122,12 +120,4 @@ def geometry_from_records(
     )
 
 
-def replace_electrical_parameters(
-    parameters: LineParameters,
-    result: ElectricalParameters,
-) -> LineParameters:
-    """Atomically replace only the electrical result in an aggregate."""
-    return parameters.model_copy(update={"electrical_parameters": result})
-
-
-__all__ = ["conductor_from_record", "geometry_from_records", "ground_wire_from_record", "phase_spec_from_record", "replace_electrical_parameters"]
+__all__ = ["conductor_from_record", "geometry_from_records", "ground_wire_from_record", "phase_spec_from_record"]

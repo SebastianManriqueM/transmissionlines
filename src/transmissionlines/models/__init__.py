@@ -3,9 +3,7 @@
 from transmissionlines.models.assets import AbstractTransmissionLine, CrossSectionTransmissionLine, RoutedTransmissionLine
 from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
-from transmissionlines.models.mechanical import MechanicalParameters
 from transmissionlines.models.st_clair import StClairCurve, StClairLineConstants, StClairOptions, StClairResult
-from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
     BareConductorEquipment,
@@ -48,11 +46,9 @@ __all__ = [
     "IdentificationInfo",
     "GroundWireSpec",
     "InsulatorStringSpec",
-    "LineParameters",
     "LineCalculationResult",
     "LineSpan",
     "LineDataModel",
-    "MechanicalParameters",
     "OperationAttribute",
     "PhasePosition",
     "RouteGeometry",

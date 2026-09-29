@@ -1,5 +1,7 @@
 """Builders converting normalized catalog records into runtime models."""
 
+import hashlib
+import json
 from typing import Any
 
 from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
@@ -35,6 +37,28 @@ def conductor_from_record(record: ConductorRecord, *, catalog_version: str) -> C
     return ConductorSpec(name=f"{catalog_version}:conductor:{record.record_id}", equipment=values, catalog_reference=_reference(record, "conductors", catalog_version))
 
 
+def _circuit_configuration_name(
+    conductor: ConductorSpec,
+    circuit_id: str,
+    bundle_spec: BundleSpec,
+    insulator_string: InsulatorStringSpec,
+) -> str:
+    identity = {
+        "conductor_name": conductor.name,
+        "catalog_reference": (
+            None if conductor.catalog_reference is None
+            else conductor.catalog_reference.model_dump(mode="json")
+        ),
+        "equipment": conductor.equipment.model_dump(mode="json"),
+        "circuit_id": circuit_id,
+        "bundle_spec": bundle_spec.model_dump(mode="json"),
+        "insulator_string": insulator_string.model_dump(mode="json"),
+    }
+    canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"{conductor.name}:{circuit_id}:{digest}"
+
+
 def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
     """Build a registered circuit selection from one conductor record.
 
@@ -59,11 +83,17 @@ def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, insulato
         Independently registered circuit referencing a reusable conductor.
     """
     conductor = conductor_from_record(record, catalog_version=catalog_version)
+    bundle_spec = BundleSpec(
+        subconductor_count=subconductor_count,
+        subconductor_spacing=subconductor_spacing,
+    )
+    insulator_spec = InsulatorStringSpec.model_validate(insulator_string)
     return CircuitConfiguration(
-        name=f"{conductor.name}:{circuit_id}", circuit_id=circuit_id,
+        name=_circuit_configuration_name(conductor, circuit_id, bundle_spec, insulator_spec),
+        circuit_id=circuit_id,
         conductor_spec=conductor,
-        bundle_spec=BundleSpec(subconductor_count=subconductor_count, subconductor_spacing=subconductor_spacing),
-        insulator_string=InsulatorStringSpec.model_validate(insulator_string),
+        bundle_spec=bundle_spec,
+        insulator_string=insulator_spec,
     )
 
 

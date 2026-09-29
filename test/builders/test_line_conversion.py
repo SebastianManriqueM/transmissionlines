@@ -14,6 +14,7 @@ from transmissionlines.electrical_constants import (
     R_C,
     SERIES_REACTANCE_COEFFICIENT,
 )
+from transmissionlines.units import BundleSpacing
 
 
 def test_shared_electrical_constants_preserve_catalog_conversions() -> None:
@@ -43,6 +44,38 @@ def test_catalog_records_convert_to_runtime_specs_with_provenance() -> None:
         insulator_string=dict(insulator_type="glass", number_of_insulators=12,
                               insulator_code="U120B", insulator_coupling="ball_and_socket"),
     )
+    repeated_phase = phase_spec_from_record(
+        ConductorRecord.model_validate(conductor.to_dict()),
+        circuit_id="circuit-1", catalog_version="v1",
+        insulator_string=dict(insulator_type="glass", number_of_insulators=12,
+                              insulator_code="U120B", insulator_coupling="ball_and_socket"),
+    )
+    bundled_phase = phase_spec_from_record(
+        ConductorRecord.model_validate(conductor.to_dict()),
+        circuit_id="circuit-1", catalog_version="v1", subconductor_count=2,
+        subconductor_spacing=BundleSpacing(18, "inch"),
+        insulator_string=dict(insulator_type="glass", number_of_insulators=12,
+                              insulator_code="U120B", insulator_coupling="ball_and_socket"),
+    )
+    alternate_insulator_phase = phase_spec_from_record(
+        ConductorRecord.model_validate(conductor.to_dict()),
+        circuit_id="circuit-1", catalog_version="v1",
+        insulator_string=dict(insulator_type="glass", number_of_insulators=10,
+                              insulator_code="U120B", insulator_coupling="ball_and_socket"),
+    )
+    alternate_circuit_phase = phase_spec_from_record(
+        ConductorRecord.model_validate(conductor.to_dict()),
+        circuit_id="circuit-2", catalog_version="v1",
+        insulator_string=dict(insulator_type="glass", number_of_insulators=12,
+                              insulator_code="U120B", insulator_coupling="ball_and_socket"),
+    )
+    other_conductor = conductors[conductors.record_id != conductor.record_id].iloc[0]
+    alternate_conductor_phase = phase_spec_from_record(
+        ConductorRecord.model_validate(other_conductor.to_dict()),
+        circuit_id="circuit-1", catalog_version="v1",
+        insulator_string=dict(insulator_type="glass", number_of_insulators=12,
+                              insulator_code="U120B", insulator_coupling="ball_and_socket"),
+    )
     ground = ground_wire_from_record(
         GroundWireRecord.model_validate(wire.to_dict()), catalog_version="v1"
     )
@@ -50,6 +83,11 @@ def test_catalog_records_convert_to_runtime_specs_with_provenance() -> None:
     assert selected.catalog_reference.table_name == "conductors"
     assert phase.conductor_spec.equipment == selected.equipment
     assert phase.bundle_spec.subconductor_count == 1
+    assert phase.name == repeated_phase.name
+    assert phase.name != bundled_phase.name
+    assert phase.name != alternate_insulator_phase.name
+    assert phase.name != alternate_circuit_phase.name
+    assert phase.name != alternate_conductor_phase.name
     assert ground.catalog_reference is not None
     assert ground.catalog_reference.table_name == "ground_wires"
     assert selected.catalog_reference.catalog_version == ground.catalog_reference.catalog_version == "v1"

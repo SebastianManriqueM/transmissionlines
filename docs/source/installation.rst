@@ -31,13 +31,8 @@ documentation examples with:
 
    uv run sphinx-build -W --keep-going -b doctest docs/source docs/build/doctest
 
-Verify package and command entry-point imports with:
+Verify the package import with:
 
 .. code-block:: console
 
    uv run python -c "import transmissionlines; print(transmissionlines.SCHEMA_VERSION)"
-   uv run tl --help
-
-The current ``tl`` entry point is a placeholder and has no implemented command
-set; the second command only checks that the installed console entry point
-launches. Do not rely on it for catalog or calculation workflows yet.

@@ -10,5 +10,4 @@ API reference
    builders
    catalog
    plotting
-   cli
    exceptions

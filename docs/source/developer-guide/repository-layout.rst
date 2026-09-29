@@ -34,16 +34,13 @@ responsibility that owns each change:
 * ``api.py`` is the public convenience facade, collecting supported builders,
   calculations, catalog access, models, and plotting functions.
 * ``models/`` defines the typed domain models for cables, geometry,
-  configurations, electrical and mechanical parameters, routes, and St. Clair
-  results.
+  configurations, electrical and St. Clair results, and routes.
 * ``catalog/`` imports source data, defines catalog schemas, validates
   manifests and tables, selects catalog records, and provides repository access.
 * ``builders/`` turns catalog selections and user inputs into line and system
   model instances.
 * ``calculations/`` contains domain computations for cable properties,
   geometry, electrical parameters and matrices, and St. Clair curves.
-* ``cli/`` defines the ``tl`` command-line application. The command is
-  registered in ``pyproject.toml`` under ``[project.scripts]``.
 * ``plotting/`` renders calculated results, such as St. Clair curves.
 * ``system.py`` defines the Infrasys-backed system and schema-version handling;
   ``units.py``, ``bundle.py``, and ``exceptions.py`` hold shared unit,
@@ -75,9 +72,9 @@ Data, references, and scripts
 Tests and documentation
 -----------------------
 
-* ``test/builders/``, ``test/calculations/``, ``test/models/``, and
-  ``test/cli/`` cover their corresponding package layers. ``test/integration/``
-  checks behavior across layer boundaries, while ``test/reference/`` holds
+* ``test/builders/``, ``test/calculations/``, and ``test/models/`` cover their
+  corresponding package layers. ``test/integration/`` checks behavior across
+  layer boundaries, while ``test/reference/`` holds
   reference-based checks and fixtures, and ``test/docs/`` exercises documented
   examples. The test suite is configured in ``pyproject.toml`` and runs with
   ``uv run pytest``.
@@ -93,8 +90,8 @@ Project configuration and generated files
 ------------------------------------------
 
 ``pyproject.toml`` is the source of truth for package metadata, runtime and
-development dependencies, the ``tl`` entry point, and pytest, Ruff, coverage,
-and mypy settings. ``uv.lock`` pins the resolved dependency set used by local
+development dependencies, and pytest, Ruff, coverage, and mypy settings.
+``uv.lock`` pins the resolved dependency set used by local
 development and CI.
 
 Sphinx output is written to ``docs/build/`` and is ignored by Git. Pytest and

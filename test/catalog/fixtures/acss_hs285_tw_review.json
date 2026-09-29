@@ -1,0 +1,40 @@
+{
+  "source_sha256": "14dbe01443dd5f3051bc4314527765d8b7ac12e31315e7c9a295201e569a8b9b",
+  "rows": [
+    {
+      "row_key": "ACSS/HS285/TW:area-equal:336.4:linnet:type-16",
+      "page": 3,
+      "raw": {"codeword": "Linnet/ACSS/TW", "size": "336.4", "type_no": "16", "aluminum_area_in2": "0.2641", "total_area_in2": "0.3070", "strength_standard_lb": "11,200", "strength_high_lb": "12,300", "strength_hs285_lb": "14,400"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:area-equal:2156:bluebird:type-8",
+      "page": 3,
+      "raw": {"codeword": "Bluebird/ACSS/TW", "size": "2156.0", "aluminum_area_in2": "1.6933", "total_area_in2": "1.830"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:area-equal:336.4:linnet:type-16:electrical",
+      "page": 4,
+      "raw": {"codeword": "Linnet/ACSS/TW", "dc_resistance_20c_ohm_mile": "0.2588", "ac_resistance_75c_ohm_mile": "0.3182", "ampacity_200c_a": "921"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:diameter-equal:403.4:unnamed:type-16:geometry",
+      "page": 5,
+      "raw": {"codeword": null, "size": "403.4", "type_no": "16", "acsr_size": "336.4", "acsr_stranding": "26/7", "total_area_in2": "0.3681", "strength_hs285_lb": "16,700"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:diameter-equal:571.7:mohawk:type-13:geometry",
+      "page": 5,
+      "raw": {"codeword": "Mohawk/ACSS/TW", "size": "571.7", "acsr_size": "477.0", "total_area_in2": "0.5074", "strength_hs285_lb": "19,700"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:diameter-equal:403.4:unnamed:type-16:electrical",
+      "page": 6,
+      "raw": {"codeword": null, "size": "403.4", "dc_resistance_20c_ohm_mile": "0.2158", "ampacity_200c_a": "1036"}
+    },
+    {
+      "row_key": "ACSS/HS285/TW:diameter-equal:571.7:mohawk:type-13:electrical",
+      "page": 6,
+      "raw": {"codeword": "Mohawk/ACSS/TW", "dc_resistance_20c_ohm_mile": "0.1527", "ampacity_200c_a": "1294"}
+    }
+  ]
+}

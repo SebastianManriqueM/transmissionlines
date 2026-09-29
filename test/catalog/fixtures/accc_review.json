@@ -1,0 +1,25 @@
+{
+  "source_sha256": "8f31bcbc7c3fc513b6998fba159045157894831a20b5e5ebf13d0556dad482d3",
+  "rows": [
+    {
+      "row_key": "ACCC:383.2:oceanside",
+      "page": 1,
+      "raw": {"codeword": "OCEANSIDE", "available_uls": "--", "aluminum_size_kcmil": "383.2", "diameter_in": "0.680", "core_diameter_in": "0.235", "weight_total_lb_kft": "395.2", "strength_standard_klbf": "16.0", "strength_uls_klbf": "--", "dc_resistance_20c_ohm_mile": "0.2319", "ampacity_75c_a": "558", "commonly_replaces": "ACSR Ostrich"}
+    },
+    {
+      "row_key": "ACCC:609.5:irving",
+      "page": 1,
+      "raw": {"codeword": "IRVING", "aluminum_size_kcmil": "609.5", "core_diameter_in": "0.345", "weight_al_lb_kft": "572.5", "weight_core_lb_kft": "75.8", "strength_standard_klbf": "33.2", "strength_uls_klbf": "39.0", "ac_resistance_25c_ohm_mile": "0.1491", "ac_resistance_200c_ohm_mile": "0.2530", "ampacity_180c_a": "1,280", "gmr_ft": "0.0303"}
+    },
+    {
+      "row_key": "ACCC:1103:corpus-christi",
+      "page": 1,
+      "raw": {"codeword": "CORPUS CHRISTI", "aluminum_size_kcmil": "1103.0", "strength_standard_klbf": "36.3", "strength_uls_klbf": "42.1", "commonly_replaces": "AAAC 500"}
+    },
+    {
+      "row_key": "ACCC:2740.6:bluebird",
+      "page": 1,
+      "raw": {"codeword": "BLUEBIRD", "aluminum_size_kcmil": "2740.6", "diameter_in": "1.762", "weight_total_lb_kft": "2703.0", "strength_standard_klbf": "59.8", "strength_uls_klbf": "68.1", "ampacity_200c_a": "3,474", "capacitive_reactance_mohm_mile": "0.0775"}
+    }
+  ]
+}

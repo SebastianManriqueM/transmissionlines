@@ -300,6 +300,30 @@ def test_builder_reuses_identical_configuration_and_rejects_conflicts_before_mut
     assert len(list(system.get_components(Component))) == before
 
 
+def test_assembly_revalidates_route_after_canonicalizing_terminal_buses() -> None:
+    _, _, start, end, span = _route()
+    shared_location = _point(-108)
+    from_bus = Bus(name="terminal", location=shared_location)
+    to_bus = Bus(name="terminal", location=shared_location)
+    end = end.model_copy(update={"location": shared_location})
+    span = span.model_copy(update={
+        "start_end": StartEnd(name="co-located-endpoints", start=start, end=end),
+        "route_geometry": RouteGeometry(coordinates=[(-108, 45), (-108, 45)]),
+    })
+    line = RoutedTransmissionLine(
+        name="co-located-route", from_bus=from_bus, to_bus=to_bus, spans=[span],
+        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_frequency=Frequency(60, "hertz"),
+        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+    )
+    system = TransmissionLineSystem(name="canonicalized-route")
+
+    with pytest.raises(ValidationError, match="from_bus and to_bus must be distinct"):
+        assemble_line_into_system(system, line)
+
+    assert len(list(system.get_components(Component))) == 0
+
+
 def test_configuration_shares_conductor_but_keeps_bundle_and_insulator_per_circuit() -> None:
     conductor = ConductorSpec(name="shared", equipment=BareConductorEquipment())
     insulator = InsulatorStringSpec(

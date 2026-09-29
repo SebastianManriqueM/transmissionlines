@@ -37,7 +37,14 @@ def _canonicalize(
             changes[field] = _canonicalize(system, value, candidates, additions)
         elif isinstance(value, list) and value and all(isinstance(item, Component) for item in value):
             changes[field] = [_canonicalize(system, item, candidates, additions) for item in value]
-    candidate = component.model_copy(update=changes) if changes else component
+    if changes:
+        values = {
+            field: changes.get(field, getattr(component, field))
+            for field in type(component).model_fields
+        }
+        candidate = type(component)(**values)
+    else:
+        candidate = component
     key = (type(candidate), candidate.name)
     try:
         uuid_owner = system.get_component_by_uuid(candidate.uuid)

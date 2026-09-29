@@ -4,6 +4,7 @@ from pydantic import Field, model_validator
 from datetime import UTC, datetime
 
 from transmissionlines.models.base import LineDataModel
+from transmissionlines.models.result_base import CalculationResultModel
 
 
 class StClairOptions(LineDataModel):
@@ -47,7 +48,7 @@ class StClairOptions(LineDataModel):
         return self
 
 
-class StClairLineConstants(LineDataModel):
+class StClairLineConstants(CalculationResultModel):
     """Natural-unit positive-sequence constants and resolved terminal voltages."""
 
     circuit_id: str = "circuit-1"
@@ -78,7 +79,7 @@ class StClairLineConstants(LineDataModel):
         return self
 
 
-class StClairCurve(LineDataModel):
+class StClairCurve(CalculationResultModel):
     """One compact curve represented by parallel arrays, not point objects."""
 
     name: str = "base"
@@ -118,7 +119,7 @@ class StClairCurve(LineDataModel):
         return self
 
 
-class StClairResult(LineDataModel):
+class StClairResult(CalculationResultModel):
     """Resolved options, constants, and compact base/sensitivity curves."""
 
     options: StClairOptions

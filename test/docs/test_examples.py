@@ -1,12 +1,11 @@
 from transmissionlines.api import calculate_line_electrical_parameters, calculate_st_clair_curve
-from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
-from transmissionlines.models.cables import BareConductorEquipment, GroundWireSpec, PhaseConductorSpec
-from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
-from transmissionlines.models.configurations import TowerConfiguration
+from transmissionlines.models.assets import CrossSectionTransmissionLine
+from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
+from transmissionlines.models.common import IdentificationInfo
+from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.units import (
-    Angle,
     CableDiameter,
     CableGMR,
     Current,
@@ -18,7 +17,7 @@ from transmissionlines.units import (
 )
 
 
-def _quickstart_line() -> TransmissionLine:
+def _quickstart_line() -> CrossSectionTransmissionLine:
     conductor = BareConductorEquipment(
         conductor_diameter=CableDiameter(1, "inch"),
         conductor_gmr=CableGMR(0.04, "foot"),
@@ -48,23 +47,22 @@ def _quickstart_line() -> TransmissionLine:
         name="example-configuration",
         identification_info=IdentificationInfo(),
         geometry=geometry,
-        ground_wire_spec=GroundWireSpec(conductor=conductor),
-        phase_conductor_specs=[PhaseConductorSpec(conductor=conductor, circuit_id="c1")],
+        ground_wire_spec=GroundWireSpec(name="ground", equipment=conductor),
+        circuits=[CircuitConfiguration(
+            name="c1", circuit_id="c1",
+            conductor_spec=ConductorSpec(name="phase", equipment=conductor),
+            bundle_spec=BundleSpec(subconductor_count=1),
+            insulator_string=InsulatorStringSpec(
+                insulator_type="glass", number_of_insulators=12,
+                insulator_code="U120B", insulator_coupling="ball_and_socket",
+            ),
+        )],
     )
-    origin = GeographicPoint(latitude=Angle(0, "degree"), longitude=Angle(0, "degree"))
-    destination = GeographicPoint(latitude=Angle(1, "degree"), longitude=Angle(1, "degree"))
-    technical_info = LineTechnicalInfo(
-        line_name="example-line",
+    return CrossSectionTransmissionLine(
+        name="example-line", configuration=configuration,
         nominal_voltage=VoltageKV(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
         earth_resistivity=EarthResistivity(100, "ohm * meter"),
-        from_bus=Bus(name="from", location=origin),
-        to_bus=Bus(name="to", location=destination),
-    )
-    return TransmissionLine(
-        name="example-line",
-        technical_info=technical_info,
-        tower_configuration=configuration,
     )
 
 
@@ -78,7 +76,7 @@ def test_quickstart_in_memory_line_example() -> None:
         ),
     )
 
-    electrical = calculated.line_parameters.electrical_parameters
+    electrical = calculated.electrical
     assert electrical.status == "complete"
     assert electrical.matrices["Zabcg"].row_count == 4
     assert electrical.matrices["Z012_ft"].row_labels == [
@@ -87,8 +85,8 @@ def test_quickstart_in_memory_line_example() -> None:
         "1:negative",
     ]
     assert electrical.scalars["r1"] > 0.0
-    assert electrical.st_clair_curve.curves[0].lengths_mi == [20.0]
-    assert line.line_parameters is None
+    assert calculated.st_clair.curves[0].lengths_mi == [20.0]
+    assert "line_parameters" not in type(line).model_fields
 
 
 def test_quickstart_direct_st_clair_example() -> None:

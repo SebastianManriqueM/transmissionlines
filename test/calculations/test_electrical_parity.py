@@ -5,14 +5,68 @@ import numpy as np
 import pytest
 
 from transmissionlines.builders.line import ground_wire_from_record, phase_spec_from_record, geometry_from_records
-from transmissionlines.calculations.electrical import calculate_electrical
-from transmissionlines.calculations.st_clair import calculate_st_clair
+from transmissionlines.calculations.electrical import calculate_line_electrical_parameters
 from transmissionlines.catalog.repository import CatalogRepository
 from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, GroundWirePositionRecord, PhasePositionRecord
+from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
+from transmissionlines.models.configurations import TowerConfiguration
+from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
 from transmissionlines.models.st_clair import StClairOptions
-from transmissionlines.units import BundleSpacing, Frequency, VoltageKV
+from transmissionlines.system import TransmissionLineSystem
+from transmissionlines.builders.system import assemble_line_into_system
+from transmissionlines.units import Angle, BundleSpacing, EarthResistivity, Frequency, VoltageKV
 
 CATALOG = CatalogRepository("data/catalog/v1")
+
+INSULATOR = dict(insulator_type="glass", number_of_insulators=12, insulator_code="U120B", insulator_coupling="ball_and_socket")
+
+
+def _line(geometry, phases, ground, voltage: int, kind: str):
+    configuration = TowerConfiguration(
+        name="fixture-configuration", identification_info=IdentificationInfo(),
+        geometry=geometry, circuits=phases, ground_wire_spec=ground,
+    )
+    electrical = dict(
+        name="fixture-line", nominal_voltage=VoltageKV(voltage, "kilovolt"),
+        nominal_frequency=Frequency(60, "hertz"),
+        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+    )
+    if kind == "cross-section":
+        return CrossSectionTransmissionLine(**electrical, configuration=configuration)
+    locations = [GeographicPoint(latitude=Angle(45, "degree"), longitude=Angle(value, "degree")) for value in (-108, -107)]
+    towers = [
+        ElectricalTower(
+            name=f"fixture:tower:{index}", tower_id=f"T{index}", sequence=index,
+            location=locations[index], configuration=configuration,
+            structure_form="pole", support_role="terminal",
+        )
+        for index in range(2)
+    ]
+    span = LineSpan(
+        name="fixture:span:0", span_id="S0", sequence=0,
+        start_end=StartEnd(name="fixture:endpoints", start=towers[0], end=towers[1]),
+        route_geometry=RouteGeometry(coordinates=[(-108, 45), (-107, 45)]),
+    )
+    return RoutedTransmissionLine(
+        **electrical, from_bus=Bus(name="from", location=locations[0]),
+        to_bus=Bus(name="to", location=locations[1]), spans=[span],
+    )
+
+
+def _calculated(geometry, phases, ground, voltage: int, kind: str, *, options=None, system_path: Path | None = None):
+    line = _line(geometry, phases, ground, voltage, kind)
+    if system_path is not None:
+        system = TransmissionLineSystem()
+        assemble_line_into_system(system, line)
+        system.to_json(system_path, overwrite=True)
+        serialized = system_path.read_text(encoding="utf-8")
+        for result_key in ('"line_parameters"', '"matrices"', '"curves"'):
+            assert result_key not in serialized
+        line = TransmissionLineSystem.from_json(system_path).get_component(type(line), line.name)
+    return calculate_line_electrical_parameters(
+        line, st_clair_options=options,
+    )
 
 
 def _kersting_inputs():
@@ -27,12 +81,14 @@ def _kersting_inputs():
     wires = CATALOG.table("ground_wires")
     conductor = conductors[conductors.codeword == "Linnet_EX_K4_1"].iloc[0]
     wire = wires[(wires.family == "ACSR") & (wires.awg_or_stranding == "4/0 6/1")].iloc[0]
-    phase = phase_spec_from_record(ConductorRecord.model_validate(conductor.to_dict()), circuit_id="circuit-1", catalog_version="v1")
+    phase = phase_spec_from_record(ConductorRecord.model_validate(conductor.to_dict()), circuit_id="circuit-1", insulator_string=INSULATOR, catalog_version="v1")
     ground = ground_wire_from_record(GroundWireRecord.model_validate(wire.to_dict()), catalog_version="v1")
     return geometry, phase, ground
 
 
-def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs() -> None:
+@pytest.mark.parametrize("kind", ["cross-section", "routed"])
+@pytest.mark.parametrize("round_trip", [False, True], ids=["fresh", "reloaded"])
+def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs(kind: str, round_trip: bool, tmp_path: Path) -> None:
     fixture = json.loads(Path("test/reference/julia/two_circuit_3l11_cardinal.json").read_text(encoding="utf-8"))
     code = "3L11"
     phase_table = CATALOG.table("phase_positions")
@@ -46,11 +102,14 @@ def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs() -> Non
     conductor = ConductorRecord.model_validate(conductors[(conductors.family == "ACSR") & (conductors.codeword == "Cardinal")].iloc[0].to_dict())
     wire = GroundWireRecord.model_validate(wires[(wires.family == "Alumoweld") & (wires.awg_or_stranding == "7/8")].iloc[0].to_dict())
     phases = [
-        phase_spec_from_record(conductor, circuit_id=circuit, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+        phase_spec_from_record(conductor, circuit_id=circuit, insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
         for circuit in ("circuit-1", "circuit-2")
     ]
     ground = ground_wire_from_record(wire, catalog_version="v1")
-    result = calculate_electrical(geometry, phase_specs=phases, ground_wire_spec=ground, voltage=VoltageKV(345, "kilovolt"), frequency=Frequency(60, "hertz"), earth_resistivity=100.0)
+    calculated = _calculated(geometry, phases, ground, 345, kind, system_path=tmp_path / "inputs.json" if round_trip else None)
+    result = calculated.electrical
+    assert result.circuit_ampacity_a == {"circuit-1": 990.0, "circuit-2": 990.0}
+    assert result.circuit_subconductor_count == {"circuit-1": 2, "circuit-2": 2}
     assert result.topology == fixture["topology"] == "two-circuit"
     assert result.labels == fixture["labels"]
     assert {item["table_name"] for item in result.provenance} == {"conductors", "ground_wires"}
@@ -74,7 +133,9 @@ def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs() -> Non
     assert result.scalars["sil_mw"] == pytest.approx(432.2379746677453, rel=0.005)
 
 
-def test_two_circuit_3l11_st_clair_curve_matches_reference_values() -> None:
+@pytest.mark.parametrize("kind", ["cross-section", "routed"])
+@pytest.mark.parametrize("round_trip", [False, True], ids=["fresh", "reloaded"])
+def test_two_circuit_3l11_st_clair_curve_matches_reference_values(kind: str, round_trip: bool, tmp_path: Path) -> None:
     code = "3L11"
     phase_table = CATALOG.table("phase_positions")
     ground_table = CATALOG.table("ground_wire_positions")
@@ -94,6 +155,7 @@ def test_two_circuit_3l11_st_clair_curve_matches_reference_values() -> None:
         phase_spec_from_record(
             conductor,
             circuit_id=circuit,
+            insulator_string=INSULATOR,
             subconductor_count=2,
             subconductor_spacing=BundleSpacing(18, "inch"),
             catalog_version="v1",
@@ -101,32 +163,13 @@ def test_two_circuit_3l11_st_clair_curve_matches_reference_values() -> None:
         for circuit in ("circuit-1", "circuit-2")
     ]
     ground = ground_wire_from_record(wire, catalog_version="v1")
-    electrical = calculate_electrical(
-        geometry,
-        phase_specs=phases,
-        ground_wire_spec=ground,
-        voltage=VoltageKV(345, "kilovolt"),
-        frequency=Frequency(60, "hertz"),
-        earth_resistivity=100.0,
-    )
-    st_clair_inputs = [
-        {
-            "circuit_id": circuit_id,
-            "nominal_voltage_kv": 345.0,
-            "r_ohm_per_mile": values["r1"],
-            "x_ohm_per_mile": values["x1"],
-            "b_microsiemens_per_mile": values["b1"],
-            "conductor_ampacity_a": 990.0,
-            "subconductor_count": 2,
-        }
-        for circuit_id, values in electrical.circuit_scalars.items()
-    ]
     options = StClairOptions(
         line_length_start_mi=20.0,
         line_length_stop_mi=600.0,
         line_length_step_mi=20.0,
     )
-    result = calculate_st_clair(st_clair_inputs, options=options)
+    result = _calculated(geometry, phases, ground, 345, kind, options=options, system_path=tmp_path / "inputs.json" if round_trip else None).st_clair
+    assert result is not None
 
     assert result.options.r_system_1_ohm == pytest.approx(0.1)
     assert result.options.x_system_1_ohm == pytest.approx(1.0)
@@ -150,9 +193,15 @@ def test_two_circuit_3l11_st_clair_curve_matches_reference_values() -> None:
         for field, expected_values in expected.items():
             actual_values = [getattr(curve, field)[index] for index in sample_indices]
             assert actual_values == pytest.approx(expected_values, rel=1e-6, abs=1e-6)
+        assert [curve.pr_w[index] for index in sample_indices] == pytest.approx([value * 1e6 for value in expected["pr_mw"]], rel=1e-6, abs=1e-6)
+        assert [curve.ps_w[index] for index in sample_indices] == pytest.approx([value * 1e6 for value in expected["ps_mw"]], rel=1e-6, abs=1e-6)
+        assert [curve.loss_w[index] for index in sample_indices] == pytest.approx([(sent - received) * 1e6 for sent, received in zip(expected["ps_mw"], expected["pr_mw"], strict=True)], rel=1e-6, abs=1e-6)
+        assert [curve.abs_er_volt[index] for index in sample_indices] == pytest.approx([value * 345_000 for value in expected["abs_er_pu"]], rel=1e-6, abs=1e-6)
 
 
-def test_33kv_ex_k4_1_single_cardinal_st_clair_curve_matches_reference_values() -> None:
+@pytest.mark.parametrize("kind", ["cross-section", "routed"])
+@pytest.mark.parametrize("round_trip", [False, True], ids=["fresh", "reloaded"])
+def test_33kv_ex_k4_1_single_cardinal_st_clair_curve_matches_reference_values(kind: str, round_trip: bool, tmp_path: Path) -> None:
     code = "EX_K4_1"
     phase_table = CATALOG.table("phase_positions")
     ground_table = CATALOG.table("ground_wire_positions")
@@ -168,32 +217,17 @@ def test_33kv_ex_k4_1_single_cardinal_st_clair_curve_matches_reference_values() 
     wire = GroundWireRecord.model_validate(
         wires[(wires.family == "Alumoweld") & (wires.awg_or_stranding == "7/8")].iloc[0].to_dict()
     )
-    phase = phase_spec_from_record(conductor, circuit_id="circuit-1", subconductor_count=1, catalog_version="v1")
+    phase = phase_spec_from_record(conductor, circuit_id="circuit-1", insulator_string=INSULATOR, subconductor_count=1, catalog_version="v1")
     ground = ground_wire_from_record(wire, catalog_version="v1")
-    electrical = calculate_electrical(
-        geometry,
-        phase_specs=[phase],
-        ground_wire_spec=ground,
-        voltage=VoltageKV(33, "kilovolt"),
-        frequency=Frequency(60, "hertz"),
-        earth_resistivity=100.0,
-    )
+    electrical = _calculated(geometry, [phase], ground, 33, kind).electrical
     assert electrical.topology == "one-circuit"
-    source = {
-        "circuit_id": "circuit-1",
-        "nominal_voltage_kv": 33.0,
-        "r_ohm_per_mile": electrical.scalars["r1"],
-        "x_ohm_per_mile": electrical.scalars["x1"],
-        "b_microsiemens_per_mile": electrical.scalars["b1"],
-        "conductor_ampacity_a": 990.0,
-        "subconductor_count": 1,
-    }
     options = StClairOptions(
         line_length_start_mi=20.0,
         line_length_stop_mi=600.0,
         line_length_step_mi=20.0,
     )
-    result = calculate_st_clair(source, options=options)
+    result = _calculated(geometry, [phase], ground, 33, kind, options=options, system_path=tmp_path / "inputs.json" if round_trip else None).st_clair
+    assert result is not None
 
     assert result.options.r_system_1_ohm == pytest.approx(0.1)
     assert result.options.x_system_1_ohm == pytest.approx(1.0)
@@ -218,11 +252,17 @@ def test_33kv_ex_k4_1_single_cardinal_st_clair_curve_matches_reference_values() 
     for field, expected_values in expected.items():
         actual_values = [getattr(curve, field)[index] for index in sample_indices]
         assert actual_values == pytest.approx(expected_values, rel=1e-6, abs=1e-6)
+    assert [curve.pr_w[index] for index in sample_indices] == pytest.approx([value * 1e6 for value in expected["pr_mw"]], rel=1e-6, abs=1e-6)
+    assert [curve.ps_w[index] for index in sample_indices] == pytest.approx([value * 1e6 for value in expected["ps_mw"]], rel=1e-6, abs=1e-6)
+    assert [curve.loss_w[index] for index in sample_indices] == pytest.approx([(sent - received) * 1e6 for sent, received in zip(expected["ps_mw"], expected["pr_mw"], strict=True)], rel=1e-6, abs=1e-6)
+    assert [curve.abs_er_volt[index] for index in sample_indices] == pytest.approx([value * 33_000 for value in expected["abs_er_pu"]], rel=1e-6, abs=1e-6)
 
 
-def test_kersting_nontransposed_and_transposed_matrix_outputs() -> None:
+@pytest.mark.parametrize("kind", ["cross-section", "routed"])
+@pytest.mark.parametrize("round_trip", [False, True], ids=["fresh", "reloaded"])
+def test_kersting_nontransposed_and_transposed_matrix_outputs(kind: str, round_trip: bool, tmp_path: Path) -> None:
     geometry, phase, ground = _kersting_inputs()
-    result = calculate_electrical(geometry, phase_specs=[phase], ground_wire_spec=ground, voltage=VoltageKV(33, "kilovolt"), frequency=Frequency(60, "hertz"), earth_resistivity=100.0)
+    result = _calculated(geometry, [phase], ground, 33, kind, system_path=tmp_path / "inputs.json" if round_trip else None).electrical
 
     def matrix(name: str) -> np.ndarray:
         return np.array([[cell["real"] + 1j * cell["imag"] for cell in row] for row in result.matrices[name].cells])
@@ -238,3 +278,33 @@ def test_kersting_nontransposed_and_transposed_matrix_outputs() -> None:
     assert result.scalars["surge_impedance_ohm"] == pytest.approx(301.24, rel=0.005)
     assert result.scalars["sil_mw"] == pytest.approx(3.6151, rel=0.005)
     assert result.matrices["Z_kron"] is result.matrices["Z_kron_nt"]
+
+
+@pytest.mark.parametrize("kind", ["cross-section", "routed"])
+def test_input_system_round_trip_recalculates_without_persisting_results(kind: str, tmp_path: Path) -> None:
+    geometry, phase, ground = _kersting_inputs()
+    line = _line(geometry, [phase], ground, 33, kind)
+    options = StClairOptions(line_length_start_mi=20, line_length_stop_mi=20)
+    before = calculate_line_electrical_parameters(line, st_clair_options=options)
+    system = TransmissionLineSystem()
+    assemble_line_into_system(system, line)
+    path = tmp_path / "inputs.json"
+    system.to_json(path, overwrite=True)
+    serialized = path.read_text(encoding="utf-8")
+    assert '"st_clair_curve"' not in serialized
+    assert '"line_parameters"' not in serialized
+    assert '"matrices"' not in serialized
+    assert '"curves"' not in serialized
+    loaded = TransmissionLineSystem.from_json(path)
+    restored = loaded.get_component(type(line), line.name)
+    after = calculate_line_electrical_parameters(restored, st_clair_options=options)
+    assert after.electrical.labels == before.electrical.labels
+    assert after.electrical.scalar_units == before.electrical.scalar_units
+    assert after.electrical.scalars == pytest.approx(before.electrical.scalars)
+    for name in before.electrical.matrices:
+        assert after.electrical.matrices[name].unit == before.electrical.matrices[name].unit
+        np.testing.assert_allclose(after.electrical.matrices[name].real, before.electrical.matrices[name].real, rtol=1e-12)
+        np.testing.assert_allclose(after.electrical.matrices[name].imaginary, before.electrical.matrices[name].imaginary, rtol=1e-12)
+    assert after.st_clair is not None and before.st_clair is not None
+    assert after.st_clair.curves[0].pr_w == pytest.approx(before.st_clair.curves[0].pr_w)
+    assert after.st_clair.curves[0].limit_type == before.st_clair.curves[0].limit_type

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from transmissionlines.builders.line import geometry_from_records, phase_spec_from_record
+from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.calculations.cable import ground_wire_gmr
 from transmissionlines.calculations.geometry import pairwise_distances
 from transmissionlines.catalog.repository import CatalogRepository
@@ -10,6 +11,7 @@ from transmissionlines.units import BundleSpacing
 
 
 CATALOG = CatalogRepository("data/catalog/v1")
+INSULATOR = dict(insulator_type="glass", number_of_insulators=12, insulator_code="U120B", insulator_coupling="ball_and_socket")
 
 
 def _geometry(code: str):
@@ -50,12 +52,16 @@ def test_original_conductor_and_ground_wire_records_are_reproduced() -> None:
     assert alumoweld.size_kcmil == pytest.approx(395.5)
     assert alumoweld.diameter_inch == pytest.approx(0.721)
     assert alumoweld.dc_resistance_ohm_kft == pytest.approx(0.1308)
-    linnet_spec = phase_spec_from_record(ConductorRecord.model_validate(linnet.to_dict()), circuit_id="circuit-1", catalog_version="v1")
-    assert linnet_spec.bundle_gmr.magnitude == pytest.approx(0.0244, rel=0.005)
+    linnet_spec = phase_spec_from_record(ConductorRecord.model_validate(linnet.to_dict()), circuit_id="circuit-1", insulator_string=INSULATOR, catalog_version="v1")
+    linnet_gmr, _ = derived_bundle_values(linnet_spec.conductor_spec.equipment, linnet_spec.bundle_spec.subconductor_count, linnet_spec.bundle_spec.subconductor_spacing)
+    assert linnet_gmr is not None
+    assert linnet_gmr.magnitude == pytest.approx(0.0244, rel=0.005)
     assert linnet.ac_resistance_75_ohm_kft * 5.28 == pytest.approx(0.306, rel=0.005)
     assert float(linnet.internal_reactance_ohm_kft) == pytest.approx(0.0854, rel=0.005)
-    pheasant_spec = phase_spec_from_record(ConductorRecord.model_validate(pheasant.to_dict()), circuit_id="circuit-1", subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
-    assert pheasant_spec.bundle_gmr.magnitude == pytest.approx(0.08 * 3.28084, rel=0.008)
+    pheasant_spec = phase_spec_from_record(ConductorRecord.model_validate(pheasant.to_dict()), circuit_id="circuit-1", insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+    pheasant_gmr, _ = derived_bundle_values(pheasant_spec.conductor_spec.equipment, pheasant_spec.bundle_spec.subconductor_count, pheasant_spec.bundle_spec.subconductor_spacing)
+    assert pheasant_gmr is not None
+    assert pheasant_gmr.magnitude == pytest.approx(0.08 * 3.28084, rel=0.008)
     assert pheasant.ac_resistance_75_ohm_kft == pytest.approx(0.017, rel=0.008)
     assert pheasant.internal_reactance_ohm_kft == pytest.approx(0.0704, rel=0.008)
     assert ground_wire_gmr(float(alumoweld.diameter_inch)) == pytest.approx(0.023396, rel=0.002)

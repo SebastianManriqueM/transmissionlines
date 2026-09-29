@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from math import log, pi
-from typing import TYPE_CHECKING
 
 import numpy as np
 
+from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.calculations.cable import ground_wire_gmr
 from transmissionlines.calculations.geometry import direct_distance, image_distance
+from transmissionlines.calculations.input_resolver import resolve_configuration
 from transmissionlines.calculations.matrices import (
     fully_transpose,
     kron_reduce,
@@ -17,22 +18,17 @@ from transmissionlines.calculations.matrices import (
     shunt_admittance,
 )
 from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+from transmissionlines.electrical_constants import EPSILON_AIR, KILOFEET_PER_MILE, L_C, L_F, R_C
 from transmissionlines.exceptions import CalculationInputError
-from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
+from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.calculation_result import LineCalculationResult
+from transmissionlines.models.cables import GroundWireSpec
+from transmissionlines.models.configurations import CircuitConfiguration
 from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
-from transmissionlines.models.parameters import LineParameters
+from transmissionlines.models.routing import ElectricalTower
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
 from transmissionlines.units import Frequency, VoltageKV
-
-if TYPE_CHECKING:
-    from transmissionlines.models.assets import TransmissionLine
-
-R_C = 0.00158836
-L_C = 0.00202237
-L_F = 7.6786
-EPSILON_AIR = 1.4240e-2
-
 
 def _matrix_result(
     name: str,
@@ -104,7 +100,7 @@ def build_primitive_z(
         for j in range(i, n):
             if i == j:
                 distance = gmrs[i]
-                resistance = resistances[i] / bundle_counts[i] * 5.28
+                resistance = resistances[i] / bundle_counts[i] * KILOFEET_PER_MILE
             else:
                 distance = direct_distance(position, positions[j])
                 resistance = 0.0
@@ -160,7 +156,7 @@ def build_primitive_p(
 
 def _ordered_inputs(
     geometry: TowerGeometry,
-    phase_specs: dict[str, PhaseConductorSpec],
+    phase_specs: dict[str, CircuitConfiguration],
     ground_spec: GroundWireSpec,
 ) -> tuple[list[CablePosition], list[float], list[float], list[float], list[int], list[str], int]:
     circuit_order = list(dict.fromkeys(p.circuit_id for p in geometry.phase_positions))
@@ -175,58 +171,60 @@ def _ordered_inputs(
     labels = [f"{p.circuit_id}:{p.phase}" for p in phases] + [f"ground:{p.wire_id}" for p in grounds]
     for phase in phases:
         spec = phase_specs[phase.circuit_id]
-        if spec.bundle_gmr is None or spec.equivalent_radius is None or spec.conductor.ac_resistance is None:
+        conductor = spec.conductor_spec.equipment
+        bundle_gmr, equivalent_radius = derived_bundle_values(
+            conductor, spec.bundle_spec.subconductor_count, spec.bundle_spec.subconductor_spacing
+        )
+        if bundle_gmr is None or equivalent_radius is None or conductor.ac_resistance is None:
             raise ValueError(f"missing required conductor value for circuit {phase.circuit_id}")
-        gmrs.append(spec.bundle_gmr.to("foot").magnitude)
-        radii.append(spec.equivalent_radius.to("foot").magnitude)
-        resistances.append(spec.conductor.ac_resistance.to("ohm / kilofoot").magnitude)
-        counts.append(spec.subconductor_count)
-    if ground_spec.conductor.conductor_diameter is None or ground_spec.conductor.dc_resistance is None:
+        gmrs.append(bundle_gmr.to("foot").magnitude)
+        radii.append(equivalent_radius.to("foot").magnitude)
+        resistances.append(conductor.ac_resistance.to("ohm / kilofoot").magnitude)
+        counts.append(spec.bundle_spec.subconductor_count)
+    if ground_spec.equipment.conductor_diameter is None or ground_spec.equipment.dc_resistance is None:
         raise ValueError("ground wire requires diameter and dc_resistance")
     for _ in grounds:
-        diameter = ground_spec.conductor.conductor_diameter.to("inch").magnitude
+        diameter = ground_spec.equipment.conductor_diameter.to("inch").magnitude
         gmrs.append(ground_wire_gmr(diameter))
         radii.append(diameter / 24.0)
-        resistances.append(ground_spec.conductor.dc_resistance.to("ohm / kilofoot").magnitude)
+        resistances.append(ground_spec.equipment.dc_resistance.to("ohm / kilofoot").magnitude)
         counts.append(1)
     return positions, gmrs, radii, resistances, counts, labels, len(phases)
 
 
 def calculate_line_electrical_parameters(
-    line: TransmissionLine, *, st_clair_options: StClairOptions | None = None
-) -> TransmissionLine:
-    """Return a copied line with electrical and default St. Clair results.
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
+    *, tower: ElectricalTower | None = None, st_clair_options: StClairOptions | None = None,
+) -> LineCalculationResult:
+    """Calculate transient electrical and St. Clair results for one cross-section.
 
-    Routing is deliberately not consulted: v3 electrical parameters describe
-    the tower cross-section and terminal technical inputs only. The source line
-    and any existing mechanical result remain unchanged.
+    A routed line with different installed configurations requires a selected
+    tower. Its result describes that tower's cross-section, never an aggregate
+    impedance or loadability curve for the full route.
 
     Parameters
     ----------
-    line : TransmissionLine
-        Line with validated technical information, tower geometry, and cable
-        specifications.
+    line : CrossSectionTransmissionLine or RoutedTransmissionLine
+        Registered static electrical inputs.
+    tower : ElectricalTower, optional
+        Line-owned support required for a heterogeneous routed line.
     st_clair_options : StClairOptions, optional
-        Operating limits and sweep resolution. When omitted, default St. Clair
-        settings are used.
+        Operating limits and curve resolution, independent of route length.
 
     Returns
     -------
-    TransmissionLine
-        New line value with complete electrical matrices/scalars and its
-        St. Clair result attached. The input line is unchanged.
+    LineCalculationResult
+        Standalone matrices and curves identified by line and configuration.
 
     Raises
     ------
-    CalculationInputError
-        If phase-conductor specifications do not match geometry circuits.
     ValueError
-        If required conductor or ground-wire calculation values are absent or
-        invalid.
+        If selection is ambiguous or foreign, or required cable values are absent.
     """
-    geometry = line.tower_configuration.geometry
+    configuration = resolve_configuration(line, tower=tower)
+    geometry = configuration.geometry
     geometry_ids = {position.circuit_id for position in geometry.phase_positions}
-    specs = line.tower_configuration.phase_conductor_specs
+    specs = configuration.circuits
     spec_ids = [spec.circuit_id for spec in specs]
     spec_id_set = set(spec_ids)
     missing = sorted(geometry_ids - spec_id_set)
@@ -241,50 +239,47 @@ def calculate_line_electrical_parameters(
         if duplicates:
             details.append(f"duplicates={duplicates}")
         raise CalculationInputError("phase conductor circuit mapping is invalid: " + ", ".join(details))
-    technical = line.technical_info
     result = calculate_electrical(
         geometry,
         phase_specs=specs,
-        ground_wire_spec=line.tower_configuration.ground_wire_spec,
-        voltage=technical.nominal_voltage.to("kilovolt"),
-        frequency=technical.nominal_frequency.to("hertz"),
-        earth_resistivity=technical.earth_resistivity.to("ohm * meter").magnitude,
+        ground_wire_spec=configuration.ground_wire_spec,
+        voltage=line.nominal_voltage.to("kilovolt"),
+        frequency=line.nominal_frequency.to("hertz"),
+        earth_resistivity=line.earth_resistivity.to("ohm * meter").magnitude,
     )
-    result = calculate_st_clair_curve_for_line(
-        line.model_copy(update={"line_parameters": LineParameters(electrical_parameters=result)}),
-        options=st_clair_options,
+    previous = LineCalculationResult(
+        line_name=line.name, line_uuid=line.uuid, configuration_uuid=configuration.uuid,
+        electrical=result,
     )
-    parameters = line.line_parameters or LineParameters()
-    result = result.line_parameters.electrical_parameters
-    assert result is not None
-    updated_parameters = parameters.model_copy(update={"electrical_parameters": result})
-    return line.model_copy(update={"line_parameters": updated_parameters})
+    curve = calculate_st_clair_curve_for_line(line, previous, tower=tower, options=st_clair_options)
+    return previous.model_copy(update={"st_clair": curve})
 
 
-def calculate_electrical_parameters(line: TransmissionLine) -> TransmissionLine:
-    """Return line electrical results using the current orchestration defaults.
-
-    This backward-compatible alias calculates electrical parameters and the
-    default St. Clair curve. Use :func:`calculate_line_electrical_parameters`
-    to provide explicit St. Clair options.
+def calculate_electrical_parameters(
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
+    *, tower: ElectricalTower | None = None,
+) -> LineCalculationResult:
+    """Calculate standalone electrical parameters and a default curve.
 
     Parameters
     ----------
-    line : TransmissionLine
-        Validated line input.
+    line : CrossSectionTransmissionLine or RoutedTransmissionLine
+        Static inputs for the selected cross-section.
+    tower : ElectricalTower, optional
+        Required support when routed configurations differ.
 
     Returns
     -------
-    TransmissionLine
-        A copied line with electrical and St. Clair results attached.
+    LineCalculationResult
+        External result envelope; the input line is unchanged.
     """
-    return calculate_line_electrical_parameters(line)
+    return calculate_line_electrical_parameters(line, tower=tower)
 
 
 def calculate_electrical(
     geometry: TowerGeometry,
     *,
-    phase_specs: list[PhaseConductorSpec],
+    phase_specs: list[CircuitConfiguration],
     ground_wire_spec: GroundWireSpec,
     voltage: VoltageKV,
     frequency: Frequency,
@@ -296,7 +291,7 @@ def calculate_electrical(
     ----------
     geometry : TowerGeometry
         Tower-local phase and ground-wire positions.
-    phase_specs : list of PhaseConductorSpec
+    phase_specs : list of CircuitConfiguration
         One conductor/bundle specification per geometry circuit.
     ground_wire_spec : GroundWireSpec
         Shared ground-wire conductor properties.
@@ -378,9 +373,9 @@ def calculate_electrical(
         "Z_sequence": matrices["Z012_ft"], "Y_sequence": matrices["Y012_ft"],
     })
     provenance = [
-        spec.catalog_reference.model_dump()
+        spec.conductor_spec.catalog_reference.model_dump()
         for spec in phase_specs
-        if spec.catalog_reference is not None
+        if spec.conductor_spec.catalog_reference is not None
     ]
     if ground_wire_spec.catalog_reference is not None:
         provenance.append(ground_wire_spec.catalog_reference.model_dump())
@@ -401,6 +396,13 @@ def calculate_electrical(
             key: {"r1": "ohm/mile", "x1": "ohm/mile", "b1": "microsiemens/mile"}
             for key in circuit_scalars
         },
+        circuit_ampacity_a={
+            spec.circuit_id: spec.conductor_spec.equipment.ampacity.to("ampere").magnitude
+            for spec in phase_specs if spec.conductor_spec.equipment.ampacity is not None
+        },
+        circuit_subconductor_count={
+            spec.circuit_id: spec.bundle_spec.subconductor_count for spec in phase_specs
+        },
         provenance=provenance,
         topology="one-circuit" if circuits == 1 else "two-circuit",
         status="complete",
@@ -408,4 +410,4 @@ def calculate_electrical(
     )
 
 
-__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters"]
+__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters", "resolve_configuration"]

@@ -1,6 +1,7 @@
-"""v3 transmission-line models."""
+"""Transmission-line input and calculation models."""
 
-from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
+from transmissionlines.models.assets import AbstractTransmissionLine, CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.mechanical import MechanicalParameters
 from transmissionlines.models.st_clair import StClairCurve, StClairLineConstants, StClairOptions, StClairResult
@@ -8,8 +9,11 @@ from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
     BareConductorEquipment,
+    BundleSpec,
+    Cable,
+    ConductorSpec,
     GroundWireSpec,
-    PhaseConductorSpec,
+    InsulatorStringSpec,
 )
 from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.common import (
@@ -20,11 +24,18 @@ from transmissionlines.models.common import (
     GroundWirePosition,
     PhasePosition,
 )
-from transmissionlines.models.configurations import TowerConfiguration
-from transmissionlines.models.routing import LineSpan, RoutingInfo, Tower
+from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
+from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
 
 __all__ = [
     "BareConductorEquipment",
+    "AbstractTransmissionLine",
+    "BundleSpec",
+    "Cable",
+    "CircuitConfiguration",
+    "ConductorSpec",
+    "CrossSectionTransmissionLine",
+    "ElectricalTower",
     "ElectricalParameters",
     "StClairCurve",
     "StClairLineConstants",
@@ -36,17 +47,17 @@ __all__ = [
     "GroundWirePosition",
     "IdentificationInfo",
     "GroundWireSpec",
+    "InsulatorStringSpec",
     "LineParameters",
+    "LineCalculationResult",
     "LineSpan",
-    "LineTechnicalInfo",
     "LineDataModel",
-    "PhaseConductorSpec",
     "MechanicalParameters",
     "OperationAttribute",
     "PhasePosition",
-    "RoutingInfo",
-    "Tower",
+    "RouteGeometry",
+    "RoutedTransmissionLine",
+    "StartEnd",
     "TowerConfiguration",
     "TowerGeometry",
-    "TransmissionLine",
 ]

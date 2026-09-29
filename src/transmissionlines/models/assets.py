@@ -1,74 +1,92 @@
 """Transmission-line static components and value models."""
 
+from abc import ABC, abstractmethod
+
 from infrasys import Component
-from pydantic import model_validator
+from pydantic import ConfigDict, model_validator
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from transmissionlines.system import TransmissionLineSystem
-
-from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import Bus
 from transmissionlines.models.configurations import TowerConfiguration
-from transmissionlines.models.parameters import LineParameters
-from transmissionlines.models.routing import RoutingInfo
+from transmissionlines.models.routing import LineSpan
 from transmissionlines.units import EarthResistivity, Frequency, VoltageKV
 
 
-class LineTechnicalInfo(LineDataModel):
-    """Immutable electrical and terminal data for a line."""
+class AbstractTransmissionLine(Component, ABC):
+    """Hold shared, positive electrical inputs for a transmission line."""
 
-    line_name: str
+    model_config = ConfigDict(extra="forbid")
+
     nominal_voltage: VoltageKV
     nominal_frequency: Frequency
     earth_resistivity: EarthResistivity
-    from_bus: Bus
-    to_bus: Bus
+
+    @abstractmethod
+    def _line_variant(self) -> str:
+        """Identify the concrete input variant."""
 
     @model_validator(mode="after")
-    def validate_values(self) -> "LineTechnicalInfo":
-        if (
-            self.nominal_voltage.magnitude <= 0
-            or self.nominal_frequency.magnitude <= 0
-            or self.earth_resistivity.magnitude <= 0
+    def validate_electrical_inputs(self) -> "AbstractTransmissionLine":
+        if any(
+            value.magnitude <= 0
+            for value in (self.nominal_voltage, self.nominal_frequency, self.earth_resistivity)
         ):
             raise ValueError("nominal voltage, frequency, and earth resistivity must be positive")
-        if self.from_bus.name == self.to_bus.name:
-            raise ValueError("from_bus and to_bus must be distinct")
         return self
 
 
-class TransmissionLine(Component):
-    """Static transmission line component."""
+class CrossSectionTransmissionLine(AbstractTransmissionLine):
+    """Select a representative configuration without physical supports."""
 
-    technical_info: LineTechnicalInfo
-    tower_configuration: TowerConfiguration
-    routing_info: RoutingInfo | None = None
-    line_parameters: LineParameters | None = None
+    configuration: TowerConfiguration
 
-    def resolve_component_references(self, system: "TransmissionLineSystem") -> "TransmissionLine":
-        """Replace nested bus copies with registered system components after load."""
-        from_bus = system.get_component(Bus, self.technical_info.from_bus.name)
-        to_bus = system.get_component(Bus, self.technical_info.to_bus.name)
-        info = self.technical_info.model_copy(update={"from_bus": from_bus, "to_bus": to_bus})
-        return TransmissionLine.model_validate({**self.model_dump(), "technical_info": info})
+    def _line_variant(self) -> str:
+        return "cross-section"
+
+
+class RoutedTransmissionLine(AbstractTransmissionLine):
+    """Represent a physical route using only its ordered registered spans."""
+
+    from_bus: Bus
+    to_bus: Bus
+    spans: list[LineSpan]
+
+    def _line_variant(self) -> str:
+        return "routed"
 
     @model_validator(mode="after")
-    def validate_line(self) -> "TransmissionLine":
-        if self.name != self.technical_info.line_name:
-            raise ValueError("TransmissionLine.name must equal technical_info.line_name")
-        if self.routing_info is not None:
-            first, last = self.routing_info.towers[0], self.routing_info.towers[-1]
-            if (
-                first.location != self.technical_info.from_bus.location
-                or last.location != self.technical_info.to_bus.location
-            ):
-                raise ValueError("routing terminal towers must match terminal bus locations")
+    def validate_route(self) -> "RoutedTransmissionLine":
+        if not self.spans:
+            raise ValueError("routed line requires nonempty spans")
+        if self.from_bus.uuid == self.to_bus.uuid:
+            raise ValueError("from_bus and to_bus must be distinct")
+        towers = [self.spans[0].start_end.start, *(span.start_end.end for span in self.spans)]
+        if len({tower.uuid for tower in towers}) != len(towers):
+            raise ValueError("ordered spans must have distinct supports")
+        if len({tower.tower_id for tower in towers}) != len(towers):
+            raise ValueError("tower_id values must be unique within a routed line")
+        if len({span.span_id for span in self.spans}) != len(self.spans):
+            raise ValueError("span_id values must be unique within a routed line")
+        if towers[0].support_role != "terminal" or towers[-1].support_role != "terminal":
+            raise ValueError("first and last supports must have terminal support_role")
+        if towers[0].location != self.from_bus.location or towers[-1].location != self.to_bus.location:
+            raise ValueError("terminal tower locations must match terminal bus locations")
+        for index, span in enumerate(self.spans):
+            start, end = span.start_end.start, span.start_end.end
+            if span.sequence != index or start.sequence != index or end.sequence != index + 1:
+                raise ValueError("spans and endpoint towers must be in sequence order")
+            if index and self.spans[index - 1].start_end.end.uuid != start.uuid:
+                raise ValueError("adjacent spans must share an endpoint tower")
+            coordinates = span.route_geometry.coordinates
+            for coordinate, tower in ((coordinates[0], start), (coordinates[-1], end)):
+                longitude = tower.location.longitude.to("degree").magnitude
+                latitude = tower.location.latitude.to("degree").magnitude
+                if coordinate != (longitude, latitude):
+                    raise ValueError("route_geometry endpoint must match its tower location")
         return self
 
 
 __all__ = [
-    "LineTechnicalInfo",
-    "TransmissionLine",
+    "AbstractTransmissionLine",
+    "CrossSectionTransmissionLine",
+    "RoutedTransmissionLine",
 ]

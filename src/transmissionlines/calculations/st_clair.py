@@ -15,7 +15,10 @@ from transmissionlines.models.st_clair import (
     StClairOptions,
     StClairResult,
 )
-from transmissionlines.models.parameters import LineParameters
+from transmissionlines.calculations.input_resolver import resolve_configuration
+from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
+from transmissionlines.models.calculation_result import LineCalculationResult
+from transmissionlines.models.routing import ElectricalTower
 
 
 def _resolve_constants(
@@ -300,27 +303,57 @@ def calculate_st_clair(
 
 
 def calculate_st_clair_curve_for_line(
-    line: Any,
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
+    previous: LineCalculationResult,
     *,
+    tower: ElectricalTower | None = None,
     options: StClairOptions | None = None,
     sensitivities: Mapping[str, Sequence[float]] | None = None,
-) -> Any:
-    """Return a copied line with curves resolved from its electrical result."""
-    parameters = line.line_parameters
-    electrical = None if parameters is None else parameters.electrical_parameters
-    if electrical is None or electrical.status != "complete":
+) -> StClairResult:
+    """Calculate a standalone curve from a matching external electrical result.
+
+    Parameters
+    ----------
+    line : CrossSectionTransmissionLine or RoutedTransmissionLine
+        Original static input line.
+    previous : LineCalculationResult
+        Completed electrical result for this line and selected configuration.
+    tower : ElectricalTower, optional
+        Support selecting a heterogeneous routed cross-section.
+    options : StClairOptions, optional
+        Curve operating limits and resolution.
+    sensitivities : mapping, optional
+        Option names and sampled settings for extra curves.
+
+    Returns
+    -------
+    StClairResult
+        Transient curves for the selected cross-section.
+
+    Raises
+    ------
+    ValueError
+        If the previous result does not match this line and configuration.
+    """
+    configuration = resolve_configuration(line, tower=tower)
+    if previous.line_uuid != line.uuid or previous.configuration_uuid != configuration.uuid:
+        raise ValueError("previous electrical result does not match selected line and configuration")
+    electrical = previous.electrical
+    if electrical.status != "complete":
         raise ValueError("St. Clair calculation requires complete electrical parameters")
     if not electrical.circuit_scalars:
         raise ValueError("electrical result is missing per-circuit positive-sequence scalars")
-    specifications = {spec.circuit_id: spec for spec in line.tower_configuration.phase_conductor_specs}
-    voltage_kv = line.technical_info.nominal_voltage.to("kilovolt").magnitude
+    specifications = {spec.circuit_id: spec for spec in configuration.circuits}
+    if set(electrical.circuit_scalars) != set(specifications):
+        raise ValueError("previous electrical result circuit IDs do not match selected configuration")
+    voltage_kv = line.nominal_voltage.to("kilovolt").magnitude
     inputs = []
     for circuit_id, scalars in electrical.circuit_scalars.items():
         missing = {"r1", "x1", "b1"} - scalars.keys()
         if missing:
             raise ValueError(f"{circuit_id} is missing positive-sequence scalars: {sorted(missing)}")
         spec = specifications.get(circuit_id)
-        if spec is None or spec.conductor.ampacity is None:
+        if spec is None or spec.conductor_spec.equipment.ampacity is None:
             raise ValueError(f"missing conductor ampacity for {circuit_id}")
         inputs.append({
             "circuit_id": circuit_id,
@@ -328,17 +361,12 @@ def calculate_st_clair_curve_for_line(
             "r_ohm_per_mile": scalars["r1"],
             "x_ohm_per_mile": scalars["x1"],
             "b_microsiemens_per_mile": scalars["b1"],
-            "conductor_ampacity_a": spec.conductor.ampacity.to("ampere").magnitude,
-            "subconductor_count": spec.subconductor_count,
+            "conductor_ampacity_a": spec.conductor_spec.equipment.ampacity.to("ampere").magnitude,
+            "subconductor_count": spec.bundle_spec.subconductor_count,
         })
-    curve_result = calculate_st_clair(
+    return calculate_st_clair(
         inputs, options=options, sensitivities=sensitivities
-    ).model_copy(update={"line_name": line.technical_info.line_name})
-    updated_electrical = electrical.model_copy(update={"st_clair_curve": curve_result})
-    updated_parameters = (parameters or LineParameters()).model_copy(
-        update={"electrical_parameters": updated_electrical}
-    )
-    return line.model_copy(update={"line_parameters": updated_parameters})
+    ).model_copy(update={"line_name": line.name})
 
 
 __all__ = [

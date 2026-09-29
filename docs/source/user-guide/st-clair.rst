@@ -5,8 +5,9 @@ Scope and inputs
 ----------------
 
 The St. Clair implementation is a balanced, positive-sequence, steady-state
-three-mesh calculation. It is not a transient-stability, fault, or mutual
-multi-circuit coupling model. A line-level call uses each circuit's
+three-mesh calculation based on the loadability characteristics developed by
+Gutman, Marchenko, and Dunlop [Gutman1979]_. It is not a transient-stability,
+fault, or mutual multi-circuit coupling model. A line-level call uses each circuit's
 ``r1``, ``x1``, and ``b1`` values, conductor ampacity, bundle count, and
 nominal line-to-line voltage. ``calculate_line_electrical_parameters`` returns
 a standalone ``LineCalculationResult`` with sibling electrical and St. Clair
@@ -60,7 +61,7 @@ Defaults and units
 
 Source voltage magnitudes default to 1.0 times nominal line-to-line voltage.
 The sending and receiving Thevenin impedances default independently to
-``0.1 + j1 ohm``. Shunt and series compensation default to zero;
+:math:`0.1 + j1\ \Omega`. Shunt and series compensation default to zero;
 ``n_series_percent > 0`` reduces inductive line reactance. The receiving
 voltage threshold defaults to 0.95 pu, the stability angle limit to 45 degrees,
 and the search grid to 20--600 miles in 1-mile steps with 0.5-degree angle
@@ -68,8 +69,8 @@ steps. System impedances are ohms, line constants are ohm/mile and S/mile,
 ampacity is amperes, and angle values are degrees at the public boundary.
 No MVA base or per-unit impedance conversion is used.
 
-At each length, the implementation scales series ``R`` and ``X`` by length and
-total shunt ``B`` by length. It splits nominal shunt susceptance into sending
+At each length, the implementation scales series :math:`R` and :math:`X` by
+length and total shunt :math:`B` by length. It splits nominal shunt susceptance into sending
 and receiving halves, applies the two shunt compensation settings separately,
 and extracts equivalent asymmetric-pi values from the section's ABCD
 parameters:
@@ -86,9 +87,9 @@ Three-mesh phasors
 ------------------
 
 The source phasors and Thevenin branch impedances are used to solve the
-three-mesh system. ``E1`` and ``E2`` are user-facing line-to-line quantities;
-the balanced solver divides their magnitudes by ``sqrt(3)`` and uses the
-receiving source as the zero-angle reference. ``I2`` is the line-series phase
+three-mesh system. :math:`E_1` and :math:`E_2` are user-facing line-to-line quantities;
+the balanced solver divides their magnitudes by :math:`\sqrt{3}` and uses the
+receiving source as the zero-angle reference. :math:`I_2` is the line-series phase
 current from sending to receiving end.
 
 .. math::
@@ -126,7 +127,7 @@ configured stability limit, always evaluating the exact final angle. It keeps
 the first voltage or current boundary encountered; voltage and thermal
 crossings are refined with 18 bisection steps. The configured stability angle
 itself is the stability boundary and is not interpolated. Voltage equality is
-tested against ``receiving_voltage_limit_pu * V_nominal``; current equality is
+tested against :math:`V_{\mathrm{limit,pu}} V_{\mathrm{nominal}}`; current equality is
 tested against conductor ampacity times subconductor count. Limit labels are
 ``voltage_drop``, ``thermal_ampacity``, ``steady_state_stability``, and
 ``numerically_invalid``.
@@ -161,40 +162,40 @@ Notation and units
    * - Symbol
      - Meaning
      - Unit or convention
-   * - ``R``, ``X``
+   * - :math:`R`, :math:`X`
      - Positive-sequence line resistance and reactance per mile
      - ohm/mile
-   * - ``B``
+   * - :math:`B`
      - Positive-sequence shunt susceptance per mile
      - S/mile internally; electrical result is microS/mile
-   * - ``L``
+   * - :math:`L`
      - Trial line length
      - mile
-   * - ``Z_1``, ``Z_2``
+   * - :math:`Z_1`, :math:`Z_2`
      - Sending/receiving Thevenin impedances
      - ohm
-   * - ``E_1``, ``E_2``
+   * - :math:`E_1`, :math:`E_2`
      - Source voltage magnitudes before phase conversion
      - V line-to-line
-   * - ``E_s``, ``E_r``
+   * - :math:`E_s`, :math:`E_r`
      - Sending/receiving line-terminal phasors
      - phase V internally
-   * - ``I_2``
+   * - :math:`I_2`
      - Line series current
      - A per phase
-   * - ``P_s``, ``P_r``, ``P_loss``
+   * - :math:`P_s`, :math:`P_r`, :math:`P_{loss}`
      - Three-phase real power and loss
      - W; parallel MW arrays are also stored
-   * - ``N_series``, ``N_s``, ``N_r``
+   * - :math:`N_{series}`, :math:`N_s`, :math:`N_r`
      - Series, sending-shunt, receiving-shunt compensation
      - percent
-   * - ``theta_1``
+   * - :math:`\theta_1`
      - Sending-source angle
      - degrees at API and in curve arrays
-   * - ``I_limit``
+   * - :math:`I_{limit}`
      - Circuit current limit after bundle scaling
      - A
-   * - ``P_thermal``
+   * - :math:`P_{thermal}`
      - Nominal-voltage thermal power reference
      - MW
 
@@ -207,3 +208,12 @@ The line-level facade builds that sequence internally from per-circuit
 ``ElectricalParameters.circuit_scalars``. The older reference text also uses
 some generic line-end power identities; this page states the line-terminal
 phasor and current products actually evaluated by ``_solve_mesh``.
+
+Reference
+---------
+
+.. [Gutman1979] R. Gutman, P. P. Marchenko, and R. D. Dunlop,
+   "Analytical Development of Loadability Characteristics for EHV and UHV
+   Transmission Lines," *IEEE Transactions on Power Apparatus and Systems*,
+   vol. PAS-98, no. 2, pp. 606-617, March 1979.
+   `doi:10.1109/TPAS.1979.319410 <https://ieeexplore.ieee.org/document/4113522>`_.

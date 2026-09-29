@@ -1,104 +1,115 @@
-"""Explicit system assembly for v3 static components."""
+"""Register validated transmission-line input graphs in an Infrasys system."""
 
+from infrasys import Component
+from infrasys.exceptions import ISNotStored
 from pydantic import BaseModel
 
-from transmissionlines.models import Bus, GeographicPoint, TowerConfiguration, TransmissionLine
-from transmissionlines.models.routing import span_component_name, tower_component_name
+from transmissionlines.models.assets import AbstractTransmissionLine
 from transmissionlines.system import TransmissionLineSystem
 
 
-class BusDefinition(BaseModel):
-    """User-supplied name and location used during assembly."""
-
-    name: str
-    location: GeographicPoint
-
-
 def _compatible(left: object, right: object) -> bool:
-    """Compare Pydantic values and quantities semantically."""
-    if hasattr(left, "units") and hasattr(right, "to"):
-        try:
-            return left == right
-        except (TypeError, ValueError):
+    if isinstance(left, Component) and isinstance(right, Component):
+        if type(left) is not type(right):
             return False
     if isinstance(left, BaseModel) and isinstance(right, BaseModel):
-        if set(left.model_fields) != set(right.model_fields):
-            return False
-        return all(
-            _compatible(getattr(left, field), getattr(right, field)) for field in left.model_fields
+        return type(left) is type(right) and all(
+            _compatible(getattr(left, field), getattr(right, field))
+            for field in type(left).model_fields if field != "uuid"
         )
     if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
-        return len(left) == len(right) and all(_compatible(a, b) for a, b in zip(left, right))
+        return len(left) == len(right) and all(
+            _compatible(first, second) for first, second in zip(left, right)
+        )
     return left == right
 
 
-def build_transmission_line(
-    request: TransmissionLine, *, tower_configuration: TowerConfiguration | None = None
-) -> TransmissionLine:
-    """Construct a line without mutating any system."""
-    if tower_configuration is None:
-        return request
-    return request.model_copy(update={"tower_configuration": tower_configuration})
+def _canonicalize(
+    system: TransmissionLineSystem,
+    component: Component,
+    candidates: dict[tuple[type[Component], str], Component],
+    additions: list[Component],
+) -> Component:
+    changes = {}
+    for field in type(component).model_fields:
+        value = getattr(component, field)
+        if isinstance(value, Component):
+            changes[field] = _canonicalize(system, value, candidates, additions)
+        elif isinstance(value, list) and value and all(isinstance(item, Component) for item in value):
+            changes[field] = [_canonicalize(system, item, candidates, additions) for item in value]
+    candidate = component.model_copy(update=changes) if changes else component
+    key = (type(candidate), candidate.name)
+    try:
+        uuid_owner = system.get_component_by_uuid(candidate.uuid)
+    except ISNotStored:
+        uuid_owner = None
+    if uuid_owner is not None and (type(uuid_owner), uuid_owner.name) != key:
+        raise ValueError(f"component-uuid conflict for {type(candidate).__name__} {candidate.name!r}")
+    if any(
+        proposed.uuid == candidate.uuid and (type(proposed), proposed.name) != key
+        for proposed in additions
+    ):
+        raise ValueError(f"component-uuid conflict for {type(candidate).__name__} {candidate.name!r}")
+    existing = candidates.get(key)
+    if existing is None:
+        try:
+            existing = system.get_component(type(candidate), candidate.name)
+        except ISNotStored:
+            existing = None
+    if existing is not None:
+        if not _compatible(existing, candidate):
+            raise ValueError(f"component-name conflict for {type(candidate).__name__} {candidate.name!r}")
+        return existing
+    candidates[key] = candidate
+    additions.append(candidate)
+    return candidate
+
+
+def build_transmission_line(line: AbstractTransmissionLine) -> AbstractTransmissionLine:
+    """Return a validated concrete input line without mutating a system.
+
+    Parameters
+    ----------
+    line : AbstractTransmissionLine
+        Cross-section or routed input line.
+
+    Returns
+    -------
+    AbstractTransmissionLine
+        The same input line.
+    """
+    return line
 
 
 def assemble_line_into_system(
-    system: TransmissionLineSystem,
-    line: TransmissionLine,
-    *,
-    from_bus: BusDefinition,
-    to_bus: BusDefinition,
-) -> TransmissionLine:
-    """Resolve/create terminals and reusable configuration, then register a line."""
-    if from_bus.name == to_bus.name:
-        raise ValueError("from_bus and to_bus must be distinct")
-    buses = []
-    new_buses = []
-    for definition in (from_bus, to_bus):
-        try:
-            existing = system.get_component(Bus, definition.name)
-        except Exception:
-            existing = None
-        if existing is None:
-            existing = Bus(name=definition.name, location=definition.location)
-            new_buses.append(existing)
-        elif not _compatible(existing.location, definition.location):
-            raise ValueError(f"bus-definition conflict for {definition.name!r}")
-        buses.append(existing)
-    config = line.tower_configuration
-    try:
-        existing_config = system.get_component(TowerConfiguration, config.name)
-    except Exception:
-        existing_config = None
-    new_config = existing_config is None
-    if existing_config is None:
-        resolved_config = config
-    elif not _compatible(existing_config, config):
-        raise ValueError(f"configuration-name conflict for {config.name!r}")
-    else:
-        resolved_config = existing_config
-    info = line.technical_info.model_copy(update={"from_bus": buses[0], "to_bus": buses[1]})
-    candidate = line.model_copy(
-        update={"technical_info": info, "tower_configuration": resolved_config}
-    )
-    resolved = TransmissionLine.model_validate(candidate)
-    if resolved.routing_info is not None:
-        for tower in resolved.routing_info.towers:
-            expected = tower_component_name(resolved.name, tower.sequence)
-            if tower.name != expected:
-                raise ValueError(f"tower name must be {expected!r}")
-        for span in resolved.routing_info.spans:
-            expected = span_component_name(resolved.name, span.sequence)
-            if span.name != expected:
-                raise ValueError(f"span name must be {expected!r}")
-    # Mutate the system only after all reuse, topology, and line validators pass.
-    if new_buses:
-        system.add_components(*new_buses)
-    if new_config:
-        system.add_component(resolved_config)
-    if resolved.routing_info is not None:
-        system.add_components(*resolved.routing_info.towers, *resolved.routing_info.spans)
-    system.add_component(resolved)
+    system: TransmissionLineSystem, line: AbstractTransmissionLine
+) -> AbstractTransmissionLine:
+    """Preflight and register the selected input graph using canonical references.
+
+    Parameters
+    ----------
+    system : TransmissionLineSystem
+        Destination system.
+    line : AbstractTransmissionLine
+        Concrete line with validated component references.
+
+    Returns
+    -------
+    AbstractTransmissionLine
+        Registered line with canonical shared references.
+
+    Raises
+    ------
+    ValueError
+        When an existing type/name has incompatible static inputs.
+    """
+    candidates: dict[tuple[type[Component], str], Component] = {}
+    additions: list[Component] = []
+    resolved = _canonicalize(system, line, candidates, additions)
+    if resolved is not additions[-1]:
+        raise ValueError(f"line {line.name!r} is already registered")
+    system.add_components(*additions)
     return resolved
 
 
-__all__ = ["BusDefinition", "assemble_line_into_system", "build_transmission_line"]
+__all__ = ["assemble_line_into_system", "build_transmission_line"]

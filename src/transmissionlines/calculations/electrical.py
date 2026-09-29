@@ -17,6 +17,7 @@ from transmissionlines.calculations.matrices import (
     shunt_admittance,
 )
 from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+from transmissionlines.electrical_constants import EPSILON_AIR, KILOFEET_PER_MILE, L_C, L_F, R_C
 from transmissionlines.exceptions import CalculationInputError
 from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
 from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
@@ -27,12 +28,6 @@ from transmissionlines.units import Frequency, VoltageKV
 
 if TYPE_CHECKING:
     from transmissionlines.models.assets import TransmissionLine
-
-R_C = 0.00158836
-L_C = 0.00202237
-L_F = 7.6786
-EPSILON_AIR = 1.4240e-2
-
 
 def _matrix_result(
     name: str,
@@ -104,7 +99,7 @@ def build_primitive_z(
         for j in range(i, n):
             if i == j:
                 distance = gmrs[i]
-                resistance = resistances[i] / bundle_counts[i] * 5.28
+                resistance = resistances[i] / bundle_counts[i] * KILOFEET_PER_MILE
             else:
                 distance = direct_distance(position, positions[j])
                 resistance = 0.0

@@ -155,7 +155,7 @@ def test_supplemental_attribute_and_time_series_sidecar_round_trip(tmp_path: Pat
     assert str(loaded_series.data.units) == "ampere"
 
 
-def test_schema_upgrade_hook_updates_legacy_metadata(tmp_path: Path) -> None:
+def test_legacy_system_format_is_rejected(tmp_path: Path) -> None:
     system = TransmissionLineSystem(name="schema-test")
     bus = ProbeBus(
         name="bus-a",
@@ -172,14 +172,13 @@ def test_schema_upgrade_hook_updates_legacy_metadata(tmp_path: Path) -> None:
     data["transmissionlines_schema_version"] = "2.0.0"
     path.write_bytes(orjson.dumps(data))
 
-    loaded = TransmissionLineSystem.from_json(path)
+    from infrasys.exceptions import ISOperationNotAllowed
 
-    assert loaded.data_format_version == SCHEMA_VERSION
-    assert loaded.schema_version == SCHEMA_VERSION
-    assert loaded.get_component(ProbeBus, "bus-a").name == "bus-a"
+    with pytest.raises(ISOperationNotAllowed, match="Unsupported transmission-line system data format"):
+        TransmissionLineSystem.from_json(path)
 
 
-def test_legacy_package_schema_upgrades_when_infrasys_format_is_current(
+def test_legacy_package_schema_is_rejected_when_infrasys_format_is_current(
     tmp_path: Path,
 ) -> None:
     system = TransmissionLineSystem(name="schema-test")
@@ -199,10 +198,10 @@ def test_legacy_package_schema_upgrades_when_infrasys_format_is_current(
     data["transmissionlines_schema_version"] = "2.0.0"
     path.write_bytes(orjson.dumps(data))
 
-    loaded = TransmissionLineSystem.from_json(path)
+    from infrasys.exceptions import ISOperationNotAllowed
 
-    assert loaded.data_format_version == SCHEMA_VERSION
-    assert loaded.schema_version == SCHEMA_VERSION
+    with pytest.raises(ISOperationNotAllowed, match="Unsupported transmission-line package schema"):
+        TransmissionLineSystem.from_json(path)
 
 
 def test_unknown_package_schema_is_rejected_when_infrasys_format_is_current(

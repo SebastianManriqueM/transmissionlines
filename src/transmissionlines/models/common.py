@@ -1,6 +1,7 @@
-"""Common immutable v3 value models."""
+"""Common geographic and catalog input models."""
 
 from infrasys import Component
+from pydantic import model_validator
 
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.units import Angle, Distance
@@ -13,6 +14,17 @@ class GeographicPoint(LineDataModel):
     latitude: Angle
     longitude: Angle
     elevation: Distance | None = None
+
+    @model_validator(mode="after")
+    def validate_wgs84_coordinates(self) -> "GeographicPoint":
+        """Reject latitude and longitude outside WGS84 degree bounds."""
+        latitude = self.latitude.to("degree").magnitude
+        longitude = self.longitude.to("degree").magnitude
+        if not -90 <= latitude <= 90:
+            raise ValueError("latitude must be between -90 and 90 degrees")
+        if not -180 <= longitude <= 180:
+            raise ValueError("longitude must be between -180 and 180 degrees")
+        return self
 
 
 class CatalogReference(LineDataModel):
@@ -29,7 +41,6 @@ class IdentificationInfo(LineDataModel):
 
     geometry_id: str | None = None
     structure_code: str | None = None
-    structure_type: str | None = None
 
 
 class Bus(Component):

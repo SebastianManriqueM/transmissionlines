@@ -1,8 +1,11 @@
-"""Immutable cable and tower geometry models."""
+"""Selected cable components and per-circuit installation inputs."""
 
-from pydantic import computed_field, model_validator
+from abc import ABC, abstractmethod
+from typing import Literal
 
-from transmissionlines.bundle import derived_bundle_values
+from infrasys import Component
+from pydantic import model_validator
+
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.units import (
@@ -10,7 +13,6 @@ from transmissionlines.units import (
     CableDiameter,
     CableGMR,
     Current,
-    EquivalentRadius,
     ResistancePerKft,
 )
 
@@ -27,26 +29,14 @@ class BareConductorEquipment(LineDataModel):
     dc_resistance: ResistancePerKft | None = None
 
 
-class CableSpec(LineDataModel):
-    """Selected cable and its provenance."""
+class BundleSpec(LineDataModel):
+    """Describe the number and separation of installed subconductors."""
 
-    conductor: BareConductorEquipment
-    catalog_reference: CatalogReference | None = None
-
-
-class GroundWireSpec(CableSpec):
-    """One shared, unbundled ground wire."""
-
-
-class PhaseConductorSpec(CableSpec):
-    """Conductor selection for all three phases of a circuit."""
-
-    circuit_id: str
-    subconductor_count: int = 1
+    subconductor_count: int
     subconductor_spacing: BundleSpacing | None = None
 
     @model_validator(mode="after")
-    def validate_bundle(self) -> "PhaseConductorSpec":
+    def validate_spacing(self) -> "BundleSpec":
         if self.subconductor_count < 1:
             raise ValueError("subconductor_count must be positive")
         if self.subconductor_count > 1 and (
@@ -57,28 +47,52 @@ class PhaseConductorSpec(CableSpec):
             raise ValueError("single conductors cannot specify subconductor_spacing")
         return self
 
-    @computed_field
-    @property
-    def bundle_gmr(self) -> CableGMR | None:
-        """Return the bundle GMR when source GMR and spacing are available."""
-        bundle, _ = derived_bundle_values(
-            self.conductor, self.subconductor_count, self.subconductor_spacing
-        )
-        return bundle
 
-    @computed_field
-    @property
-    def equivalent_radius(self) -> EquivalentRadius | None:
-        """Return the derived physical or parity capacitance radius."""
-        _, radius = derived_bundle_values(
-            self.conductor, self.subconductor_count, self.subconductor_spacing
-        )
-        return radius
+class InsulatorStringSpec(LineDataModel):
+    """Specify one circuit's insulator string."""
+
+    insulator_type: Literal["glass", "porcelain", "polymeric"]
+    number_of_insulators: int
+    insulator_code: str
+    insulator_coupling: Literal["ball_and_socket", "y_clevis"]
+
+    @model_validator(mode="after")
+    def validate_count(self) -> "InsulatorStringSpec":
+        if self.number_of_insulators < 1:
+            raise ValueError("number_of_insulators must be positive")
+        return self
+
+
+class Cable(Component, ABC):
+    """Hold a reusable manufacturer's selected static cable measurements."""
+
+    catalog_reference: CatalogReference | None = None
+    equipment: BareConductorEquipment
+
+    @abstractmethod
+    def _cable_kind(self) -> str:
+        """Identify the concrete cable role."""
+
+
+class ConductorSpec(Cable):
+    """Select a reusable phase conductor independently of installation."""
+
+    def _cable_kind(self) -> str:
+        return "phase"
+
+
+class GroundWireSpec(Cable):
+    """Select a reusable unbundled ground wire."""
+
+    def _cable_kind(self) -> str:
+        return "ground"
 
 
 __all__ = [
     "BareConductorEquipment",
-    "CableSpec",
+    "BundleSpec",
+    "Cable",
+    "ConductorSpec",
     "GroundWireSpec",
-    "PhaseConductorSpec",
+    "InsulatorStringSpec",
 ]

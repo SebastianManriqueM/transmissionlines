@@ -3,9 +3,18 @@
 from infrasys import Component
 from pydantic import model_validator
 
-from transmissionlines.models.cables import GroundWireSpec, PhaseConductorSpec
+from transmissionlines.models.cables import BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.common import IdentificationInfo
+
+
+class CircuitConfiguration(Component):
+    """Select a reusable conductor and circuit-specific installation inputs."""
+
+    circuit_id: str
+    conductor_spec: ConductorSpec
+    bundle_spec: BundleSpec
+    insulator_string: InsulatorStringSpec
 
 
 class TowerConfiguration(Component):
@@ -14,17 +23,17 @@ class TowerConfiguration(Component):
     identification_info: IdentificationInfo
     geometry: TowerGeometry
     ground_wire_spec: GroundWireSpec
-    phase_conductor_specs: list[PhaseConductorSpec]
+    circuits: list[CircuitConfiguration]
 
     @model_validator(mode="after")
     def validate_specs(self) -> "TowerConfiguration":
         circuits = {p.circuit_id for p in self.geometry.phase_positions}
-        selected = [p.circuit_id for p in self.phase_conductor_specs]
+        selected = [circuit.circuit_id for circuit in self.circuits]
         if set(selected) != circuits or len(selected) != len(set(selected)):
             raise ValueError(
-                "exactly one phase conductor specification is required per geometry circuit"
+                "exactly one circuit configuration is required per geometry circuit"
             )
         return self
 
 
-__all__ = ["TowerConfiguration"]
+__all__ = ["CircuitConfiguration", "TowerConfiguration"]

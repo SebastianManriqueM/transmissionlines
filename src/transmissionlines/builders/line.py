@@ -3,12 +3,13 @@
 from typing import Any
 
 from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
-from transmissionlines.models.cables import BareConductorEquipment, CableSpec, GroundWireSpec, PhaseConductorSpec
+from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import CatalogReference
+from transmissionlines.models.configurations import CircuitConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.parameters import LineParameters
 from transmissionlines.models.electrical import ElectricalParameters
-from transmissionlines.calculations.cable import gmr_from_xl, req_from_xc, select_phase_resistance
+from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc, select_phase_resistance
 from transmissionlines.units import CableDiameter, CableGMR, Current, ResistancePerKft, TowerCoordinate
 
 
@@ -16,7 +17,7 @@ def _reference(record: Any, table: str, catalog_version: str) -> CatalogReferenc
     return CatalogReference(catalog_version=catalog_version, table_name=table, record_id=record.record_id, source_id=record.source_id)
 
 
-def conductor_from_record(record: ConductorRecord, *, catalog_version: str) -> CableSpec:
+def conductor_from_record(record: ConductorRecord, *, catalog_version: str) -> ConductorSpec:
     """Convert one normalized phase-conductor record without retaining its row."""
     resistance = select_phase_resistance(
         None if record.ac_resistance_75_ohm_kft is None else ResistancePerKft(record.ac_resistance_75_ohm_kft, "ohm / kilofoot"),
@@ -31,13 +32,39 @@ def conductor_from_record(record: ConductorRecord, *, catalog_version: str) -> C
         ac_resistance=resistance if resistance is not None else (None if record.ac_resistance_ohm_kft is None else ResistancePerKft(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
         dc_resistance=None if record.dc_resistance_ohm_kft is None else ResistancePerKft(record.dc_resistance_ohm_kft, "ohm / kilofoot"),
     )
-    return CableSpec(conductor=values, catalog_reference=_reference(record, "conductors", catalog_version))
+    return ConductorSpec(name=f"{catalog_version}:conductor:{record.record_id}", equipment=values, catalog_reference=_reference(record, "conductors", catalog_version))
 
 
-def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> PhaseConductorSpec:
-    """Build a circuit-specific phase specification from a catalog record."""
-    base = conductor_from_record(record, catalog_version=catalog_version)
-    return PhaseConductorSpec(conductor=base.conductor, catalog_reference=base.catalog_reference, circuit_id=circuit_id, subconductor_count=subconductor_count, subconductor_spacing=subconductor_spacing)
+def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
+    """Build a registered circuit selection from one conductor record.
+
+    Parameters
+    ----------
+    record : ConductorRecord
+        Selected catalog conductor.
+    circuit_id : str
+        Circuit's geometry join key.
+    insulator_string : InsulatorStringSpec or dict
+        Required circuit installation input.
+    subconductor_count : int
+        Number of phase subconductors.
+    subconductor_spacing : BundleSpacing, optional
+        Spacing required for bundled phases.
+    catalog_version : str
+        Version of the selected catalog record.
+
+    Returns
+    -------
+    CircuitConfiguration
+        Independently registered circuit referencing a reusable conductor.
+    """
+    conductor = conductor_from_record(record, catalog_version=catalog_version)
+    return CircuitConfiguration(
+        name=f"{conductor.name}:{circuit_id}", circuit_id=circuit_id,
+        conductor_spec=conductor,
+        bundle_spec=BundleSpec(subconductor_count=subconductor_count, subconductor_spacing=subconductor_spacing),
+        insulator_string=InsulatorStringSpec.model_validate(insulator_string),
+    )
 
 
 def ground_wire_from_record(record: GroundWireRecord, *, catalog_version: str) -> GroundWireSpec:
@@ -46,7 +73,7 @@ def ground_wire_from_record(record: GroundWireRecord, *, catalog_version: str) -
         conductor_diameter=None if record.diameter_inch is None else CableDiameter(record.diameter_inch, "inch"),
         dc_resistance=None if record.dc_resistance_ohm_kft is None else ResistancePerKft(record.dc_resistance_ohm_kft, "ohm / kilofoot"),
     )
-    return GroundWireSpec(conductor=conductor, catalog_reference=_reference(record, "ground_wires", catalog_version))
+    return GroundWireSpec(name=f"{catalog_version}:ground_wire:{record.record_id}", equipment=conductor, catalog_reference=_reference(record, "ground_wires", catalog_version))
 
 
 def geometry_from_records(

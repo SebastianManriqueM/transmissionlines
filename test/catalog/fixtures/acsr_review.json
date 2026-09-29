@@ -1,0 +1,20 @@
+{
+  "source_sha256": "8bb6b7e2f0d1448c70f8337dd6ae65796b7cbfa36d145a454bdfba09afd1bf4f",
+  "rows": [
+    {
+      "row_key": "ACSR:6:turkey:standard:6/1",
+      "page": 2,
+      "raw": {"size": "6", "strand_diameter_al_in": ".0661", "weight_total_lb_kft": "36", "rated_strength_lb": "1190", "dc_resistance_20c_ohm_kft": ".641", "ac_resistance_75c_ohm_kft": ".806", "ampacity_75c_a": "105"}
+    },
+    {
+      "row_key": "ACSR:605:wood-duck:standard:30/7",
+      "page": 2,
+      "raw": {"codeword": "Wood Duck", "size": "605.0", "weight_total_lb_kft": "946", "rated_strength_lb": "28900", "ac_resistance_75c_ohm_kft": ".0342"}
+    },
+    {
+      "row_key": "ACSR:636:scoter:standard:30/7",
+      "page": 3,
+      "raw": {"size": "636.0", "weight_total_lb_kft": "995", "rated_strength_lb": "30400", "ac_resistance_75c_ohm_kft": ".0325"}
+    }
+  ]
+}

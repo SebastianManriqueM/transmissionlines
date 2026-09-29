@@ -1,0 +1,25 @@
+{
+  "source_sha256": "9babdd90889e32e01ecde6fb7ca628c9456576282001f20d9a559df5e5e3c669",
+  "rows": [
+    {
+      "row_key": "ACSS:266.8:partridge:26/7",
+      "page": 2,
+      "raw": {"codeword": "Partridge/ACSS", "size": "266.8", "stranding": "26/7", "strand_diameter_al_in": "0.1013", "strand_diameter_steel_in": "0.0788", "weight_total_lb_kft": "366.8", "strength_standard_lb": "8880", "strength_high_lb": "9730", "strength_hs285_lb": "11400", "dc_resistance_20c_ohm_kft": ".0619", "ac_resistance_75c_ohm_kft": ".0761", "ampacity_200c_a": "812"}
+    },
+    {
+      "row_key": "ACSS:900:canary:54/7",
+      "page": 2,
+      "raw": {"codeword": "Canary/ACSS", "size": "900", "stranding": "54/7", "weight_total_lb_kft": "1157.8", "strength_standard_lb": "24600", "strength_high_lb": "26400", "strength_hs285_lb": "30500", "ampacity_200c_a": "1756"}
+    },
+    {
+      "row_key": "ACSS:954:canvasback:30/19",
+      "page": 3,
+      "raw": {"codeword": "Canvasback/ACSS", "size": "954", "stranding": "30/19", "strand_diameter_steel_in": "0.1070", "weight_total_lb_kft": "1480.1", "strength_standard_lb": "41100", "strength_high_lb": "45400", "strength_hs285_lb": "53100", "ampacity_200c_a": "1897"}
+    },
+    {
+      "row_key": "ACSS:2156:bluebird:84/19",
+      "page": 3,
+      "raw": {"codeword": "Bluebird/ACSS", "size": "2156", "stranding": "84/19", "strand_diameter_al_in": "0.1602", "strand_diameter_steel_in": "0.0961", "weight_total_lb_kft": "2508.2", "strength_standard_lb": "42100", "strength_high_lb": "45500", "strength_hs285_lb": "51700", "ampacity_200c_a": "3106"}
+    }
+  ]
+}

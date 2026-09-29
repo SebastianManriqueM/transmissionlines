@@ -10,39 +10,16 @@ Start with :doc:`installation` and the :doc:`quickstart`. The rest of the site
 covers the data model, calculation assumptions, user workflows, and generated
 API reference.
 
-.. warning::
-
-   Electrical calculations implement the assumptions documented here and in
-   the source. They are not a substitute for an independent engineering review
-   or validation against applicable standards before production use.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting started
+   :caption: Contents
 
    installation
    quickstart
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Concepts
-
    concepts/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User guide
-
    user-guide/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API reference
-
+   catalog/index
+   how-to/index
    reference/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Developers
-
    developer-guide/index

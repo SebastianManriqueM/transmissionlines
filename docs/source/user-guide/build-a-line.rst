@@ -17,7 +17,9 @@ Construction order
 6. Call
    :func:`transmissionlines.api.calculate_line_electrical_parameters`.
 
-The :doc:`../quickstart` is a complete executable version of this workflow.
+The :doc:`../quickstart` is a complete in-memory version of this workflow.
+For a catalog-backed, end-to-end script, see
+:doc:`../how-to/build-cross-section-line`.
 The functions :func:`transmissionlines.api.build_transmission_line` and
 :func:`transmissionlines.api.assemble_line_into_system` are helpers for
 resolving and registering buses, configuration,

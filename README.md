@@ -9,16 +9,13 @@ electrical parameter calculations, and positive-sequence St. Clair loadability
 curves. It requires Python 3.12 or newer and is currently installed
 from a repository checkout rather than PyPI.
 
-The current input-model milestone introduces:
-- Cross-section Line and 
-- Routed line
-
-
 ## Documentation
 
 Read the [documentation overview](https://sebastianmanriquem.github.io/transmissionlines/),
 start with the [quick start](https://sebastianmanriquem.github.io/transmissionlines/quickstart.html),
 or see the [repository layout and responsibilities](https://sebastianmanriquem.github.io/transmissionlines/developer-guide/repository-layout.html).
+Browse the [catalog inventory](https://sebastianmanriquem.github.io/transmissionlines/catalog/index.html)
+or follow the [catalog-backed line and calculation recipes](https://sebastianmanriquem.github.io/transmissionlines/how-to/index.html).
 The docs workflow builds the Sphinx site and deploys it to
 [GitHub Pages](https://sebastianmanriquem.github.io/transmissionlines/). Click the
 Docs build badge above to see workflow runs.
@@ -27,6 +24,7 @@ Docs build badge above to see workflow runs.
 
 - Typed line, tower, conductor, geometry, routing, and calculation-result models.
 - Versioned reference catalogs with validation, exact selection, and provenance.
+- Bundled v1 tower, conductor, and ground-wire catalog with documented selection recipes.
 - Electrical matrices and sequence parameters.
 - Balanced positive-sequence St. Clair loadability curves with voltage, ampacity, and stability limits.
 

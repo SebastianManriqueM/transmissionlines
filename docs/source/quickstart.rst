@@ -132,9 +132,11 @@ result is calculated once and then plotted from its stored arrays.
 Catalog-backed construction
 ---------------------------
 
-Catalog generation needs caller-supplied raw files and explicit source-header
-mappings. Open an already generated catalog with :func:`transmissionlines.api.open_catalog`,
-select exact normalized records, and pass those records through the builder
-workflow. This checkout does not include the original workbook or manufacturer
-source files; the in-memory examples above are runnable without them. See
-:doc:`concepts/catalog` for catalog versioning and provenance.
+The checkout includes the ``data/catalog/v1`` Parquet snapshot and its original
+source workbook. Open the snapshot with :func:`transmissionlines.api.open_catalog`,
+select exact normalized records, validate them with the corresponding catalog
+schema models, and pass them to the record-based builders. See the complete
+:doc:`how-to/build-cross-section-line` script. Regenerating the catalog from
+other raw files requires explicit source-header mappings; the in-memory
+examples above do not require catalog files. See :doc:`concepts/catalog` for
+versioning and provenance.

@@ -2,8 +2,9 @@ Transmission-line input model
 =============================
 
 The input schema uses Infrasys for registered, static components only. Version
-4 does not load older system files. Calculation-result integration and the
-existing numerical parity guides have not yet been converted to this graph.
+4 does not load older system files. Electrical and St. Clair calculations use
+these inputs but return standalone typed results outside the Infrasys system;
+the input graph and serialized system contain no calculated matrices or curves.
 
 .. mermaid::
    :name: transmission-line-input-model

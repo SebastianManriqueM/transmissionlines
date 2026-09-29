@@ -8,16 +8,23 @@ The St. Clair implementation is a balanced, positive-sequence, steady-state
 three-mesh calculation. It is not a transient-stability, fault, or mutual
 multi-circuit coupling model. A line-level call uses each circuit's
 ``r1``, ``x1``, and ``b1`` values, conductor ampacity, bundle count, and
-nominal line-to-line voltage. It returns one compact curve per circuit and
-attaches the result to a copied line's ``ElectricalParameters``.
+nominal line-to-line voltage. ``calculate_line_electrical_parameters`` returns
+a standalone ``LineCalculationResult`` with sibling electrical and St. Clair
+results. To recalculate curves from its electrical result, call
+``calculate_st_clair_curve(line, previous=calculated)``; it returns a standalone
+``StClairResult`` without modifying the input line or the prior result.
 
 Direct input uses ``nominal_voltage_kv``, ``r_ohm_per_mile``,
 ``x_ohm_per_mile``, either ``b_siemens_per_mile`` or
 ``b_microsiemens_per_mile``, and ``conductor_ampacity_a`` (or ``ampacity_a``).
-The facade ``calculate_st_clair_curve`` accepts a ``TransmissionLine`` or one
-mapping; the lower-level ``calculations.st_clair.calculate_st_clair`` also
-accepts a sequence of circuit mappings. Electrical results persist ``b1`` in
-microsiemens/mile, converted to siemens/mile at the St. Clair boundary.
+The facade ``calculate_st_clair_curve`` accepts a concrete
+``CrossSectionTransmissionLine`` or ``RoutedTransmissionLine`` with a matching
+external ``previous`` result, or one mapping. A routed line with differing
+tower configurations also requires a line-owned ``tower`` selection; its curve
+describes that cross-section, not the whole route. The lower-level
+``calculations.st_clair.calculate_st_clair`` also accepts a sequence of circuit
+mappings. Electrical results express ``b1`` in microsiemens/mile, converted to
+siemens/mile at the St. Clair boundary.
 
 .. mermaid::
    :name: st-clair-loadability-search

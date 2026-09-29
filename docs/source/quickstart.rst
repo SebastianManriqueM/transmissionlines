@@ -4,8 +4,8 @@ Quick start
 Build a line in memory
 ----------------------
 
-This example constructs one three-phase circuit, one ground wire, its terminal
-buses, and technical data without reading a catalog or manufacturer workbook.
+This example constructs one three-phase cross-section and one ground wire
+without reading a catalog or manufacturer workbook.
 The values are illustrative. ``TowerCoordinate`` is in feet, cable properties
 carry explicit units, and the example uses a single subconductor per phase.
 
@@ -14,14 +14,14 @@ The example executes as part of the Sphinx doctest build.
 .. doctest::
 
    >>> from transmissionlines.api import calculate_line_electrical_parameters
-   >>> from transmissionlines.models.assets import LineTechnicalInfo, TransmissionLine
-   >>> from transmissionlines.models.cables import BareConductorEquipment, GroundWireSpec, PhaseConductorSpec
-   >>> from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
-   >>> from transmissionlines.models.configurations import TowerConfiguration
+   >>> from transmissionlines.models.assets import CrossSectionTransmissionLine
+   >>> from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
+   >>> from transmissionlines.models.common import IdentificationInfo
+   >>> from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
    >>> from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
    >>> from transmissionlines.models.st_clair import StClairOptions
    >>> from transmissionlines.units import (
-   ...     Angle, CableDiameter, CableGMR, Current, EarthResistivity, Frequency,
+   ...     CableDiameter, CableGMR, Current, EarthResistivity, Frequency,
    ...     ResistancePerKft, TowerCoordinate, VoltageKV,
    ... )
    >>> conductor = BareConductorEquipment(
@@ -47,25 +47,24 @@ The example executes as part of the Sphinx doctest build.
    ...     name="example-configuration",
    ...     identification_info=IdentificationInfo(),
    ...     geometry=geometry,
-   ...     ground_wire_spec=GroundWireSpec(conductor=conductor),
-   ...     phase_conductor_specs=[
-   ...         PhaseConductorSpec(conductor=conductor, circuit_id="c1")
+   ...     ground_wire_spec=GroundWireSpec(name="ground", equipment=conductor),
+   ...     circuits=[
+   ...         CircuitConfiguration(
+   ...             name="c1", circuit_id="c1",
+   ...             conductor_spec=ConductorSpec(name="phase", equipment=conductor),
+   ...             bundle_spec=BundleSpec(subconductor_count=1),
+   ...             insulator_string=InsulatorStringSpec(
+   ...                 insulator_type="glass", number_of_insulators=12,
+   ...                 insulator_code="U120B", insulator_coupling="ball_and_socket",
+   ...             ),
+   ...         )
    ...     ],
    ... )
-   >>> origin = GeographicPoint(latitude=Angle(0, "degree"), longitude=Angle(0, "degree"))
-   >>> destination = GeographicPoint(latitude=Angle(1, "degree"), longitude=Angle(1, "degree"))
-   >>> technical_info = LineTechnicalInfo(
-   ...     line_name="example-line",
+   >>> line = CrossSectionTransmissionLine(
+   ...     name="example-line", configuration=configuration,
    ...     nominal_voltage=VoltageKV(230, "kilovolt"),
    ...     nominal_frequency=Frequency(60, "hertz"),
    ...     earth_resistivity=EarthResistivity(100, "ohm * meter"),
-   ...     from_bus=Bus(name="from", location=origin),
-   ...     to_bus=Bus(name="to", location=destination),
-   ... )
-   >>> line = TransmissionLine(
-   ...     name="example-line",
-   ...     technical_info=technical_info,
-   ...     tower_configuration=configuration,
    ... )
    >>> calculated = calculate_line_electrical_parameters(
    ...     line,
@@ -74,22 +73,22 @@ The example executes as part of the Sphinx doctest build.
    ...         line_length_stop_mi=20.0,
    ...     ),
    ... )
-   >>> electrical = calculated.line_parameters.electrical_parameters
+   >>> electrical = calculated.electrical
    >>> electrical.status
    'complete'
    >>> electrical.matrices["Zabcg"].row_count
    4
    >>> electrical.matrices["Z012_ft"].row_labels
    ['1:zero', '1:positive', '1:negative']
-   >>> electrical.st_clair_curve.curves[0].lengths_mi
+   >>> calculated.st_clair.curves[0].lengths_mi
    [20.0]
-   >>> line.line_parameters is None
+   >>> "line_parameters" not in type(line).model_fields
    True
 
 The primitive ``Zabcg`` matrix contains three phase conductors plus the ground
 wire. ``Z012_ft`` contains the fully transposed symmetrical-component result.
-The default St. Clair calculation is attached to the returned copy; the input
-line remains unchanged. The short 20-mile sweep above keeps the example quick;
+The default St. Clair curve is a sibling of the electrical result in a standalone
+envelope; the input line remains unchanged. The short 20-mile sweep keeps the example quick;
 the default production grid spans 20 through 600 miles.
 
 Calculate and plot a standalone curve

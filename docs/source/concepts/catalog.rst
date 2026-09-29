@@ -17,9 +17,10 @@ name; exact record selection raises on no match or ambiguous matches.
 Runtime builders may attach a ``CatalogReference`` containing catalog version,
 table name, record ID, and optional source ID. They do not embed the selected
 raw row. This keeps calculated line models compact and independent of source
-workbooks. The repository currently does not include the source workbook or
-manufacturer files, so generation examples must provide their own files and
-mapping.
+workbooks. This checkout includes ``data/raw/Tower_geometries_DB.xlsx`` and a
+generated ``data/catalog/v1`` snapshot; it does not contain separate
+manufacturer source files. Custom imports must provide their own source data
+and explicit header mappings.
 
 The data path separates one-time catalog generation from runtime reads:
 
@@ -44,4 +45,6 @@ The data path separates one-time catalog generation from runtime reads:
 The existing repository notes remain in ``docs/catalog_v3.md`` and
 ``docs/electrical_parity_and_catalog.md``. Their catalog schema, provenance,
 and selection behavior is reflected here and in the electrical user guide.
-See :doc:`../reference/catalog` for import, validation, and repository APIs.
+See :doc:`../catalog/index` for the bundled inventory,
+:doc:`../how-to/index` for practical selection, and
+:doc:`../reference/catalog` for import, validation, and repository APIs.

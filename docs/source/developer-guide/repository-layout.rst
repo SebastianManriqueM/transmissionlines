@@ -15,7 +15,7 @@ maintained inputs; build products and local environments are not source files.
      catalog/v1/             Normalized, versioned Parquet catalog and manifest
      raw/                    Preserved source workbook
    docs/
-     source/                 Sphinx documentation source
+    source/                 Sphinx documentation source (catalog and how-to included)
    plans/                    Local planning notes; excluded from version control
    references/               Reserved for external/source reference material
    scripts/
@@ -82,7 +82,7 @@ Tests and documentation
   examples. The test suite is configured in ``pyproject.toml`` and runs with
   ``uv run pytest``.
 * ``docs/source/`` is the Sphinx source tree. It is divided into concepts,
-  user and developer guides, and generated API-reference pages. The Sphinx
+  user and developer guides, catalog and how-to pages, and generated API-reference pages. The Sphinx
   configuration is in ``docs/source/conf.py``.
 * ``.github/workflows/tests.yml`` runs pytest across supported CI operating
   systems. ``.github/workflows/docs.yml`` installs the locked docs group,

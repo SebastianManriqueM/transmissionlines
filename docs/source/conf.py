@@ -45,7 +45,7 @@ intersphinx_mapping = _intersphinx_mapping if os.environ.get("CI") else {}
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "build", "_autosummary"]
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"
 html_static_path = []
 html_title = f"{project} {release} documentation"
 mermaid_version = "11.12.1"

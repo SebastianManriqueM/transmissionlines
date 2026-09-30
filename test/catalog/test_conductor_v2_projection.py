@@ -1,9 +1,11 @@
 """Check unpublished v2 record and field-level source projection."""
 
+from decimal import Decimal
 from pathlib import Path
 
 from transmissionlines.catalog.accc_pdf import extract_accc
 from transmissionlines.catalog.acss_pdf import extract_acss
+from transmissionlines.catalog.acss_hs285_tw_pdf import extract_acss_hs285_tw
 from transmissionlines.catalog.acss_tw_pdf import extract_acss_tw_areas
 from transmissionlines.catalog.conductor_staging import stage_sources
 from transmissionlines.catalog.conductor_v2 import project_conductor
@@ -44,6 +46,11 @@ def test_projection_retains_transferred_area_and_published_strength_sources() ->
     ):
         assert any(item.field == field and item.source_field == source_field
                    and item.row_key == partridge.row_key for item in provenance)
+    assert record.ac_resistance_75c_ohm_kft == partridge.numeric("ac_resistance_75c_ohm_kft")
+    assert record.ampacity_200c_a == partridge.numeric("ampacity_200c_a")
+    assert record.ampacity_temperature_c == 200
+    assert any(item.field == "ampacity_200c_a" and item.source_field == "ampacity_200c_a"
+               and item.raw_value == partridge.cells["ampacity_200c_a"].raw for item in provenance)
 
 
 def test_projection_retains_uls_assumptions_and_absent_values() -> None:
@@ -62,6 +69,12 @@ def test_projection_retains_uls_assumptions_and_absent_values() -> None:
     assert weight.method == "assumed"
     assert weight.raw_value == irving.cells["weight_total_lb_kft"].raw
     assert {item.method for item in provenance if item.field == "total_area_in2"} == {"assumed"}
+    assert record.ac_resistance_25c_ohm_kft == irving.numeric("ac_resistance_25c_ohm_mile") / Decimal("5.28")
+    assert record.ac_resistance_200c_ohm_kft == irving.numeric("ac_resistance_200c_ohm_mile") / Decimal("5.28")
+    assert record.ampacity_180c_a == irving.numeric("ampacity_180c_a")
+    assert any(item.field == "ac_resistance_25c_ohm_kft"
+               and item.source_field == "ac_resistance_25c_ohm_mile"
+               and item.method == "derived" and item.unit == "ohm/mile" for item in provenance)
 
 
 def test_projection_of_missing_area_keeps_null_and_no_area_provenance() -> None:
@@ -74,3 +87,17 @@ def test_projection_of_missing_area_keeps_null_and_no_area_provenance() -> None:
 
     assert record.total_area_in2 is None
     assert not any(item.field.endswith("_area_in2") for item in provenance)
+
+
+def test_hs285_tw_electrical_join_keeps_its_own_pdf_page() -> None:
+    rows = extract_acss_hs285_tw(BASE / "southwire/ACSS Hs285.pdf")
+    geometry = next(row for row in rows if row.page == 3 and row.codeword == "Linnet")
+    electrical = next(row for row in rows if row.page == 4 and row.codeword == "Linnet")
+    candidate = resolve_areas(stage_sources(hs285_tw=[geometry])).records[0]
+
+    record, provenance = project_conductor(candidate, electrical_row=electrical)
+
+    assert record.dc_resistance_20c_ohm_kft == electrical.numeric("dc_resistance_20c_ohm_mile") / Decimal("5.28")
+    assert record.ampacity_200c_a == electrical.numeric("ampacity_200c_a")
+    assert any(item.field == "ampacity_200c_a" and item.page == 4
+               and item.row_key == electrical.row_key for item in provenance)

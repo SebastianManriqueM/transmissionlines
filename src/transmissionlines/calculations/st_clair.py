@@ -9,6 +9,13 @@ from typing import Any
 
 import numpy as np
 
+from transmissionlines.calculations.constants import (
+    ST_CLAIR_BOUNDARY_REFINEMENT_STEPS,
+    ST_CLAIR_LENGTH_GRID_STOP_PADDING_STEPS,
+    ST_CLAIR_MAX_MESH_CONDITION_NUMBER,
+    ST_CLAIR_MIN_SERIES_IMPEDANCE_OHM,
+    ST_CLAIR_MIN_SERIES_REACTANCE_OHM,
+)
 from transmissionlines.models.st_clair import (
     StClairCurve,
     StClairLineConstants,
@@ -66,7 +73,7 @@ def nominal_pi_to_equivalent_pi(
     a = 1 + z_ohm * y_r_siemens
     b = z_ohm
     d = 1 + z_ohm * y_s_siemens
-    if abs(b) < 1e-15:
+    if abs(b) < ST_CLAIR_MIN_SERIES_IMPEDANCE_OHM:
         raise ValueError("nominal-pi series impedance is too small for equivalent-pi conversion")
     z_equivalent = b
     y_s_equivalent = (d - 1) / b
@@ -80,7 +87,7 @@ def _solve_mesh(
     """Solve one balanced phase-domain mesh point; angles enter in degrees."""
     r = constants.r_ohm_per_mile * length_mi
     x = constants.x_ohm_per_mile * length_mi * (1 - options.n_series_percent / 100)
-    if abs(x) < 1e-12 and not options.allow_near_zero_series_reactance:
+    if abs(x) < ST_CLAIR_MIN_SERIES_REACTANCE_OHM and not options.allow_near_zero_series_reactance:
         raise ValueError("series compensation produces near-zero series reactance")
     z_line = complex(r, x)
     b_total = constants.b_siemens_per_mile * length_mi
@@ -96,7 +103,7 @@ def _solve_mesh(
         [[z_1 + z_s, -z_s, 0], [-z_s, z_s + z_line + z_r, -z_r], [0, -z_r, z_2 + z_r]],
         dtype=complex,
     )
-    if np.linalg.cond(matrix) > 1e14:
+    if np.linalg.cond(matrix) > ST_CLAIR_MAX_MESH_CONDITION_NUMBER:
         raise ValueError("three-mesh system is ill-conditioned")
     try:
         i1, i2, i3 = np.linalg.solve(matrix, np.array([e1, 0, -e2], dtype=complex))
@@ -137,7 +144,7 @@ def _make_curve(
     """
     lengths = np.arange(
         options.line_length_start_mi,
-        options.line_length_stop_mi + options.line_length_step_mi * 0.5,
+        options.line_length_stop_mi + options.line_length_step_mi * ST_CLAIR_LENGTH_GRID_STOP_PADDING_STEPS,
         options.line_length_step_mi,
     )
     angles = np.arange(0.0, options.stability_angle_limit_deg, options.angle_step_deg)
@@ -174,7 +181,7 @@ def _make_curve(
                 continue
             if boundary is not None:
                 lower, upper = previous_angle, float(angle)
-                for _ in range(18):
+                for _ in range(ST_CLAIR_BOUNDARY_REFINEMENT_STEPS):
                     midpoint = (lower + upper) / 2
                     candidate = _solve_mesh(constants, options, float(length), midpoint)
                     hit_limit = (

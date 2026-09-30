@@ -174,10 +174,22 @@ def test_incompatible_preferred_tw_reports_values_before_using_fallback() -> Non
 
     area = result.records[0].area
     assert area is not None
+    assert bluebird.page == 3
+    assert bluebird.cells["stranding"].raw == "84/19"
+    assert bluebird.cells["strand_diameter_al_in"].raw == ".1602"
+    assert area.total.method == "cross_pdf"
     assert area.total.source_rows[0].table == "ACSS/TW"
+    assert area.total.source_rows[0].page == 3
+    assert area.aluminum.value == Decimal("1.6933")
+    assert area.total.value == Decimal("1.8309")
     rejected = next(issue for issue in result.issues if issue.reason == "incompatible_tw_area")
-    assert rejected.source_values
-    assert any(row.table == "ACSR/TW" for row, _ in rejected.source_values)
+    assert rejected.field == "aluminum_area_in2"
+    assert rejected.source_values[0][0] is bluebird
+    assert abs(rejected.source_values[0][1] - Decimal("1.693145150034126542536331184")) < Decimal("0.000000000001")
+    assert rejected.source_values[1][0].table == "ACSR/TW"
+    assert rejected.source_values[1][0].page == 3
+    assert rejected.source_values[1][1] == Decimal("1.0934")
+    assert rejected.source_values[1][0].numeric("total_area_in2") == Decimal("1.8312")
 
 
 def test_accc_uls_area_reuses_assumed_core_and_aac_published_area() -> None:

@@ -1,5 +1,9 @@
 # Versioned catalogs
 
+`v2` is the default catalog for `open_catalog()` and the catalog-backed
+examples. It contains 641 PDF-backed conductors alongside the non-conductor
+tables from v1. An explicit path is required to open a different version.
+
 `v1` is generated from `data/raw/Tower_geometries_DB.xlsx` using the catalog
 adapter in `transmissionlines.catalog.importer`. It contains normalized
 Parquet tables for the geometry, phase positions, ground-wire positions,
@@ -30,6 +34,15 @@ converted from ohm/mile to ohm/kft, with original values in provenance. The
 HS285 TW electrical pages are joined to geometry pages by section, codeword,
 size, and type; their source pages remain distinct in the provenance sidecar.
 Missing measurements remain null rather than inferred.
+
+For runtime use, select a v2 row with `CatalogRepository.select_exact`, then
+validate it with `ConductorV2Record` and pass it to `conductor_from_record`.
+The builder converts `weight_lb_kft` to lbf/kft, `rated_strength_lb` to lbf,
+and `total_area_in2` to in2 quantities. It maps AC resistance at 75 C, then
+50 C, then 25 C; unqualified ampacity uses only the 75 C published column.
+The 200 C ratings remain available on the selected v2 record, not substituted
+into an unqualified equipment field. Modulus and thermal expansion are not
+published by this catalog and must come from sag inputs.
 
 Validate the built catalog and original source artifacts with:
 

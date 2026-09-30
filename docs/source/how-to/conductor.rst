@@ -9,20 +9,28 @@ exact ``record_id`` or a combination that selects **one** row:
 
    from transmissionlines.api import open_catalog
    from transmissionlines.builders.line import conductor_from_record
-   from transmissionlines.catalog.schemas import ConductorRecord
+    from transmissionlines.catalog.schemas import ConductorV2Record
 
-   catalog = open_catalog("data/catalog/v1")
-   row = catalog.select_exact("conductors", record_id="ACSR:Cardinal:954.0:21")
-   same_row = catalog.select_exact(
-       "conductors", family="ACSR", codeword="Cardinal", stranding="54/7"
-   )
-   assert row["record_id"] == same_row["record_id"]
-   record = ConductorRecord.model_validate(row)
+    catalog = open_catalog()
+    row = catalog.select_exact("conductors", family="ACCC", codeword="IRVING", variant="uls")
+    record = ConductorV2Record.model_validate(row)
    conductor = conductor_from_record(record, catalog_version=catalog.catalog_version)
+    assert conductor.equipment.weight is not None
+    assert conductor.equipment.rated_breaking_strength is not None
+    assert conductor.equipment.total_material_area is not None
+
+``variant="standard"`` selects the other ACCC IRVING construction. Omitting
+``variant`` raises ``AmbiguousCatalogMatch`` rather than choosing one. An exact
+``record_id`` also works; keep ``catalog_version="v2"`` on references to v2
+records. Nullable Parquet cells become ``None`` when selected through the
+repository. The model carries weight in lbf/kft, strength in lbf, and total
+material area in in2. Missing measurements remain ``None``; sag must reject
+them when required.
 
 For a diameter or size criterion, discover candidates in the DataFrame and
-check family, codeword, stranding, ampacity, and resistance before committing
-to one ``record_id``. Values are inches and kcmil; this is a **range search**,
+check family, codeword, variant, published ampacity conditions, and resistance
+before committing to one ``record_id``. Diameter is in inches; ``size`` is a
+source label and ``size_kcmil`` is nullable. This is a **range search**,
 not an automatic substitute for electrical or mechanical equivalence:
 
 .. code-block:: python
@@ -31,9 +39,9 @@ not an automatic substitute for electrical or mechanical equivalence:
    matches = cables.loc[
        (cables.family == "ACSR") & cables.diameter_inch.between(1.19, 1.20)
    ]
-   print(matches[["record_id", "codeword", "stranding", "size_kcmil",
-                  "ampacity_a"]].to_string(index=False))
-   row = catalog.select_exact("conductors", record_id="ACSR:Cardinal:954.0:21")
+   print(matches[["record_id", "codeword", "variant", "size",
+                  "ampacity_75c_a"]].to_string(index=False))
+   row = catalog.select_exact("conductors", record_id=matches.iloc[0].record_id)
 
 For a cable not in the catalog, provide measured properties and a distinct
 name directly. No ``CatalogReference`` is attached to this component:

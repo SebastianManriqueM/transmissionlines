@@ -12,7 +12,7 @@ reproducible selector:
    from transmissionlines.builders.line import geometry_from_records
    from transmissionlines.catalog.schemas import PhasePositionRecord, GroundWirePositionRecord
 
-   catalog = open_catalog("data/catalog/v1")
+    catalog = open_catalog()
    tower = catalog.select_exact(
        "tower_geometries", structure_code="3L11", structure_type="Lattice"
    )

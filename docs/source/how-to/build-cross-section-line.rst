@@ -7,6 +7,8 @@ rows as catalog records, builds positions, two circuits and one shared ground
 wire spec, and creates a representative 345 kV line. No geographic supports
 or span lengths are required for a cross-section. The final lines also run a
 short calculation; see :doc:`electrical-and-st-clair` for interpreting it.
+The v2 PDF row has no GMR or capacitance radius; this example supplies both
+as independent illustrative electrical inputs, not as catalog measurements.
 
 .. literalinclude:: examples/catalog_line.py
    :language: python

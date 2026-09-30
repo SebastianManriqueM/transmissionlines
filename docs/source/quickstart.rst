@@ -132,8 +132,9 @@ result is calculated once and then plotted from its stored arrays.
 Catalog-backed construction
 ---------------------------
 
-The checkout includes the ``data/catalog/v1`` Parquet snapshot and its original
-source workbook. Open the snapshot with :func:`transmissionlines.api.open_catalog`,
+The checkout includes the default ``data/catalog/v2`` Parquet snapshot and
+the historical ``data/catalog/v1`` workbook snapshot. Call
+:func:`transmissionlines.api.open_catalog` without a path to open v2,
 select exact normalized records, validate them with the corresponding catalog
 schema models, and pass them to the record-based builders. See the complete
 :doc:`how-to/build-cross-section-line` script. Regenerating the catalog from

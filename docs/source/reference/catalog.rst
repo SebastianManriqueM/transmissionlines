@@ -27,5 +27,14 @@ Exact selection helpers
 .. automodule:: transmissionlines.catalog.selection
    :members:
 
-The importer requires caller-supplied raw files and explicit header mappings.
-It does not provide hidden workbook or manufacturer data.
+The workbook importer requires caller-supplied raw files and explicit header
+mappings. The separate v2 builder reads pinned local PDF sources; it does not
+use the workbook conductor table. Select v2 rows with ``CatalogRepository``
+and validate them with ``ConductorV2Record``. The v1-to-v2 crosswalk is an
+audit table, not an automatic reference redirect.
+
+V2 PDF build
+------------
+
+.. automodule:: transmissionlines.catalog.conductor_v2_build
+   :members: build_conductor_catalog

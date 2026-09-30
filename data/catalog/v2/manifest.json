@@ -1,0 +1,229 @@
+{
+  "catalog_version": "v2",
+  "extraction_version": "1",
+  "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",
+  "parser_version": "1.28.2",
+  "schema_version": "4.0.0",
+  "sources": [
+    {
+      "path": "data/raw/Tower_geometries_DB.xlsx",
+      "sha256": "e032d8c2f2a78066ceca461270990b02bdb8a91d76e3c83cee47b4d3947bcd0f"
+    },
+    {
+      "path": "data/raw/conductors/southwire/AAC.pdf",
+      "sha256": "e37d00223b4c1fad5476f8d3e96ec0c08b2f54ae9c06d74c71bd8ff93069abb3"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSR.pdf",
+      "sha256": "8bb6b7e2f0d1448c70f8337dd6ae65796b7cbfa36d145a454bdfba09afd1bf4f"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSR_AW.pdf",
+      "sha256": "16c764ef84bca4c8411d0272ede1d819ef5ff570a99f7bd471f6d99ae2bfa2bd"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSR_TW.pdf",
+      "sha256": "8f5401d9a7fae338bd6562956de7b995edd4dac36c287bf772181aa38f869fcd"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSS.pdf",
+      "sha256": "9babdd90889e32e01ecde6fb7ca628c9456576282001f20d9a559df5e5e3c669"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSS TW.pdf",
+      "sha256": "590cf5d520a113cba11fe9b0d480cdc444d9b528cde8cf0e51f15cdf43b6258b"
+    },
+    {
+      "path": "data/raw/conductors/southwire/ACSS Hs285.pdf",
+      "sha256": "14dbe01443dd5f3051bc4314527765d8b7ac12e31315e7c9a295201e569a8b9b"
+    },
+    {
+      "path": "data/raw/conductors/ACCC_electrical_data_ctc.pdf",
+      "sha256": "8f31bcbc7c3fc513b6998fba159045157894831a20b5e5ebf13d0556dad482d3"
+    }
+  ],
+  "tables": {
+    "actual_lines": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "structure_code",
+        "structure_type",
+        "state_id",
+        "miles",
+        "voltage_kv"
+      ],
+      "row_count": 240,
+      "sha256": "c4722f359183f1e16a7e8e16bbf72582d954d7d72f7342f0939be03e75569957"
+    },
+    "conductor_crosswalk": {
+      "columns": [
+        "old_record_id",
+        "new_record_id",
+        "family",
+        "status"
+      ],
+      "row_count": 161,
+      "sha256": "a3902ef3eed8890c9bc4d90a936532ba3ef2d6f2214ca39a8c175cd3e976a5af"
+    },
+    "conductor_issues": {
+      "columns": [
+        "row_key",
+        "reason",
+        "field",
+        "source_values"
+      ],
+      "row_count": 40,
+      "sha256": "4fd0dc3daaa3fd0c4ebd923f2f8ac46d702116a059071277920345d9baac94b3"
+    },
+    "conductor_provenance": {
+      "columns": [
+        "record_id",
+        "field",
+        "method",
+        "source_id",
+        "row_key",
+        "source_sha256",
+        "page",
+        "source_field",
+        "source_header",
+        "raw_value",
+        "unit",
+        "input_fields",
+        "note"
+      ],
+      "row_count": 10730,
+      "sha256": "0cbade78ac28d51aa4059569cc456a7d2f473dc5e4d3fc2e2eed562eb73377b7"
+    },
+    "conductors": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "family",
+        "codeword",
+        "stranding",
+        "size_kcmil",
+        "diameter_inch",
+        "ac_resistance_ohm_kft",
+        "ac_resistance_25_ohm_kft",
+        "ac_resistance_50_ohm_kft",
+        "ac_resistance_75_ohm_kft",
+        "dc_resistance_ohm_kft",
+        "capacitance_reactance_mohm_kft",
+        "internal_reactance_ohm_kft",
+        "ampacity_a",
+        "size",
+        "variant",
+        "weight_lb_kft",
+        "rated_strength_lb",
+        "aluminum_area_in2",
+        "core_area_in2",
+        "total_area_in2",
+        "core_diameter_in",
+        "ac_resistance_temperature_c",
+        "ampacity_temperature_c",
+        "dc_resistance_20c_ohm_kft",
+        "ac_resistance_25c_ohm_kft",
+        "ac_resistance_50c_ohm_kft",
+        "ac_resistance_75c_ohm_kft",
+        "ac_resistance_200c_ohm_kft",
+        "ampacity_75c_a",
+        "ampacity_100c_a",
+        "ampacity_150c_a",
+        "ampacity_180c_a",
+        "ampacity_200c_a",
+        "ampacity_250c_a"
+      ],
+      "row_count": 641,
+      "sha256": "a369ffa3ffb3ae16522c0a0ccb68ae3228a3e62c8c978538b7e3d2cd8905c036"
+    },
+    "ground_wire_positions": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "geometry_id",
+        "state_id",
+        "wire_id",
+        "x",
+        "y"
+      ],
+      "row_count": 129,
+      "sha256": "382e39cf211b4b5ba8c0457520511b9f04a2e29825fa44692629dc1ca6a5903b"
+    },
+    "ground_wires": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "family",
+        "awg_or_stranding",
+        "size_kcmil",
+        "strand_diameter_inch",
+        "diameter_inch",
+        "dc_resistance_ohm_kft",
+        "breaking_load_lb",
+        "weight_lb_kft",
+        "area_inches"
+      ],
+      "row_count": 27,
+      "sha256": "f1d809025a7023181d211a94fe05719ea29ae0763a4fdceb4af1d618629b509e"
+    },
+    "phase_positions": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "geometry_id",
+        "state_id",
+        "circuit_id",
+        "phase",
+        "x",
+        "y"
+      ],
+      "row_count": 282,
+      "sha256": "d157e752da0cb0955aebb56c335c651fbdbaaac8ee90321c25969df81847daa8"
+    },
+    "sources": {
+      "columns": [
+        "path",
+        "sha256"
+      ],
+      "row_count": 9,
+      "sha256": "c60ff635a4ae2a1a2001b7de740a2f5fd6fc21db0eb0bdc81ece719dd9d44b73"
+    },
+    "state_borders": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "state_code",
+        "border_state_code"
+      ],
+      "row_count": 215,
+      "sha256": "c8238f6f15af4b75fd04f526147490954df84d3816104187bf9987d064f0dd53"
+    },
+    "states": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "code",
+        "usps_code",
+        "canonical_name"
+      ],
+      "row_count": 50,
+      "sha256": "b2e47e6ef354e94e31b9a3d9a859bb9238c2e13564076eb98bf2ef0b3b422960"
+    },
+    "tower_geometries": {
+      "columns": [
+        "record_id",
+        "source_id",
+        "structure_code",
+        "structure_type",
+        "company",
+        "state",
+        "voltage_kv",
+        "n_circuits",
+        "n_ground_w"
+      ],
+      "row_count": 70,
+      "sha256": "f02a315d0d825bdfe247ca4599b159af3af6f6871df59fcb6624d0942e9ac9fc"
+    }
+  }
+}

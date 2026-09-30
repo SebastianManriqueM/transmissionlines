@@ -21,6 +21,12 @@ def test_accc_variant_ids_and_strengths_are_source_backed() -> None:
     assert len(records) == 48
     assert Counter(record.variant for record in records) == {"standard": 28, "uls": 20}
     assert len({record.record_id for record in records}) == len(records)
+    standard_by_row = {record.source.row_key: record for record in records if record.variant == "standard"}
+    assert all(
+        record.weight_total_lb_kft == standard_by_row[record.source.row_key].weight_total_lb_kft
+        and record.source.cells["weight_total_lb_kft"] is standard_by_row[record.source.row_key].source.cells["weight_total_lb_kft"]
+        for record in records if record.variant == "uls"
+    )
     assert {record.record_id for record in records} == {
         record.record_id for record in stage_accc_variants(reversed(rows))
     }
@@ -38,7 +44,7 @@ def test_accc_variant_ids_and_strengths_are_source_backed() -> None:
     assert irving["uls"].rated_strength_cell.raw == "39.0"
     assert irving["uls"].rated_strength_cell.unit == "klbf"
     assert irving["uls"].source is irving["standard"].source
-    assert irving["uls"].weight_total_lb_kft is None
+    assert irving["uls"].weight_total_lb_kft == irving["standard"].weight_total_lb_kft
     assert irving["standard"].weight_total_lb_kft == Decimal("648.3")
 
 

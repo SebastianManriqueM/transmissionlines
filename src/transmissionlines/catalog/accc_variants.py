@@ -24,7 +24,7 @@ class ACCCVariant:
 
 
 def stage_accc_variants(rows: Iterable[ACCCSourceRow]) -> list[ACCCVariant]:
-    """Stage published ACCC strength variants without assigning ULS weight.
+    """Stage ACCC strength variants using the shared row's total weight.
 
     Parameters
     ----------
@@ -35,7 +35,8 @@ def stage_accc_variants(rows: Iterable[ACCCSourceRow]) -> list[ACCCVariant]:
     -------
     list[ACCCVariant]
         One standard variant per source row and a ULS variant only when its
-        rated strength is numeric. ULS weight remains unknown.
+        rated strength is numeric. ULS reuses the printed row weight as an
+        approximation, not a separately published ULS measurement.
 
     Raises
     ------
@@ -61,7 +62,7 @@ def stage_accc_variants(rows: Iterable[ACCCSourceRow]) -> list[ACCCVariant]:
                 size_kcmil=Decimal(row.size), variant=variant,
                 rated_strength_lb=strength * 1000,
                 rated_strength_cell=row.cells[strength_field],
-                weight_total_lb_kft=row.numeric("weight_total_lb_kft") if variant == "standard" else None,
+                weight_total_lb_kft=row.numeric("weight_total_lb_kft"),
                 source=row,
             ))
     return staged

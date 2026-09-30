@@ -9,15 +9,15 @@ exact ``record_id`` or a combination that selects **one** row:
 
    from transmissionlines.api import open_catalog
    from transmissionlines.builders.line import conductor_from_record
-    from transmissionlines.catalog.schemas import ConductorV2Record
+   from transmissionlines.catalog.schemas import ConductorV2Record
 
-    catalog = open_catalog()
-    row = catalog.select_exact("conductors", family="ACCC", codeword="IRVING", variant="uls")
-    record = ConductorV2Record.model_validate(row)
+   catalog = open_catalog()
+   row = catalog.select_exact("conductors", family="ACCC", codeword="IRVING", variant="uls")
+   record = ConductorV2Record.model_validate(row)
    conductor = conductor_from_record(record, catalog_version=catalog.catalog_version)
-    assert conductor.equipment.weight is not None
-    assert conductor.equipment.rated_breaking_strength is not None
-    assert conductor.equipment.total_material_area is not None
+   assert conductor.equipment.weight is not None
+   assert conductor.equipment.rated_breaking_strength is not None
+   assert conductor.equipment.total_material_area is not None
 
 ``variant="standard"`` selects the other ACCC IRVING construction. Omitting
 ``variant`` raises ``AmbiguousCatalogMatch`` rather than choosing one. An exact

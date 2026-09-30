@@ -23,6 +23,9 @@ tables from v1; its manifest pins source checksums and its provenance, issue,
 source, and crosswalk tables support auditing. Regeneration uses
 ``python scripts/build_conductor_catalog_v2.py`` and refuses to overwrite an
 existing destination. The v1 importer remains a separate workbook pipeline.
+``open_catalog()`` defaults to v2 for new selections. Saved v1 references
+remain version-qualified and require opening ``data/catalog/v1`` explicitly;
+the crosswalk is an audit table, not an automatic redirect.
 
 V2 conductor rows distinguish ``family``, ``codeword``, ``size``, and
 ``variant``. They expose weight in lb/kft, rated strength in lb, and total

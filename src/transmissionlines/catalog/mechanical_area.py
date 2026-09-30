@@ -17,6 +17,7 @@ PI_OVER_FOUR = Decimal("0.7853981633974483096156608458")
 GEOMETRY_TOLERANCE = Decimal("0.02")
 ENVELOPE_TOLERANCE = Decimal("0.01")
 PRINTED_AREA_TOLERANCE = Decimal("0.0002")
+TW_TOTAL_COMPARISON_TOLERANCE = Decimal("0.0006")
 TWRow = TWAreaSourceRow | ACSSTWAreaSourceRow
 
 
@@ -198,7 +199,7 @@ def resolve_areas(
     -----
     Compare TW aluminum, core, and total areas with strand-derived areas within
     2 percent, allowing printed precision; compare overlapping TW values
-    within 0.0002 square inches. Reject areas exceeding the outside-diameter
+    within 0.0006 square inches. Reject areas exceeding the outside-diameter
     envelope by more than 1 percent for printed dimension precision.
     """
     acsr_index = _index(acsr_tw)
@@ -220,7 +221,7 @@ def resolve_areas(
             if len(first) == len(second) == 1:
                 a, b = first[0].numeric("total_area_in2"), second[0].numeric("total_area_in2")
                 if a is not None and b is not None and a != b:
-                    reason = "tw_area_disagreement" if abs(a - b) > PRINTED_AREA_TOLERANCE else "tw_area_rounding_difference"
+                    reason = "tw_area_disagreement" if abs(a - b) > TW_TOTAL_COMPARISON_TOLERANCE else "tw_area_rounding_difference"
                     issues.append(StagingIssue(row_key=row.row_key, reason=reason, field="total_area_in2",
                                                source_values=((first[0], a), (second[0], b))))
             geometry = area

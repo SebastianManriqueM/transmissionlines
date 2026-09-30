@@ -165,6 +165,28 @@ def test_printed_tw_differences_retain_both_sources_and_magnitudes() -> None:
     assert result.records[0].area.total.source_rows[0].table == "ACSS/TW"
 
 
+@pytest.mark.parametrize(
+    ("difference", "reason"),
+    [("0.0006", "tw_area_rounding_difference"), ("0.0007", "tw_area_disagreement")],
+)
+def test_tw_total_comparison_tolerance_includes_boundary(difference: str, reason: str) -> None:
+    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+              if row.codeword == "Partridge" and row.size == partridge.size)
+    cells = dict(tw.cells)
+    original_total = tw.numeric("total_area_in2")
+    assert original_total is not None
+    alternate_total = original_total + Decimal(difference)
+    cells["total_area_in2"] = replace(cells["total_area_in2"], raw=str(alternate_total))
+
+    result = resolve_areas(stage_sources(acss=[partridge]), acss_tw=[tw], acsr_tw=[replace(tw, cells=cells)])
+
+    issue = next(issue for issue in result.issues if issue.reason in
+                 {"tw_area_rounding_difference", "tw_area_disagreement"})
+    assert issue.reason == reason
+    assert [value for _, value in issue.source_values] == [original_total, alternate_total]
+
+
 def test_incompatible_preferred_tw_reports_values_before_using_fallback() -> None:
     base = PDF.parent
     bluebird = next(row for row in extract_acsr(base / "ACSR.pdf") if row.codeword == "Bluebird")

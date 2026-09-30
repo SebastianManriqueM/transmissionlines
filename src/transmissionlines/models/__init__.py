@@ -4,6 +4,7 @@ from transmissionlines.models.assets import AbstractTransmissionLine, CrossSecti
 from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.st_clair import StClairCurve, StClairLineConstants, StClairOptions, StClairResult
+from transmissionlines.models.sag import SagCurve, SagCurveResult, SagOptions
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.models.cables import (
     BareConductorEquipment,
@@ -39,6 +40,9 @@ __all__ = [
     "StClairLineConstants",
     "StClairOptions",
     "StClairResult",
+    "SagCurve",
+    "SagCurveResult",
+    "SagOptions",
     "Bus",
     "CatalogReference",
     "GeographicPoint",

@@ -1,6 +1,7 @@
 """Transmission-line static components and value models."""
 
 from abc import ABC, abstractmethod
+import math
 
 from infrasys import Component
 from pydantic import ConfigDict, model_validator
@@ -19,6 +20,15 @@ class AbstractTransmissionLine(Component, ABC):
     nominal_voltage: VoltageKV
     nominal_frequency: Frequency
     earth_resistivity: EarthResistivity
+    everyday_tension_fraction: float | None = None
+
+    @model_validator(mode="after")
+    def validate_everyday_tension(self) -> "AbstractTransmissionLine":
+        """Require a finite reference tension fraction no greater than 30% of RBS."""
+        fraction = self.everyday_tension_fraction
+        if fraction is not None and (not math.isfinite(fraction) or not 0 < fraction <= 0.30):
+            raise ValueError("everyday_tension_fraction must be in (0, 0.30]")
+        return self
 
     @abstractmethod
     def _line_variant(self) -> str:

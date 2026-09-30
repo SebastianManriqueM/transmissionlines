@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 from transmissionlines.api import calculate_line_electrical_parameters, calculate_st_clair_curve
 from transmissionlines.models.assets import CrossSectionTransmissionLine
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
@@ -110,3 +113,12 @@ def test_quickstart_direct_st_clair_example() -> None:
     assert result.curves[0].lengths_mi == [20.0]
     assert result.curves[0].pr_mw[0] > 0.0
     assert result.units["power"] == "W and MW"
+
+
+def test_catalog_backed_line_example_uses_default_v2() -> None:
+    completed = subprocess.run(
+        [sys.executable, "docs/source/how-to/examples/catalog_line.py"],
+        capture_output=True, text=True, check=True,
+    )
+
+    assert completed.stdout.splitlines() == ["complete", "2"]

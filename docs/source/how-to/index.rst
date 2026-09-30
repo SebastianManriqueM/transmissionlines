@@ -1,10 +1,10 @@
 How to
 ======
 
-These recipes use the bundled ``data/catalog/v1`` snapshot from the repository
-root. For other catalogs, pass their directory to ``open_catalog`` and check
-its manifest and record IDs. Exact catalog selection raises
-``NoCatalogMatch`` or ``AmbiguousCatalogMatch``; numerical filtering is an
+All catalog-backed recipes use the bundled ``data/catalog/v2`` snapshot by
+default through ``open_catalog()``. Pass an explicit directory only when
+opening another version, and check its manifest and record IDs. Exact selection
+raises ``NoCatalogMatch`` or ``AmbiguousCatalogMatch``; numerical filtering is an
 explicit discovery step, not an implicit nearest-neighbor match.
 
 .. toctree::

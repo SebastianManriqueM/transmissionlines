@@ -1,8 +1,11 @@
 # Electrical parity and reference catalog
 
 This document describes the implemented Julia-parity path and the normalized
-catalog artifacts used by the parity tests. Calculations consume validated
-runtime models; only the catalog builder reads the preserved workbook.
+v1 workbook catalog artifacts used by the parity tests. Calculations consume
+validated runtime models; the v1 catalog builder reads the preserved workbook.
+The separate PDF-backed v2 conductor catalog is the default for new selections;
+existing v1 references remain on v1. See `../data/catalog/README.md` for v2
+build, provenance, and crosswalk details.
 
 ## Workbook to runtime catalog
 

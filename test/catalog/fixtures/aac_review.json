@@ -1,0 +1,30 @@
+{
+  "source_sha256": "e37d00223b4c1fad5476f8d3e96ec0c08b2f54ae9c06d74c71bd8ff93069abb3",
+  "rows": [
+    {
+      "row_key": "AAC:6:peachbell:7",
+      "page": 2,
+      "raw": {"codeword": "Peachbell", "size": "6", "aluminum_wires": "7", "class": "A", "strand_diameter_al_in": ".0612", "aluminum_area_in2": ".0206", "weight_total_lb_kft": "25", "rated_strength_lb": "563", "dc_resistance_20c_ohm_kft": ".658", "ampacity_75c_a": "103"}
+    },
+    {
+      "row_key": "AAC:1/0:poppy:7",
+      "page": 2,
+      "raw": {"codeword": "Poppy", "size": "1/0", "class": "AA, A", "aluminum_area_in2": ".0829", "rated_strength_lb": "1990", "ac_resistance_75c_ohm_kft": ".200"}
+    },
+    {
+      "row_key": "AAC:954:goldenrod:61",
+      "page": 3,
+      "raw": {"codeword": "Goldenrod", "size": "954.0", "aluminum_wires": "61", "class": "A", "aluminum_area_in2": ".7498", "rated_strength_lb": "16900", "ampacity_75c_a": "983"}
+    },
+    {
+      "row_key": "AAC:1000:camellia:61",
+      "page": 3,
+      "raw": {"codeword": "Camellia", "size": "1000", "class": "AA", "dc_resistance_20c_ohm_kft": ".0713", "ac_resistance_75c_ohm_kft": ".0216"}
+    },
+    {
+      "row_key": "AAC:3500:bluebonnet:127",
+      "page": 3,
+      "raw": {"codeword": "Bluebonnet", "size": "3500", "aluminum_wires": "127", "aluminum_area_in2": "2.7486", "weight_total_lb_kft": "3345", "rated_strength_lb": "58700", "ampacity_75c_a": "2024"}
+    }
+  ]
+}

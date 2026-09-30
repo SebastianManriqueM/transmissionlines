@@ -1,6 +1,9 @@
 """Versioned catalog record schemas and source-header mappings."""
 
-from pydantic import BaseModel, ConfigDict
+from decimal import Decimal
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CatalogRecord(BaseModel):
@@ -70,6 +73,52 @@ class ConductorRecord(CatalogRecord):
     ampacity_a: float | None = None
 
 
+class ConductorV2Record(ConductorRecord):
+    """Represent a PDF-backed conductor without requiring absent measurements."""
+
+    codeword: str | None = None
+    size: str | None = None
+    variant: str
+    weight_lb_kft: Decimal | None = None
+    rated_strength_lb: Decimal | None = None
+    aluminum_area_in2: Decimal | None = None
+    core_area_in2: Decimal | None = None
+    total_area_in2: Decimal | None = None
+    core_diameter_in: Decimal | None = None
+    ac_resistance_temperature_c: int | None = None
+    ampacity_temperature_c: int | None = None
+    dc_resistance_20c_ohm_kft: Decimal | None = None
+    ac_resistance_25c_ohm_kft: Decimal | None = None
+    ac_resistance_50c_ohm_kft: Decimal | None = None
+    ac_resistance_75c_ohm_kft: Decimal | None = None
+    ac_resistance_200c_ohm_kft: Decimal | None = None
+    ampacity_75c_a: Decimal | None = None
+    ampacity_100c_a: Decimal | None = None
+    ampacity_150c_a: Decimal | None = None
+    ampacity_180c_a: Decimal | None = None
+    ampacity_200c_a: Decimal | None = None
+    ampacity_250c_a: Decimal | None = None
+
+
+class ConductorFieldProvenance(BaseModel):
+    """Identify a PDF cell and calculation basis for one conductor field."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    record_id: str
+    field: str
+    method: Literal["published", "cross_pdf", "derived", "assumed"]
+    source_id: str
+    row_key: str
+    source_sha256: str
+    page: int = Field(gt=0)
+    source_field: str
+    source_header: str | None = None
+    raw_value: str | None = None
+    unit: str | None = None
+    input_fields: tuple[str, ...] = ()
+    note: str = ""
+
+
 class GroundWireRecord(CatalogRecord):
     family: str
     awg_or_stranding: str
@@ -114,7 +163,9 @@ SOURCE_HEADERS: dict[str, dict[str, str]] = {
 __all__ = [
     "ActualLineRecord",
     "CatalogRecord",
+    "ConductorFieldProvenance",
     "ConductorRecord",
+    "ConductorV2Record",
     "GeometryRecord",
     "GeometryStateRecord",
     "GroundWirePositionRecord",

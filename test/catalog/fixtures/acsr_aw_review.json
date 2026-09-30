@@ -1,0 +1,23 @@
+{
+  "source_sha256": "16c764ef84bca4c8411d0272ede1d819ef5ff570a99f7bd471f6d99ae2bfa2bd",
+  "rows": [
+    {
+      "row_key": "ACSR/AW:4:swan:standard:6/1",
+      "page": 2,
+      "variant": "standard",
+      "raw": {"codeword": "Swan/Aw", "size": "4", "weight_aw_lb_kft": "16", "rated_strength_lb": "1780", "ac_resistance_75c_ohm_kft": ".4770"}
+    },
+    {
+      "row_key": "ACSR/AW:715.5:redwing:standard:30/19",
+      "page": 3,
+      "variant": "standard",
+      "raw": {"codeword": "Redwing/Aw", "size": "715.5", "weight_total_lb_kft": "1044", "rated_strength_lb": "33400"}
+    },
+    {
+      "row_key": "ACSR/AW:80:grouse:high:8/1",
+      "page": 3,
+      "variant": "high",
+      "raw": {"codeword": "Grouse/AW", "size": "80.0", "weight_total_lb_kft": "137.7", "rated_strength_lb": "4,890", "ac_resistance_75c_ohm_kft": ".2357"}
+    }
+  ]
+}

@@ -23,8 +23,9 @@ When documenting a public symbol, check its actual signature and nearest tests.
 Add a NumPy-style docstring to public APIs whose parameter, return, error, or
 example behavior is not clear from the current docstring. Add pages to the
 nearest nested toctree. Keep generic examples independent of local catalog
-files; catalog-specific recipes can use the bundled ``data/catalog/v1``
-snapshot and should run from the repository root.
+files; catalog-specific recipes use the bundled ``data/catalog/v2`` by
+default and should run from the repository root. Use v1 only when explicitly
+documenting historical workbook behavior.
 
 Review equations against ``plans/existing_julia_code/tl_parameter_computation_map.md``,
 ``plans/st Clair curve/st clair model.md``, and

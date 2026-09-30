@@ -2,7 +2,7 @@ import pytest
 
 from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec
-from transmissionlines.units import BundleSpacing, CableDiameter, CableGMR, ResistancePerKft
+from transmissionlines.units import BundleSpacing, CableDiameter, CableGMR, ConductorWeight, MaterialArea, RatedBreakingStrength, ResistancePerKft
 
 
 def conductor() -> BareConductorEquipment:
@@ -48,3 +48,21 @@ def test_capacitance_radius_is_optional_parity_extension() -> None:
     _, radius = derived_bundle_values(spec.equipment, 1, None)
     assert radius is not None
     assert radius.magnitude == pytest.approx(0.02)
+
+
+def test_mechanical_quantities_round_trip_and_reject_wrong_dimensions() -> None:
+    equipment = BareConductorEquipment(
+        weight=ConductorWeight(0.5, "pound_force / foot"),
+        rated_breaking_strength=RatedBreakingStrength(2000, "pound_force"),
+        total_material_area=MaterialArea(0.75, "inch ** 2"),
+    )
+    restored = BareConductorEquipment.model_validate_json(equipment.model_dump_json())
+
+    assert restored.weight is not None
+    assert restored.weight.to("pound_force / kilofoot").magnitude == pytest.approx(500)
+    assert restored.rated_breaking_strength is not None
+    assert restored.rated_breaking_strength.magnitude == pytest.approx(2000)
+    assert restored.total_material_area is not None
+    assert restored.total_material_area.magnitude == pytest.approx(0.75)
+    with pytest.raises(ValueError):
+        BareConductorEquipment(weight=ConductorWeight(1, "inch"))

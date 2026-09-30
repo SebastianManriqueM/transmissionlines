@@ -12,7 +12,10 @@ from transmissionlines.units import (
     BundleSpacing,
     CableDiameter,
     CableGMR,
+    ConductorWeight,
     Current,
+    MaterialArea,
+    RatedBreakingStrength,
     ResistancePerKft,
 )
 
@@ -27,6 +30,9 @@ class BareConductorEquipment(LineDataModel):
     ac_resistance: ResistancePerKft | None = None
     emergency_ampacity: Current | None = None
     dc_resistance: ResistancePerKft | None = None
+    weight: ConductorWeight | None = None
+    rated_breaking_strength: RatedBreakingStrength | None = None
+    total_material_area: MaterialArea | None = None
 
 
 class BundleSpec(LineDataModel):

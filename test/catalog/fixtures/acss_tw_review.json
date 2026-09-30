@@ -1,0 +1,25 @@
+{
+  "source_sha256": "590cf5d520a113cba11fe9b0d480cdc444d9b528cde8cf0e51f15cdf43b6258b",
+  "rows": [
+    {
+      "row_key": "ACSS/TW:266.8:partridge:type-16",
+      "page": 2,
+      "raw": {"codeword": "Partridge/ACSS/TW", "size": "266.8", "type_no": "16", "aluminum_area_in2": "0.2094", "total_area_in2": "0.2435", "steel_wire": "7 x 0.0788"}
+    },
+    {
+      "row_key": "ACSS/TW:636:scoter:type-23",
+      "page": 2,
+      "raw": {"codeword": "Scoter/ACSS/TW", "size": "636.0", "aluminum_area_in2": "0.4995", "total_area_in2": "0.6160"}
+    },
+    {
+      "row_key": "ACSS/TW:1113:finch:type-13",
+      "page": 3,
+      "raw": {"codeword": "Finch/ACSS/TW", "size": "1113.0", "aluminum_area_in2": "0.8743", "total_area_in2": "0.9852", "steel_wire": "19 x 0.0862"}
+    },
+    {
+      "row_key": "ACSS/TW:2156:bluebird:type-8",
+      "page": 3,
+      "raw": {"codeword": "Bluebird/ACSS/TW", "size": "2156.0", "aluminum_area_in2": "1.6933", "total_area_in2": "1.8309", "steel_wire": "19 x 0.0961"}
+    }
+  ]
+}

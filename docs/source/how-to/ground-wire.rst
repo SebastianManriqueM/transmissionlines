@@ -12,7 +12,7 @@ unique, or filter the table by size or diameter and inspect all matches.
    from transmissionlines.builders.line import ground_wire_from_record
    from transmissionlines.catalog.schemas import GroundWireRecord
 
-   catalog = open_catalog("data/catalog/v1")
+    catalog = open_catalog()
    row = catalog.select_exact("ground_wires", record_id="Alumoweld:7/7:145.7:15")
    same_row = catalog.select_exact(
        "ground_wires", family="Alumoweld", awg_or_stranding="7/7"
@@ -29,8 +29,8 @@ unique, or filter the table by size or diameter and inspect all matches.
          .to_string(index=False))
 
 To specify a new ground wire, supply the properties needed by the electrical
-calculation and keep manufacturer mechanical ratings separately; the runtime
-``BareConductorEquipment`` has no breaking-load or weight field:
+calculation. ``BareConductorEquipment`` also accepts optional unit-typed
+weight and rated breaking strength when published measurements are available:
 
 .. code-block:: python
 

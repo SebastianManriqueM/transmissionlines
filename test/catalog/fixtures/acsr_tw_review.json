@@ -1,0 +1,20 @@
+{
+  "source_sha256": "8f5401d9a7fae338bd6562956de7b995edd4dac36c287bf772181aa38f869fcd",
+  "rows": [
+    {
+      "row_key": "ACSR/TW:266.8:partridge:type-16",
+      "page": 2,
+      "raw": {"codeword": "Partridge/TW", "size": "266.8", "type_no": "16", "aluminum_area_in2": "0.2094", "total_area_in2": "0.2435", "steel_wire": "7 x 0.0788"}
+    },
+    {
+      "row_key": "ACSR/TW:636:scoter:type-23",
+      "page": 2,
+      "raw": {"codeword": "Scoter/TW", "size": "636", "aluminum_area_in2": "0.4994", "total_area_in2": "0.6159"}
+    },
+    {
+      "row_key": "ACSR/TW:2156:bluebird:type-8",
+      "page": 3,
+      "raw": {"codeword": "Bluebird/TW", "size": "2156", "aluminum_area_in2": "1.0934", "total_area_in2": "1.8312"}
+    }
+  ]
+}

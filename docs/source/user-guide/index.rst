@@ -7,5 +7,6 @@ User guide
    build-a-line
    electrical-models
    st-clair
+   sag
    plotting
    serialization

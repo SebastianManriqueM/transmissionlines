@@ -11,6 +11,7 @@ from transmissionlines.calculations.electrical import (
     calculate_line_electrical_parameters,
 )
 from transmissionlines.calculations.st_clair import calculate_st_clair, calculate_st_clair_curve_for_line
+from transmissionlines.calculations.sag import calculate_sag
 from transmissionlines.catalog import CatalogRepository, generate_catalog, generate_julia_workbook_catalog
 from transmissionlines.models import *
 from transmissionlines.system import TransmissionLineSystem
@@ -20,6 +21,7 @@ from transmissionlines.models.routing import ElectricalTower
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.st_clair import StClairResult
 from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_result
+from transmissionlines.plotting.sag import plot_sag_curve
 
 
 def open_catalog(path: str = "data/catalog/v2", *, catalog_version: str | None = None) -> CatalogRepository:
@@ -158,7 +160,9 @@ __all__ = [
     "calculate_electrical_parameters",
     "calculate_line_electrical_parameters",
     "calculate_st_clair_curve",
+    "calculate_sag",
     "plot_st_clair_curve",
+    "plot_sag_curve",
     "generate_catalog",
     "generate_julia_workbook_catalog",
     "open_catalog",

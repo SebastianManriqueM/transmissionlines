@@ -56,6 +56,24 @@ class MaterialArea(BaseQuantity):
     __base_unit__ = "inch ** 2"
 
 
+class ElasticModulus(BaseQuantity):
+    """Effective axial elastic modulus in pounds-force per square inch."""
+
+    __base_unit__ = "psi"
+
+
+class ThermalExpansion(BaseQuantity):
+    """Effective linear expansion coefficient per kelvin (or degree Celsius)."""
+
+    __base_unit__ = "1 / kelvin"
+
+
+class SpanLength(BaseQuantity):
+    """Horizontal span length or signed attachment elevation difference in feet."""
+
+    __base_unit__ = "foot"
+
+
 class RouteDistance(BaseQuantity):
     """Route or span length using mile-compatible distance units."""
 
@@ -114,6 +132,7 @@ __all__ = [
     "Current",
     "Distance",
     "EarthResistivity",
+    "ElasticModulus",
     "EquivalentRadius",
     "Frequency",
     "MaterialArea",
@@ -123,7 +142,9 @@ __all__ = [
     "RouteDistance",
     "SeriesImpedance",
     "ShuntAdmittance",
+    "SpanLength",
     "Temperature",
+    "ThermalExpansion",
     "TowerCoordinate",
     "Voltage",
     "VoltageKV",

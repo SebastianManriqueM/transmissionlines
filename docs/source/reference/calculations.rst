@@ -34,3 +34,9 @@ St. Clair calculations
 
 .. automodule:: transmissionlines.calculations.st_clair
    :members: calculate_st_clair, calculate_st_clair_curve_for_line, nominal_pi_to_equivalent_pi
+
+Sag calculations
+----------------
+
+.. automodule:: transmissionlines.calculations.sag
+   :members: calculate_sag, solve_span_sag

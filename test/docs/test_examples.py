@@ -122,3 +122,11 @@ def test_catalog_backed_line_example_uses_default_v2() -> None:
     )
 
     assert completed.stdout.splitlines() == ["complete", "2"]
+
+
+def test_catalog_backed_sag_example() -> None:
+    completed = subprocess.run(
+        [sys.executable, "docs/source/how-to/examples/sag_curve.py"],
+        capture_output=True, text=True, check=True,
+    )
+    assert completed.stdout.splitlines() == ["2", "199"]

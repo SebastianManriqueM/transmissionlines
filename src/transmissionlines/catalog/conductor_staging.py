@@ -9,8 +9,10 @@ from transmissionlines.catalog.accc_pdf import ACCCSourceRow
 from transmissionlines.catalog.accc_variants import stage_accc_variants
 from transmissionlines.catalog.acsr_aw_pdf import ACSRAWSourceRow
 from transmissionlines.catalog.acsr_pdf import ACSRSourceRow, SourceCell
+from transmissionlines.catalog.acsr_tw_pdf import TWAreaSourceRow
 from transmissionlines.catalog.acss_hs285_tw_pdf import HS285TWSourceRow
 from transmissionlines.catalog.acss_pdf import ACSSSourceRow
+from transmissionlines.catalog.acss_tw_pdf import ACSSTWAreaSourceRow
 
 
 SourceRow = ACSRSourceRow | ACSRAWSourceRow | ACSSSourceRow | AACSourceRow | ACCCSourceRow | HS285TWSourceRow
@@ -40,6 +42,7 @@ class StagingIssue:
     row_key: str
     reason: str
     field: str
+    source_values: tuple[tuple[SourceRow | TWAreaSourceRow | ACSSTWAreaSourceRow, Decimal], ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)

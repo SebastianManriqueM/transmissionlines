@@ -115,6 +115,20 @@ def test_area_missing_geometry_and_incompatible_tw_are_audited() -> None:
     assert any(issue.reason == "missing_geometry" for issue in missing.issues)
 
 
+def test_tw_material_split_must_match_round_wire_geometry() -> None:
+    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+              if row.codeword == "Partridge" and row.size == partridge.size)
+    cells = dict(tw.cells)
+    cells["aluminum_area_in2"] = replace(cells["aluminum_area_in2"], raw="0.01")
+
+    result = resolve_areas(stage_sources(acss=[partridge]), acss_tw=[replace(tw, cells=cells)])
+
+    assert result.records[0].area is not None
+    assert result.records[0].area.total.method == "derived"
+    assert any(issue.reason == "incompatible_tw_area" for issue in result.issues)
+
+
 def test_overlapping_and_duplicate_tw_keys_are_not_silently_resolved() -> None:
     partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
     tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
@@ -134,6 +148,36 @@ def test_overlapping_and_duplicate_tw_keys_are_not_silently_resolved() -> None:
     assert duplicated.records[0].area is not None
     assert duplicated.records[0].area.total.method == "derived"
     assert any(issue.reason == "ambiguous_tw_area" for issue in duplicated.issues)
+
+
+def test_printed_tw_differences_retain_both_sources_and_magnitudes() -> None:
+    base = PDF.parent
+    acsr_tw = extract_acsr_tw_areas(base / "ACSR_TW.pdf")
+    acss_tw = extract_acss_tw_areas(base / "ACSS TW.pdf")
+    finch = next(row for row in extract_acss(PDF) if row.codeword == "Finch")
+    result = resolve_areas(stage_sources(acss=[finch]), acsr_tw=acsr_tw, acss_tw=acss_tw)
+
+    difference = next(issue for issue in result.issues if issue.reason == "tw_area_rounding_difference")
+    assert {row.table: value for row, value in difference.source_values} == {
+        "ACSR/TW": Decimal("0.9851"), "ACSS/TW": Decimal("0.9852")
+    }
+    assert result.records[0].area is not None
+    assert result.records[0].area.total.source_rows[0].table == "ACSS/TW"
+
+
+def test_incompatible_preferred_tw_reports_values_before_using_fallback() -> None:
+    base = PDF.parent
+    bluebird = next(row for row in extract_acsr(base / "ACSR.pdf") if row.codeword == "Bluebird")
+    result = resolve_areas(stage_sources(acsr=[bluebird]),
+                           acsr_tw=extract_acsr_tw_areas(base / "ACSR_TW.pdf"),
+                           acss_tw=extract_acss_tw_areas(base / "ACSS TW.pdf"))
+
+    area = result.records[0].area
+    assert area is not None
+    assert area.total.source_rows[0].table == "ACSS/TW"
+    rejected = next(issue for issue in result.issues if issue.reason == "incompatible_tw_area")
+    assert rejected.source_values
+    assert any(row.table == "ACSR/TW" for row, _ in rejected.source_values)
 
 
 def test_accc_uls_area_reuses_assumed_core_and_aac_published_area() -> None:

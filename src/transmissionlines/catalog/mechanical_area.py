@@ -109,6 +109,17 @@ def _from_tw(row: TWRow) -> MechanicalArea | None:
     )
 
 
+def _area_mismatch(transfer: MechanicalArea, derived: MechanicalArea) -> tuple[str, Decimal, Decimal] | None:
+    for field in ("aluminum", "core", "total"):
+        transfer_value = getattr(transfer, field)
+        derived_value = getattr(derived, field)
+        if transfer_value is not None and derived_value is not None and abs(transfer_value.value - derived_value.value) > (
+            derived_value.value * GEOMETRY_TOLERANCE + PRINTED_AREA_TOLERANCE
+        ):
+            return field, derived_value.value, transfer_value.value
+    return None
+
+
 def _index(rows: Iterable[TWRow]) -> dict[tuple[str, str], list[TWRow]]:
     index: dict[tuple[str, str], list[TWRow]] = defaultdict(list)
     for row in rows:
@@ -185,7 +196,7 @@ def resolve_areas(
 
     Notes
     -----
-    Compare TW total area with the source row's strand-derived area within
+    Compare TW aluminum, core, and total areas with strand-derived areas within
     2 percent, allowing printed precision; compare overlapping TW values
     within 0.0002 square inches. Reject areas exceeding the outside-diameter
     envelope by more than 1 percent for printed dimension precision.
@@ -208,16 +219,21 @@ def resolve_areas(
             second = alternate.get(key, [])
             if len(first) == len(second) == 1:
                 a, b = first[0].numeric("total_area_in2"), second[0].numeric("total_area_in2")
-                if a is not None and b is not None and abs(a - b) > PRINTED_AREA_TOLERANCE:
-                    issues.append(StagingIssue(row_key=row.row_key, reason="tw_area_disagreement", field="total_area_in2"))
+                if a is not None and b is not None and a != b:
+                    reason = "tw_area_disagreement" if abs(a - b) > PRINTED_AREA_TOLERANCE else "tw_area_rounding_difference"
+                    issues.append(StagingIssue(row_key=row.row_key, reason=reason, field="total_area_in2",
+                                               source_values=((first[0], a), (second[0], b))))
+            geometry = area
             for matches in (first, second):
                 if len(matches) != 1:
                     continue
                 transfer = _from_tw(matches[0])
-                if transfer is None or area is None or abs(transfer.total.value - area.total.value) > (
-                    area.total.value * GEOMETRY_TOLERANCE + PRINTED_AREA_TOLERANCE
-                ):
-                    issues.append(StagingIssue(row_key=row.row_key, reason="incompatible_tw_area", field="total_area_in2"))
+                mismatch = _area_mismatch(transfer, geometry) if transfer is not None and geometry is not None else None
+                if transfer is None or geometry is None or mismatch is not None:
+                    field = f"{mismatch[0]}_area_in2" if mismatch is not None else "total_area_in2"
+                    values = ((row, mismatch[1]), (matches[0], mismatch[2])) if mismatch is not None else ()
+                    issues.append(StagingIssue(row_key=row.row_key, reason="incompatible_tw_area",
+                                               field=field, source_values=values))
                     continue
                 area = transfer
                 break

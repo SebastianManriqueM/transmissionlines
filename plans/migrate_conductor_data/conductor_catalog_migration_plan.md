@@ -2,7 +2,23 @@
 
 Status: PDF adapters and in-memory, unpublished strength/area staging are implemented. No catalog, model, or generated data is changed by this staging work. The approved mechanical-area policy supports the separate sag integration plan; it does not supply sag's effective elastic modulus or thermal-expansion coefficient, which belong in `SagOptions`.
 
-The staging boundary is `stage_sources` in `src/transmissionlines/catalog/conductor_staging.py`, followed by `resolve_areas` in `src/transmissionlines/catalog/mechanical_area.py`. Both accept extracted PDF rows and return candidates plus row-keyed issues; neither writes files or changes the v1 catalog. Strengths without a printed numeric cell do not become candidates. Geometry pages 3 and 5 of the HS285 TW source become distinct shaped-wire candidates; their electrical pages remain extracted source rows for a later join. ACCC ULS shares the row's printed standard weight as an explicitly labeled approximation and assumes its listed core diameter applies to ULS area. Area comparison currently allows 2% plus 0.0002 in2 printed precision against round-wire strand geometry, flags TW source differences over 0.0002 in2, and checks the outside-diameter envelope with 1% precision allowance. Conflicts, missing inputs, and rejected transfers remain in the in-memory issue report for review before publication.
+The staging boundary is `stage_sources` in `src/transmissionlines/catalog/conductor_staging.py`, followed by `resolve_areas` in `src/transmissionlines/catalog/mechanical_area.py`. Both accept extracted PDF rows and return candidates plus row-keyed issues; neither writes files or changes the v1 catalog. Strengths without a printed numeric cell do not become candidates. Geometry pages 3 and 5 of the HS285 TW source become distinct shaped-wire candidates; their electrical pages remain extracted source rows for a later join. ACCC ULS shares the row's printed standard weight as an explicitly labeled approximation and assumes its listed core diameter applies to ULS area. Area comparison currently allows 2% plus 0.0002 in2 printed precision against round-wire strand geometry for aluminum, core, and total areas; records both TW sources for any differing printed totals (separating differences over 0.0002 in2 from rounding-scale differences); and checks the outside-diameter envelope with 1% precision allowance. Conflicts, missing inputs, and rejected transfers remain in the in-memory issue report for review before publication.
+
+### Staging exception review (unpublished)
+
+The full PDF inventory currently yields 641 strength candidates (68 ACSR, 61 ACSR/AW, 192 ACSS, 56 AAC, 48 ACCC, and 216 distinct ACSS/TW variants). Of these, 272 use published area, 199 use strand-derived area, 150 use cross-PDF area, and 20 use assumed ACCC ULS area. No candidate lacks an area. The issue list has 13 variant-level TW differences greater than 0.0002 in2, 18 rounding-scale differences at or below 0.0002 in2, eight absent ACCC ULS strengths (no variant emitted), and one rejected TW transfer. Multiple variants may refer to the same codeword/size difference. Every overlap issue retains both source rows and printed values, even when below the tolerance.
+
+| Codeword / size (kcmil) | ACSR/TW total (in2) | ACSS/TW total (in2) | Difference (in2) |
+| --- | ---: | ---: | ---: |
+| Bluebird / 2156 | 1.8312 | 1.8309 | 0.0003 |
+| Chukar / 1780 | 1.5120 | 1.5126 | 0.0006 |
+| Finch / 1113 | 0.9851 | 0.9852 | 0.0001 |
+| Hen / 477 | 0.4619 | 0.4621 | 0.0002 |
+| Linnet / 336.4 | 0.3073 | 0.3070 | 0.0003 |
+| Oriole / 336.4 | 0.3259 | 0.3258 | 0.0001 |
+| Scoter / 636 | 0.6159 | 0.6160 | 0.0001 |
+
+Bluebird needs review before publication. Round ACSR page 3 (`ACSR:2156:bluebird:standard:84/19`) has 84 aluminum strands at 0.1602 in, yielding 1.693145150034... in2 of aluminum area. ACSR/TW page 3 (`ACSR/TW:2156:bluebird:type-8`) prints aluminum area **1.0934** in2 and total **1.8312** in2; its aluminum value fails the geometry check. ACSS/TW page 3 (`ACSS/TW:2156:bluebird:type-8`) prints aluminum **1.6933** in2 and total **1.8309** in2, passes the check, and is the currently staged fallback for round ACSR Bluebird. Visually verify the ACSR/TW printed cell before attributing the mismatch to the source or extraction; do not silently rewrite it. Confirm whether this cross-family fallback should be accepted or whether Bluebird should use its round-wire derived area and quarantine the transfer. Review the six other differing keys against their PDF pages before treating the comparison tolerance as release-approved.
 
 ## Scope and source inventory
 

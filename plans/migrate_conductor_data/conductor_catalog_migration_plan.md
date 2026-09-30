@@ -1,6 +1,8 @@
 # PDF-backed conductor catalog migration plan
 
-Status: implementation plan only. No catalog, model, or generated data is changed by this document. The approved mechanical-area policy supports the separate sag integration plan; it does not supply sag's effective elastic modulus or thermal-expansion coefficient, which belong in `SagOptions`.
+Status: PDF adapters and in-memory, unpublished strength/area staging are implemented. No catalog, model, or generated data is changed by this staging work. The approved mechanical-area policy supports the separate sag integration plan; it does not supply sag's effective elastic modulus or thermal-expansion coefficient, which belong in `SagOptions`.
+
+The staging boundary is `stage_sources` in `src/transmissionlines/catalog/conductor_staging.py`, followed by `resolve_areas` in `src/transmissionlines/catalog/mechanical_area.py`. Both accept extracted PDF rows and return candidates plus row-keyed issues; neither writes files or changes the v1 catalog. Strengths without a printed numeric cell do not become candidates. Geometry pages 3 and 5 of the HS285 TW source become distinct shaped-wire candidates; their electrical pages remain extracted source rows for a later join. ACCC ULS shares the row's printed standard weight as an explicitly labeled approximation and assumes its listed core diameter applies to ULS area. Area comparison currently allows 2% plus 0.0002 in2 printed precision against round-wire strand geometry, flags TW source differences over 0.0002 in2, and checks the outside-diameter envelope with 1% precision allowance. Conflicts, missing inputs, and rejected transfers remain in the in-memory issue report for review before publication.
 
 ## Scope and source inventory
 

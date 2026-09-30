@@ -38,6 +38,24 @@ class CableDiameter(BaseQuantity):
     __base_unit__ = "inch"
 
 
+class ConductorWeight(BaseQuantity):
+    """Conductor weight per unit length in pounds-force per kilofoot."""
+
+    __base_unit__ = "pound_force / kilofoot"
+
+
+class RatedBreakingStrength(BaseQuantity):
+    """Rated conductor breaking strength in pounds-force."""
+
+    __base_unit__ = "pound_force"
+
+
+class MaterialArea(BaseQuantity):
+    """Total conductor material cross-sectional area in square inches."""
+
+    __base_unit__ = "inch ** 2"
+
+
 class RouteDistance(BaseQuantity):
     """Route or span length using mile-compatible distance units."""
 
@@ -92,11 +110,14 @@ __all__ = [
     "BundleSpacing",
     "CableDiameter",
     "CableGMR",
+    "ConductorWeight",
     "Current",
     "Distance",
     "EarthResistivity",
     "EquivalentRadius",
     "Frequency",
+    "MaterialArea",
+    "RatedBreakingStrength",
     "Resistance",
     "ResistancePerKft",
     "RouteDistance",

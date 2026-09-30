@@ -50,7 +50,7 @@ class CatalogRepository:
             raise NoCatalogMatch(f"no exact {table} record matches {selectors}")
         if len(frame) != 1:
             raise AmbiguousCatalogMatch(f"ambiguous {table} selection for {selectors}")
-        return frame.iloc[0].to_dict()
+        return {key: None if pd.isna(value) else value for key, value in frame.iloc[0].items()}
 
     def select_state(self, selector: str) -> dict[str, Any]:
         """Select one state by exact FIPS, USPS, or canonical name."""

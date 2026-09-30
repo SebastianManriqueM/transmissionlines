@@ -4,33 +4,42 @@ import hashlib
 import json
 from typing import Any
 
-from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
+from transmissionlines.catalog.schemas import ConductorRecord, ConductorV2Record, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.models.configurations import CircuitConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc, select_phase_resistance
-from transmissionlines.units import CableDiameter, CableGMR, Current, ResistancePerKft, TowerCoordinate
+from transmissionlines.units import CableDiameter, CableGMR, ConductorWeight, Current, MaterialArea, RatedBreakingStrength, ResistancePerKft, TowerCoordinate
 
 
 def _reference(record: Any, table: str, catalog_version: str) -> CatalogReference:
     return CatalogReference(catalog_version=catalog_version, table_name=table, record_id=record.record_id, source_id=record.source_id)
 
 
-def conductor_from_record(record: ConductorRecord, *, catalog_version: str) -> ConductorSpec:
-    """Convert one normalized phase-conductor record without retaining its row."""
+def conductor_from_record(record: ConductorV2Record | ConductorRecord, *, catalog_version: str) -> ConductorSpec:
+    """Convert one selected conductor record to unit-typed runtime equipment."""
+    if isinstance(record, ConductorV2Record):
+        resistances = (record.ac_resistance_75c_ohm_kft, record.ac_resistance_50c_ohm_kft, record.ac_resistance_25c_ohm_kft)
+        ampacity = record.ampacity_75c_a
+        dc_resistance = record.dc_resistance_20c_ohm_kft
+    else:
+        resistances = (record.ac_resistance_75_ohm_kft, record.ac_resistance_50_ohm_kft, record.ac_resistance_25_ohm_kft)
+        ampacity = record.ampacity_a
+        dc_resistance = record.dc_resistance_ohm_kft
     resistance = select_phase_resistance(
-        None if record.ac_resistance_75_ohm_kft is None else ResistancePerKft(record.ac_resistance_75_ohm_kft, "ohm / kilofoot"),
-        None if record.ac_resistance_50_ohm_kft is None else ResistancePerKft(record.ac_resistance_50_ohm_kft, "ohm / kilofoot"),
-        None if record.ac_resistance_25_ohm_kft is None else ResistancePerKft(record.ac_resistance_25_ohm_kft, "ohm / kilofoot"),
-    ) if any(value is not None for value in (record.ac_resistance_75_ohm_kft, record.ac_resistance_50_ohm_kft, record.ac_resistance_25_ohm_kft)) else None
+        *(None if value is None else ResistancePerKft(float(value), "ohm / kilofoot") for value in resistances)
+    ) if any(value is not None for value in resistances) else None
     values = BareConductorEquipment(
         conductor_diameter=None if record.diameter_inch is None else CableDiameter(record.diameter_inch, "inch"),
         conductor_gmr=None if record.internal_reactance_ohm_kft is None else CableGMR(gmr_from_xl(record.internal_reactance_ohm_kft), "foot"),
         capacitance_radius=None if record.capacitance_reactance_mohm_kft is None else CableGMR(req_from_xc(record.capacitance_reactance_mohm_kft), "foot"),
-        ampacity=None if record.ampacity_a is None else Current(record.ampacity_a, "ampere"),
-        ac_resistance=resistance if resistance is not None else (None if record.ac_resistance_ohm_kft is None else ResistancePerKft(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
-        dc_resistance=None if record.dc_resistance_ohm_kft is None else ResistancePerKft(record.dc_resistance_ohm_kft, "ohm / kilofoot"),
+        ampacity=None if ampacity is None else Current(float(ampacity), "ampere"),
+        ac_resistance=resistance if resistance is not None else (None if isinstance(record, ConductorV2Record) or record.ac_resistance_ohm_kft is None else ResistancePerKft(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
+        dc_resistance=None if dc_resistance is None else ResistancePerKft(float(dc_resistance), "ohm / kilofoot"),
+        weight=None if not isinstance(record, ConductorV2Record) or record.weight_lb_kft is None else ConductorWeight(float(record.weight_lb_kft), "pound_force / kilofoot"),
+        rated_breaking_strength=None if not isinstance(record, ConductorV2Record) or record.rated_strength_lb is None else RatedBreakingStrength(float(record.rated_strength_lb), "pound_force"),
+        total_material_area=None if not isinstance(record, ConductorV2Record) or record.total_area_in2 is None else MaterialArea(float(record.total_area_in2), "inch ** 2"),
     )
     return ConductorSpec(name=f"{catalog_version}:conductor:{record.record_id}", equipment=values, catalog_reference=_reference(record, "conductors", catalog_version))
 
@@ -57,7 +66,7 @@ def _circuit_configuration_name(
     return f"{conductor.name}:{circuit_id}:{digest}"
 
 
-def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
+def phase_spec_from_record(record: ConductorV2Record | ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
     """Build a registered circuit selection from one conductor record.
 
     Parameters

@@ -2,7 +2,10 @@
 
 `v2` is the default catalog for `open_catalog()` and the catalog-backed
 examples. It contains 641 PDF-backed conductors alongside the non-conductor
-tables from v1. An explicit path is required to open a different version.
+tables from v1. V2 is for new selections only. Existing v1 catalog references
+remain bound to v1; open that catalog explicitly with
+`open_catalog('data/catalog/v1')` when reading them. No old conductor ID is
+automatically redirected to v2.
 
 `v1` is generated from `data/raw/Tower_geometries_DB.xlsx` using the catalog
 adapter in `transmissionlines.catalog.importer`. It contains normalized
@@ -28,7 +31,8 @@ schema and parser versions, and row counts. `conductor_provenance.parquet` retai
 field-level source cells and derivation notes; `conductor_issues.parquet` retains
 the printed TW differences, absent ULS strengths, and rejected Bluebird transfer.
 `conductor_crosswalk.parquet` maps only unique exact legacy identities and records
-unmapped, ambiguous, and excluded cases without redirecting v1 references.
+unmapped, ambiguous, and excluded cases for audit only. Unresolved rows remain
+unmapped; reviewing them is not required for new v2 selections.
 Temperature-specific electrical fields are explicit; ACCC resistance values are
 converted from ohm/mile to ohm/kft, with original values in provenance. The
 HS285 TW electrical pages are joined to geometry pages by section, codeword,

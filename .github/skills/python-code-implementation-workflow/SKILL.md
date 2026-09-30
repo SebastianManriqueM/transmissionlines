@@ -26,6 +26,7 @@ Reusable workflow for implementing Python code with predictable quality and test
 - Use at most 2 mandatory positional arguments per function.
 - Make all remaining parameters keyword-only.
 - Preserve backward compatibility for public APIs unless explicitly approved.
+- Do not hardcode fixed values directly inside functions. Define them with descriptive `UPPER_CASE` names in a `constants.py` in the owning module's package, then import them where needed. Reuse existing constants before adding new ones; keep values derived from inputs as local variables.
 - Place imports at module scope, grouped according to PEP 8: standard library, third-party, then local application imports.
 - Do not add function- or method-local imports unless a verified circular dependency or optional/lazy dependency requires deferred loading. Prefer resolving import cycles through module boundaries; use `TYPE_CHECKING` for annotation-only imports. Keep any necessary deferred import narrow, document its reason, and validate the import behavior.
 
@@ -41,6 +42,11 @@ For performance-sensitive data-processing and result-collection code:
 - Use Python loops only when vectorization would materially reduce clarity or change semantics.
 
 ## Procedure
+
+### 0. Check for Reuse Before Planning or Implementing
+1. Inspect the relevant modules and nearby call sites for existing functions, helpers, and code that already solve part or all of the task.
+2. Check existing `constants.py` files and named constants before defining new values.
+3. Plan around reusable code and constants; only add or duplicate behavior or plan for refactorings when existing definitions cannot meet the requirements.
 
 ### 1. Define Behavior First
 1. Identify acceptance criteria and edge cases.
@@ -163,6 +169,8 @@ df = pd.DataFrame(rows)
 ```
 
 ## Completion Criteria
+- Existing functions, code, and constants were checked for reuse before planning or implementation.
+- Fixed values used by functions are named `UPPER_CASE` in the owning package's `constants.py` and imported where needed, rather than hardcoded in function bodies.
 - TDD loop was followed for implemented behavior.
 - Functions keep single responsibility.
 - All new/changed signatures follow max-2-positional and keyword-only rules.

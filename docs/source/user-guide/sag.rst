@@ -19,6 +19,13 @@ Callers must supply effective whole-conductor ``ElasticModulus`` and
 ``ThermalExpansion`` quantities in ``SagOptions``. These are not inferred from
 the catalog, and the same options apply to all selected circuits in a call.
 Use separate calls when conductors require different effective properties.
+``reference_temperature`` and ``operating_temperature`` require ``Temperature``
+quantities (for example, degrees Celsius, Fahrenheit, or kelvin). ``span_start``,
+``span_stop``, ``span_step``, and signed ``elevation_difference`` require
+``SpanLength`` quantities (for example, feet or metres). Bare numbers are
+rejected for all physical options. ``additional_permanent_strain`` is a
+dimensionless float. The calculation converts temperature to degrees Celsius
+and lengths to feet before calling the pure single-conductor solver.
 
 ``everyday_tension_fraction`` belongs to the line and must be in ``(0, 0.30]``.
 When omitted, each conductor uses 20% of its own RBS at the reference state;
@@ -36,8 +43,8 @@ the maximum vertical sag below the straight attachment chord. The unchanged
 reference state with no additional strain retains its known reference tension;
 all changed states solve the residual. The curve grid defaults to 20 through
 2000 ft, every 10 ft (199 points). Custom endpoints are included exactly, with
-a shorter last interval where needed. ``elevation_difference_ft`` defaults to
-zero for this hypothetical cross-section and is not a surveyed tower elevation.
+a shorter last interval where needed. ``elevation_difference`` defaults to
+zero feet for this hypothetical cross-section and is not a surveyed tower elevation.
 
 Catalog-backed example
 ----------------------

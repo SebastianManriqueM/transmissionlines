@@ -22,13 +22,14 @@ from transmissionlines.models.st_clair import StClairResult
 from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_result
 
 
-def open_catalog(path: str, *, catalog_version: str | None = None) -> CatalogRepository:
+def open_catalog(path: str = "data/catalog/v2", *, catalog_version: str | None = None) -> CatalogRepository:
     """Open a generated, normalized catalog repository.
 
     Parameters
     ----------
-    path : str
+    path : str, optional
         Path to a catalog directory containing normalized Parquet tables.
+        Defaults to the bundled v2 catalog relative to the working directory.
     catalog_version : str, optional
         Explicit catalog version. If omitted, use the version in the manifest
         when available.

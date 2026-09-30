@@ -183,14 +183,17 @@ def solve_span_sag(
 
 
 def _span_grid(options: SagOptions) -> list[float]:
-    count = math.floor((options.span_stop_ft - options.span_start_ft) / options.span_step_ft)
+    start = options.span_start.to("foot").magnitude
+    stop = options.span_stop.to("foot").magnitude
+    step = options.span_step.to("foot").magnitude
+    count = math.floor((stop - start) / step)
     if count > SAG_MAX_GRID_POINTS:
         raise ValueError("span grid exceeds one million points")
-    grid = [options.span_start_ft + index * options.span_step_ft for index in range(count + 1)]
-    if grid[-1] < options.span_stop_ft and not math.isclose(grid[-1], options.span_stop_ft, abs_tol=SAG_GRID_ENDPOINT_TOLERANCE_FT):
-        grid.append(options.span_stop_ft)
+    grid = [start + index * step for index in range(count + 1)]
+    if grid[-1] < stop and not math.isclose(grid[-1], stop, abs_tol=SAG_GRID_ENDPOINT_TOLERANCE_FT):
+        grid.append(stop)
     else:
-        grid[-1] = options.span_stop_ft
+        grid[-1] = stop
     return grid
 
 
@@ -253,9 +256,9 @@ def calculate_sag(
                     modulus_psi=options.elastic_modulus.to("psi").magnitude,
                     expansion_per_c=options.thermal_expansion_coefficient.to("1 / kelvin").magnitude,
                     reference_fraction=fraction,
-                    span_ft=span, rise_ft=options.elevation_difference_ft,
-                    reference_temperature_c=options.reference_temperature_c,
-                    operating_temperature_c=options.operating_temperature_c,
+                    span_ft=span, rise_ft=options.elevation_difference.to("foot").magnitude,
+                    reference_temperature_c=options.reference_temperature.to("degC").magnitude,
+                    operating_temperature_c=options.operating_temperature.to("degC").magnitude,
                     additional_permanent_strain=options.additional_permanent_strain,
                 )
             except ValueError as error:

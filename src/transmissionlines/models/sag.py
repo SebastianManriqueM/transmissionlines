@@ -7,7 +7,7 @@ from pydantic import ValidationInfo, field_validator, model_validator
 
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.result_base import CalculationResultModel
-from transmissionlines.units import ElasticModulus, ThermalExpansion
+from transmissionlines.units import ElasticModulus, SpanLength, Temperature, ThermalExpansion
 
 
 class SagOptions(LineDataModel):
@@ -19,23 +19,44 @@ class SagOptions(LineDataModel):
         Effective modulus of one physical conductor; no catalog default exists.
     thermal_expansion_coefficient : ThermalExpansion
         Effective expansion per degree Celsius (equivalently per kelvin).
+    reference_temperature, operating_temperature : Temperature
+        Reference and operating conductor temperatures; defaults are 25 and 75 C.
+    span_start, span_stop, span_step : SpanLength
+        Horizontal span grid endpoints and step; defaults are 20, 2000 and 10 ft.
+    elevation_difference : SpanLength
+        Signed end-minus-start attachment rise; defaults to zero feet.
+    additional_permanent_strain : float
+        Additional dimensionless strain after the reference state.
     """
 
     elastic_modulus: ElasticModulus
     thermal_expansion_coefficient: ThermalExpansion
-    reference_temperature_c: float = 25.0
-    operating_temperature_c: float = 75.0
+    reference_temperature: Temperature = Temperature(25, "degC")
+    operating_temperature: Temperature = Temperature(75, "degC")
     additional_permanent_strain: float = 0.0
-    span_start_ft: float = 20.0
-    span_stop_ft: float = 2000.0
-    span_step_ft: float = 10.0
-    elevation_difference_ft: float = 0.0
+    span_start: SpanLength = SpanLength(20, "foot")
+    span_stop: SpanLength = SpanLength(2000, "foot")
+    span_step: SpanLength = SpanLength(10, "foot")
+    elevation_difference: SpanLength = SpanLength(0, "foot")
 
-    @field_validator("elastic_modulus", "thermal_expansion_coefficient", mode="before")
+    @field_validator(
+        "elastic_modulus", "thermal_expansion_coefficient", "reference_temperature",
+        "operating_temperature", "span_start", "span_stop", "span_step",
+        "elevation_difference", mode="before",
+    )
     @classmethod
     def require_explicit_units(cls, value: object, info: ValidationInfo) -> object:
         """Require the caller to specify a quantity with appropriate units."""
-        expected = ElasticModulus if info.field_name == "elastic_modulus" else ThermalExpansion
+        expected = {
+            "elastic_modulus": ElasticModulus,
+            "thermal_expansion_coefficient": ThermalExpansion,
+            "reference_temperature": Temperature,
+            "operating_temperature": Temperature,
+            "span_start": SpanLength,
+            "span_stop": SpanLength,
+            "span_step": SpanLength,
+            "elevation_difference": SpanLength,
+        }[info.field_name]
         if not isinstance(value, expected):
             raise ValueError(f"{info.field_name} requires an explicit {expected.__name__} quantity")
         return value
@@ -43,20 +64,25 @@ class SagOptions(LineDataModel):
     @model_validator(mode="after")
     def validate_sag_options(self) -> "SagOptions":
         """Reject non-finite and nonphysical material or span inputs."""
+        modulus_psi = self.elastic_modulus.to("psi").magnitude
+        start_ft = self.span_start.to("foot").magnitude
+        stop_ft = self.span_stop.to("foot").magnitude
+        step_ft = self.span_step.to("foot").magnitude
         values = (
-            self.elastic_modulus.to("psi").magnitude,
+            modulus_psi,
             self.thermal_expansion_coefficient.to("1 / kelvin").magnitude,
-            self.reference_temperature_c, self.operating_temperature_c,
-            self.additional_permanent_strain, self.span_start_ft, self.span_stop_ft,
-            self.span_step_ft, self.elevation_difference_ft,
+            self.reference_temperature.to("kelvin").magnitude,
+            self.operating_temperature.to("kelvin").magnitude,
+            self.additional_permanent_strain,
+            start_ft, stop_ft, step_ft, self.elevation_difference.to("foot").magnitude,
         )
         if not all(math.isfinite(value) for value in values):
             raise ValueError("sag options must be finite")
-        if values[0] <= 0:
+        if modulus_psi <= 0:
             raise ValueError("elastic_modulus must be positive")
         if self.additional_permanent_strain < 0:
             raise ValueError("additional_permanent_strain must be nonnegative")
-        if self.span_start_ft <= 0 or self.span_stop_ft < self.span_start_ft or self.span_step_ft <= 0:
+        if start_ft <= 0 or stop_ft < start_ft or step_ft <= 0:
             raise ValueError("span lengths and step must be positive and stop must not precede start")
         return self
 

@@ -147,16 +147,19 @@ def solve_span_sag(
     if (min(weight_lb_ft, rated_strength_lb, area_in2, modulus_psi, span_ft) <= 0
             or not 0 < reference_fraction <= 0.30 or additional_permanent_strain < 0):
         raise ValueError("span mechanics and length must be positive; reference fraction must be in (0, 0.30]")
+    axial_stiffness = modulus_psi * area_in2
+    if not math.isfinite(axial_stiffness) or axial_stiffness <= 0:
+        raise ValueError("axial stiffness must be finite and positive")
     thermal_factor = 1 + expansion_per_c * (operating_temperature_c - reference_temperature_c)
     if not math.isfinite(thermal_factor) or thermal_factor <= 0:
         raise ValueError("invalid thermal expansion factor")
     reference_tension = reference_fraction * rated_strength_lb
     reference_length = _arc_length(reference_tension, weight_lb_ft, span_ft, rise_ft)
-    unstressed_length = reference_length / (1 + reference_tension / (modulus_psi * area_in2))
+    unstressed_length = reference_length / (1 + reference_tension / axial_stiffness)
 
     def residual(tension: float) -> float:
         target = (unstressed_length * (1 + additional_permanent_strain) * thermal_factor
-                  * (1 + tension / (modulus_psi * area_in2)))
+                  * (1 + tension / axial_stiffness))
         value = _arc_length(tension, weight_lb_ft, span_ft, rise_ft) - target
         if not math.isfinite(value):
             raise ValueError("non-finite length compatibility residual")
@@ -190,7 +193,7 @@ def _span_grid(options: SagOptions) -> list[float]:
     if count > SAG_MAX_GRID_POINTS:
         raise ValueError("span grid exceeds one million points")
     grid = [start + index * step for index in range(count + 1)]
-    if grid[-1] < stop and not math.isclose(grid[-1], stop, abs_tol=SAG_GRID_ENDPOINT_TOLERANCE_FT):
+    if grid[-1] < stop and not math.isclose(grid[-1], stop, rel_tol=0.0, abs_tol=SAG_GRID_ENDPOINT_TOLERANCE_FT):
         grid.append(stop)
     else:
         grid[-1] = stop

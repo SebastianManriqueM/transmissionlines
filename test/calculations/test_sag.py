@@ -254,6 +254,13 @@ def test_public_plot_and_result_round_trip() -> None:
     assert axes.lines[0].get_xdata().tolist() == [20, 30, 40]
     assert axes.get_xlabel() == "Horizontal span (ft)"
     assert axes.get_ylabel() == "Maximum chord-relative sag (ft)"
+    assert "Conductor unspecified | stranding unspecified" in axes.texts[0].get_text()
+    assert axes.xaxis.label.get_size() == 14
+    assert axes.yaxis.label.get_size() == 14
+    assert axes.title.get_size() == 16
+    assert all(label.get_size() == 14 for label in axes.get_xticklabels() + axes.get_yticklabels())
+    assert all(text.get_fontsize() == 14 for text in axes.get_legend().get_texts())
+    assert axes.lines[0].get_linewidth() == pytest.approx(2.5)
     with pytest.raises(ValueError, match="unknown circuit_id"):
         plot_sag_curve(restored, circuit_id="missing")
     plt.close(axes.figure)

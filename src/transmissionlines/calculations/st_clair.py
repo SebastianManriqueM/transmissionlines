@@ -39,6 +39,8 @@ def _resolve_constants(
         raise ValueError("conductor_ampacity_a is required to calculate the thermal limit")
     return StClairLineConstants(
         circuit_id=circuit_id,
+        conductor_family=values.get("conductor_family"),
+        conductor_codeword=values.get("conductor_codeword"),
         r_ohm_per_mile=float(values["r_ohm_per_mile"]),
         x_ohm_per_mile=float(values["x_ohm_per_mile"]),
         b_siemens_per_mile=b_value,
@@ -364,6 +366,8 @@ def calculate_st_clair_curve_for_line(
             raise ValueError(f"missing conductor ampacity for {circuit_id}")
         inputs.append({
             "circuit_id": circuit_id,
+            "conductor_family": spec.conductor_spec.family,
+            "conductor_codeword": spec.conductor_spec.codeword,
             "nominal_voltage_kv": voltage_kv,
             "r_ohm_per_mile": scalars["r1"],
             "x_ohm_per_mile": scalars["x1"],

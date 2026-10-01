@@ -117,7 +117,10 @@ def conductor_from_record(
     name = f"{catalog_version}:conductor:{record.record_id}"
     if gmr_ft is not None:
         name += f":external-gmr-ft:{gmr_ft}"
-    return ConductorSpec(name=name, equipment=values, catalog_reference=_reference(record, "conductors", catalog_version))
+    return ConductorSpec(
+        name=name, equipment=values, catalog_reference=_reference(record, "conductors", catalog_version),
+        family=record.family, codeword=record.codeword, stranding=record.stranding,
+    )
 
 
 def _circuit_configuration_name(

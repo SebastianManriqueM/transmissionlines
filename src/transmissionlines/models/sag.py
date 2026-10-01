@@ -92,6 +92,11 @@ class SagCurve(CalculationResultModel):
 
     circuit_id: str
     conductor_uuid: UUID
+    conductor_family: str | None = None
+    conductor_codeword: str | None = None
+    stranding: str | None = None
+    rated_strength_lb: float | None = None
+    weight_lb_kft: float | None = None
     span_lengths_ft: list[float]
     sag_ft: list[float]
     horizontal_tension_lb: list[float]

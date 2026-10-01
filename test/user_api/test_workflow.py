@@ -97,3 +97,49 @@ def test_partial_sag_material_mapping_reports_missing_field(line) -> None:
     )
     assert result.sag is None
     assert "thermal_expansion_per_k" in result.skipped["sag"]
+
+
+def test_default_plot_titles_include_per_circuit_conductor_and_tension_details(line) -> None:
+    circuit = line.configuration.circuits[0]
+    result = build.calculations(
+        line, st_clair_options={"line_length_stop_mi": 20},
+        sag_options={"elastic_modulus_psi": 11.5e6, "thermal_expansion_per_k": 19.3e-6,
+                     "span_start_ft": 100, "span_stop_ft": 100},
+        sag_circuit_id=circuit.circuit_id,
+    )
+    electrical = result.impedances.circuit_scalars[circuit.circuit_id]
+    equipment = circuit.conductor_spec.equipment
+    ampacity = equipment.ampacity.to("ampere").magnitude
+    strength = equipment.rated_breaking_strength.to("pound_force").magnitude
+    weight = equipment.weight.to("pound_force / kilofoot").magnitude
+
+    stored_st_clair = type(result.st_clair).model_validate_json(result.st_clair.model_dump_json())
+    stored_sag = type(result.sag).model_validate_json(result.sag.model_dump_json())
+    loadability = plots.st_clair(stored_st_clair)
+    try:
+        assert loadability.get_title() == "St. Clair loadability curve"
+        subtitle = loadability.texts[0]
+        assert loadability.title.get_fontsize() - subtitle.get_fontsize() == 2
+        assert f"ACSR Curlew | Ampacity {ampacity:g} A" in subtitle.get_text()
+        assert "2 conductors per phase" in subtitle.get_text()
+        assert f"R1 {electrical['r1']:.4f} | X1 {electrical['x1']:.4f} (ohm/mile)" in subtitle.get_text()
+        assert all(spec.circuit_id in subtitle.get_text() for spec in line.configuration.circuits)
+        loadability.figure.canvas.draw()
+        renderer = loadability.figure.canvas.get_renderer()
+        assert loadability.title.get_window_extent(renderer).y0 >= subtitle.get_window_extent(renderer).y1
+    finally:
+        plt.close(loadability.figure)
+
+    sag = plots.sag(stored_sag, circuit_id=circuit.circuit_id)
+    try:
+        assert sag.get_title() == "Sag curve"
+        subtitle = sag.texts[0]
+        assert sag.title.get_fontsize() - subtitle.get_fontsize() == 2
+        assert "ACSR Curlew | 54/7" in subtitle.get_text()
+        assert f"RTS {strength:g} lbs | weight {weight:g} lbs/kft" in subtitle.get_text()
+        assert f"Tension 20% RTS (H={0.2 * strength:g} lbs)" in subtitle.get_text()
+        sag.figure.canvas.draw()
+        renderer = sag.figure.canvas.get_renderer()
+        assert sag.title.get_window_extent(renderer).y0 >= subtitle.get_window_extent(renderer).y1
+    finally:
+        plt.close(sag.figure)

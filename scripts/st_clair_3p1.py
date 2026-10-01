@@ -106,9 +106,9 @@ def main() -> None:
         sag_options={
             "elastic_modulus_psi": 11.5e6,
             "thermal_expansion_per_k": 19.3e-6,
-            "span_start_ft": args.span_start_ft,
-            "span_stop_ft": args.span_stop_ft,
-            "span_step_ft": args.span_step_ft,
+            "span_start_ft": 20,
+            "span_stop_ft": 2000,
+            "span_step_ft": 10,
         },
         sag_circuit_id=circuit_id,
     )

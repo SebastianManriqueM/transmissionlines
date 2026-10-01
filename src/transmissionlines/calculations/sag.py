@@ -268,8 +268,15 @@ def calculate_sag(
                 raise ValueError(f"line {line.name} circuit {circuit.circuit_id} span {span:g} ft: {error}") from error
             sag.append(value)
             tensions.append(tension)
-        curves.append(SagCurve(circuit_id=circuit.circuit_id, conductor_uuid=circuit.conductor_spec.uuid,
-                               span_lengths_ft=grid, sag_ft=sag, horizontal_tension_lb=tensions))
+        curves.append(SagCurve(
+            circuit_id=circuit.circuit_id, conductor_uuid=circuit.conductor_spec.uuid,
+            conductor_family=circuit.conductor_spec.family,
+            conductor_codeword=circuit.conductor_spec.codeword,
+            stranding=circuit.conductor_spec.stranding,
+            rated_strength_lb=equipment.rated_breaking_strength.to("pound_force").magnitude,
+            weight_lb_kft=equipment.weight.to("pound_force / kilofoot").magnitude,
+            span_lengths_ft=grid, sag_ft=sag, horizontal_tension_lb=tensions,
+        ))
     return SagCurveResult(line_uuid=line.uuid, line_name=line.name, options=options,
                           everyday_tension_fraction=fraction, used_default_everyday_tension=fallback,
                           curves=curves, warnings=messages)

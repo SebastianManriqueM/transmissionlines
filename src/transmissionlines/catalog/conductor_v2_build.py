@@ -189,7 +189,7 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
     for name, metadata in tables.items():
         metadata["sha256"] = sha256_file(output / f"{name}.parquet")
     manifest = {
-        "catalog_version": "v2", "schema_version": "4.0.0",
+        "catalog_version": "v2", "schema_version": "4.2.0",
         "extraction_version": "1", "parser_version": pymupdf.VersionBind,
         "sources": source_info, "tables": dict(sorted(tables.items())),
         "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",

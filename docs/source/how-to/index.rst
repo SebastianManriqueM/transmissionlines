@@ -2,10 +2,12 @@ How to
 ======
 
 All catalog-backed recipes use the bundled ``data/catalog/v2`` snapshot by
-default through ``open_catalog()``. Pass an explicit directory only when
+default through ``build.open_catalog()``. Pass an explicit directory only when
 opening another version, and check its manifest and record IDs. Exact selection
 raises ``NoCatalogMatch`` or ``AmbiguousCatalogMatch``; numerical filtering is an
-explicit discovery step, not an implicit nearest-neighbor match.
+explicit discovery step, not an implicit nearest-neighbor match. Browse
+choices with ``catalog.conductors()``, ``catalog.ground_wires()``, or
+``catalog.towers()`` before fixing an exact record ID.
 
 .. toctree::
    :maxdepth: 2

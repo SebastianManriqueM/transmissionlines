@@ -32,8 +32,61 @@ admittance. The engine returns non-transposed (``*_nt``), fully transposed
      Ysequence --> Scalars
      Scalars --> Package
 
+Cable GMR and series impedance
+------------------------------
+
+Phase-conductor cable GMR
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The conductor builder resolves one phase-subconductor GMR in feet before the
+electrical engine computes bundle GMR. It uses, in order, published catalog
+``gmr_ft`` (when present), GMR derived from catalog internal reactance,
+an optional independently sourced ``gmr_ft`` supplied by the caller, a verified
+round ``6/1`` strand layout, and finally the overall-diameter approximation.
+An external value is rejected when the catalog already provides published GMR
+or internal reactance; it can replace either estimate. Without a diameter or
+another source, the cable GMR remains unavailable. Catalog browsing reports
+``published``, ``reactance-derived``, ``strand-estimated``,
+``radius-estimated``, or ``missing`` without emitting construction warnings.
+
+For a concentric round ``6/1`` ACSR, ACSR/AW, or ACSS row with source-backed
+aluminum and core strand diameters, the builder checks that the core is one
+strand, that the overall diameter fits one ring of six aluminum strands, and
+that the aluminum and core strands have nearly equal diameters. In the absence
+of measured strand current shares it **assumes equal current in all seven
+strands, including steel**. With strand center distance :math:`d_{ij}`, strand
+radius :math:`r_i`, and :math:`w_i=1/7`, its estimate is
+
+.. math::
+
+  \begin{aligned}
+  d_{ii} &= r_i e^{-1/4}, \\
+  \mathrm{GMR}_{6/1} &= \exp\left(\sum_{i=1}^{7}\sum_{j=1}^{7}
+                 w_i w_j \ln d_{ij}\right).
+  \end{aligned}
+
+The core center is at the origin and the six aluminum centers are at 60-degree
+intervals, each at the mean of the core and aluminum strand diameters from
+the origin. Strand dimensions and :math:`d_{ij}` are in inches; divide the
+result by 12 for feet. Equal steel and aluminum current is a simplifying
+assumption, not a measured electrical property. If the geometry is absent or
+inconsistent, including multilayer layouts such as ``54/7``, the builder
+does not infer strand centers from counts. Instead it uses
+
+.. math::
+
+  \mathrm{GMR}_{\mathrm{radius}} = \frac{D_{\mathrm{outer}}}{24}e^{-1/4}
+  \quad\text{feet, for }D_{\mathrm{outer}}\text{ in inches}.
+
+This treats the entire cable as a solid round wire with its outside radius;
+it is only a coarse proxy for stranded, composite, or shaped conductors.
+Both estimated paths emit ``UserWarning`` at construction. Verify GMR against
+engineering data before using either approximation for design or validation;
+the warning is not emitted for published, reactance-derived, or independently
+sourced GMR.
+
 Primitive series impedance
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For conductor index :math:`i`, the diagonal uses bundle :math:`\mathrm{GMR}_i` and the
 resistance of one subconductor divided by bundle count. For :math:`i \ne j`, the

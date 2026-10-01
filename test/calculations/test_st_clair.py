@@ -160,6 +160,7 @@ def test_plotting_returns_axes_with_noninteractive_backend() -> None:
     result = calculate_st_clair(_input(), options=StClairOptions(line_length_start_mi=20, line_length_stop_mi=20))
     axes = plot_st_clair_result(result, show_limits=True)
     assert axes.get_xlabel() == "Line length (mi)"
+    assert "Conductor unspecified | Ampacity" in axes.texts[0].get_text()
     assert axes.xaxis.label.get_size() == 14
     assert axes.yaxis.label.get_size() == 14
     assert axes.title.get_size() == 16

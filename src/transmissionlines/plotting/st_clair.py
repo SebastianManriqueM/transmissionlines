@@ -4,12 +4,16 @@ import importlib
 from typing import Any
 
 from transmissionlines.models.st_clair import StClairResult
-
-TICK_LABEL_SIZE_PT = 14
-AXIS_LABEL_SIZE_PT = 14
-AXIS_TITLE_SIZE_PT = 16
-LEGEND_SIZE_PT = 14
-LINE_WIDTH_PT = 2.5
+from transmissionlines.plotting.constants import (
+    AXIS_LABEL_SIZE_PT,
+    AXIS_TITLE_SIZE_PT,
+    LEGEND_SIZE_PT,
+    LINE_WIDTH_PT,
+    SUBTITLE_GAP_PT,
+    SUBTITLE_LINE_HEIGHT,
+    SUBTITLE_SIZE_PT,
+    TICK_LABEL_SIZE_PT,
+)
 
 
 def plot_st_clair_curve(
@@ -94,7 +98,22 @@ def plot_st_clair_curve(
         f"{end}-end real power (MW)" if y.endswith("mw") else f"{end}-end real power (W)",
         fontsize=AXIS_LABEL_SIZE_PT,
     )
-    axes.set_title("St. Clair loadability curve", fontsize=AXIS_TITLE_SIZE_PT)
+    descriptions = [
+        f"{item.circuit_id}: {(' '.join(filter(None, (item.conductor_family, item.conductor_codeword))) or 'Conductor unspecified')} | Ampacity {item.conductor_ampacity_a:g} A\n"
+        f"{item.subconductor_count} conductors per phase\n"
+        f"R1 {item.r_ohm_per_mile:.4f} | X1 {item.x_ohm_per_mile:.4f} (ohm/mile)"
+        for item in result.line_constants if item.circuit_id in {curve.circuit_id for curve in selected}
+    ]
+    subtitle = "\n".join(descriptions)
+    axes.annotate(
+        subtitle, xy=(0.5, 1), xycoords="axes fraction",
+        xytext=(0, SUBTITLE_GAP_PT), textcoords="offset points",
+        ha="center", va="bottom", fontsize=SUBTITLE_SIZE_PT,
+    )
+    axes.set_title(
+        "St. Clair loadability curve", fontsize=AXIS_TITLE_SIZE_PT,
+        pad=2 * SUBTITLE_GAP_PT + (subtitle.count("\n") + 1) * SUBTITLE_SIZE_PT * SUBTITLE_LINE_HEIGHT,
+    )
     axes.tick_params(axis="both", labelsize=TICK_LABEL_SIZE_PT)
     axes.grid(True, alpha=0.3)
     if show_voltage_limit:
@@ -138,6 +157,7 @@ def plot_st_clair_curve(
             fontsize=LEGEND_SIZE_PT,
             framealpha=1.0,
         )
+    axes.figure.tight_layout()
     if show:
         plt.show()
     return axes

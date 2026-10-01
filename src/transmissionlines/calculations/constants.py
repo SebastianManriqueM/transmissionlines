@@ -1,5 +1,8 @@
 """Numerical limits for transmission-line calculation algorithms."""
 
+ROUND_STRAND_DIAMETER_REL_TOLERANCE = 0.01
+STRAND_CONTACT_REL_TOLERANCE = 1e-12
+
 # Reject catenary sinh arguments above this bound before hyperbolic overflow.
 SAG_MAX_CATENARY_SINH_ARGUMENT = 700
 

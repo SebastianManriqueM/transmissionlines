@@ -54,6 +54,10 @@ def project_conductor(
     row = candidate.source
     area = staged.area
     rating_row = electrical_row if electrical_row is not None else row
+    core_strand_field = {
+        "ACSR": "strand_diameter_stl_in", "ACSR/AW": "strand_diameter_aw_in",
+        "ACSS": "strand_diameter_steel_in",
+    }.get(candidate.family)
     electrical: dict[str, Decimal] = {}
     electrical_sources: dict[str, str] = {}
     for field in _ELECTRICAL_FIELDS:
@@ -70,6 +74,7 @@ def project_conductor(
         record_id=candidate.record_id, source_id=row.source_sha256,
         family=candidate.family, codeword=candidate.codeword, size=candidate.size,
         variant=candidate.variant, stranding=row.cells["stranding"].raw if "stranding" in row.cells else None,
+        gmr_ft=rating_row.numeric("gmr_ft") if "gmr_ft" in rating_row.cells else None,
         diameter_inch=row.numeric("diameter_in") if "diameter_in" in row.cells else None,
         weight_lb_kft=candidate.weight_total_lb_kft,
         rated_strength_lb=candidate.rated_strength_lb,
@@ -77,6 +82,8 @@ def project_conductor(
         core_area_in2=area.core.value if area and area.core else None,
         total_area_in2=area.total.value if area else None,
         core_diameter_in=row.numeric("core_diameter_in") if "core_diameter_in" in row.cells else None,
+        strand_diameter_al_in=row.numeric("strand_diameter_al_in") if "strand_diameter_al_in" in row.cells else None,
+        strand_diameter_core_in=row.numeric(core_strand_field) if core_strand_field in row.cells else None,
         ac_resistance_temperature_c=ac_temperatures[0] if len(ac_temperatures) == 1 else None,
         ampacity_temperature_c=ampacity_temperatures[0] if len(ampacity_temperatures) == 1 else None,
         **electrical,
@@ -86,6 +93,8 @@ def project_conductor(
         ("codeword", "codeword"), ("size", "size"),
         ("stranding", "stranding"), ("diameter_inch", "diameter_in"),
         ("core_diameter_in", "core_diameter_in"),
+        ("strand_diameter_al_in", "strand_diameter_al_in"),
+        ("strand_diameter_core_in", core_strand_field),
     ):
         if getattr(record, field) is not None and source_field in row.cells:
             provenance.append(_provenance(
@@ -111,6 +120,11 @@ def project_conductor(
             source_field=source_field, cell=rating_row.cells[source_field],
             method="derived" if source_field != field else "published",
             note="Divide ohm/mile by 5.28 to obtain ohm/kft" if source_field != field else "",
+        ))
+    if record.gmr_ft is not None:
+        provenance.append(_provenance(
+            record_id=record.record_id, field="gmr_ft", row=rating_row,
+            source_field="gmr_ft", cell=rating_row.cells["gmr_ft"], method="published",
         ))
     if area is not None:
         for field, value in (

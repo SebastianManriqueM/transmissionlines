@@ -1,0 +1,10 @@
+"""Shared typography and stroke dimensions for calculation plots."""
+
+TICK_LABEL_SIZE_PT = 14
+AXIS_LABEL_SIZE_PT = 14
+AXIS_TITLE_SIZE_PT = 16
+SUBTITLE_SIZE_PT = AXIS_TITLE_SIZE_PT - 2
+LEGEND_SIZE_PT = 14
+LINE_WIDTH_PT = 2.5
+SUBTITLE_LINE_HEIGHT = 1.2
+SUBTITLE_GAP_PT = 8

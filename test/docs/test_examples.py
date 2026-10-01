@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 from transmissionlines.api import calculate_line_electrical_parameters, calculate_st_clair_curve
 from transmissionlines.models.assets import CrossSectionTransmissionLine
@@ -116,6 +117,9 @@ def test_quickstart_direct_st_clair_example() -> None:
 
 
 def test_catalog_backed_line_example_uses_default_v2() -> None:
+    assert "from transmissionlines.user_api import build" in Path(
+        "docs/source/how-to/examples/catalog_line.py"
+    ).read_text(encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, "docs/source/how-to/examples/catalog_line.py"],
         capture_output=True, text=True, check=True,
@@ -125,8 +129,40 @@ def test_catalog_backed_line_example_uses_default_v2() -> None:
 
 
 def test_catalog_backed_sag_example() -> None:
+    assert "from transmissionlines.user_api import build, plots" in Path(
+        "docs/source/how-to/examples/sag_curve.py"
+    ).read_text(encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, "docs/source/how-to/examples/sag_curve.py"],
         capture_output=True, text=True, check=True,
     )
     assert completed.stdout.splitlines() == ["2", "199"]
+
+
+def test_two_import_cross_section_example() -> None:
+    completed = subprocess.run(
+        [sys.executable, "docs/source/how-to/examples/cross_section_user_api.py"],
+        capture_output=True, text=True, check=True,
+    )
+    assert completed.stdout.splitlines() == ["2 circuits", "2 sag curves", "0 skipped"]
+
+
+def test_st_clair_3p1_user_api_exports_sag_and_loadability(tmp_path) -> None:
+    curve_csv = tmp_path / "loadability.csv"
+    curve_figure = tmp_path / "loadability.png"
+    sag_csv = tmp_path / "sag.csv"
+    sag_figure = tmp_path / "sag.png"
+    completed = subprocess.run(
+        [sys.executable, "scripts/st_clair_3p1.py", "--output-csv", str(curve_csv),
+         "--output-figure", str(curve_figure), "--output-sag-csv", str(sag_csv),
+         "--output-sag-figure", str(sag_figure), "--length-stop-mi", "20",
+         "--span-stop-ft", "200"],
+        capture_output=True, text=True, check=True,
+    )
+    assert "St. Clair curve:" in completed.stdout
+    assert "Sag curve:" in completed.stdout
+    assert "estimated GMR" in completed.stderr
+    assert "length_mi" in curve_csv.read_text(encoding="utf-8")
+    assert "span_ft,sag_ft,horizontal_tension_lb" in sag_csv.read_text(encoding="utf-8")
+    assert curve_figure.stat().st_size > 0
+    assert sag_figure.stat().st_size > 0

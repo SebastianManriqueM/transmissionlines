@@ -9,6 +9,7 @@ from transmissionlines.calculations.cable import (
     equivalent_radius,
     regular_polygon_coordinates,
     select_phase_resistance,
+    strand_geometry_gmr,
 )
 from transmissionlines.calculations.electrical import build_primitive_p
 from transmissionlines.calculations.geometry import image_distance
@@ -44,6 +45,19 @@ def test_bundle_formulas_cover_single_twin_and_multi_subconductors() -> None:
         ]
     ) ** (1 / 9)
     assert bundle_gmr(0.04, 3, 12) == pytest.approx(expected)
+
+
+def test_strand_geometry_gmr_requires_explicit_round_strands_and_current_shares() -> None:
+    single = strand_geometry_gmr([(0, 0)], [0.1], [1])
+    assert single == pytest.approx(0.1 * np.exp(-0.25))
+    two = strand_geometry_gmr([(0, 0), (0.2, 0)], [0.1, 0.1], [0.5, 0.5])
+    assert two == pytest.approx(np.sqrt(0.1 * np.exp(-0.25) * 0.2))
+    with pytest.raises(ValueError, match="overlap"):
+        strand_geometry_gmr([(0, 0), (0.1, 0)], [0.1, 0.1], [0.5, 0.5])
+    with pytest.raises(ValueError, match="radius"):
+        strand_geometry_gmr([(0, 0)], [0], [1])
+    with pytest.raises(ValueError, match="weight"):
+        strand_geometry_gmr([(0, 0)], [0.1], [0.5])
 
 
 def test_equivalent_radius_uses_same_polygon_policy() -> None:

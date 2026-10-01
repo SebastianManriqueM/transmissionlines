@@ -5,6 +5,7 @@ from pathlib import Path
 
 from transmissionlines.catalog.accc_pdf import extract_accc
 from transmissionlines.catalog.acss_pdf import extract_acss
+from transmissionlines.catalog.acsr_pdf import extract_acsr
 from transmissionlines.catalog.acss_hs285_tw_pdf import extract_acss_hs285_tw
 from transmissionlines.catalog.acss_tw_pdf import extract_acss_tw_areas
 from transmissionlines.catalog.conductor_staging import stage_sources
@@ -13,6 +14,22 @@ from transmissionlines.catalog.mechanical_area import resolve_areas
 
 
 BASE = Path(__file__).resolve().parents[2] / "data/raw/conductors"
+
+
+def test_round_acsr_strand_diameters_retain_pdf_cell_provenance() -> None:
+    raven = next(row for row in extract_acsr(BASE / "southwire/ACSR.pdf")
+                 if row.codeword == "Raven" and row.cells["stranding"].raw == "6/1")
+    candidate = resolve_areas(stage_sources(acsr=[raven])).records[0]
+
+    record, provenance = project_conductor(candidate)
+
+    assert record.strand_diameter_al_in == raven.numeric("strand_diameter_al_in")
+    assert record.strand_diameter_core_in == raven.numeric("strand_diameter_stl_in")
+    assert {(item.field, item.source_field, item.raw_value) for item in provenance
+            if item.field.startswith("strand_diameter_")} == {
+        ("strand_diameter_al_in", "strand_diameter_al_in", raven.cells["strand_diameter_al_in"].raw),
+        ("strand_diameter_core_in", "strand_diameter_stl_in", raven.cells["strand_diameter_stl_in"].raw),
+    }
 
 
 def test_projection_retains_transferred_area_and_published_strength_sources() -> None:
@@ -61,6 +78,10 @@ def test_projection_retains_uls_assumptions_and_absent_values() -> None:
 
     record, provenance = project_conductor(candidate)
 
+    assert record.gmr_ft == irving.numeric("gmr_ft")
+    assert any(item.field == "gmr_ft" and item.method == "published"
+               and item.source_field == "gmr_ft" and item.raw_value == irving.cells["gmr_ft"].raw
+               for item in provenance)
     assert record.stranding is None
     assert record.weight_lb_kft == candidate.candidate.weight_total_lb_kft
     assert record.total_area_in2 is not None
@@ -97,6 +118,9 @@ def test_hs285_tw_electrical_join_keeps_its_own_pdf_page() -> None:
 
     record, provenance = project_conductor(candidate, electrical_row=electrical)
 
+    assert record.gmr_ft == electrical.numeric("gmr_ft")
+    assert any(item.field == "gmr_ft" and item.page == electrical.page
+               and item.source_field == "gmr_ft" for item in provenance)
     assert record.dc_resistance_20c_ohm_kft == electrical.numeric("dc_resistance_20c_ohm_mile") / Decimal("5.28")
     assert record.ampacity_200c_a == electrical.numeric("ampacity_200c_a")
     assert any(item.field == "ampacity_200c_a" and item.page == 4

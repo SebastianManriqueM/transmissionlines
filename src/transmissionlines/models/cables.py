@@ -83,6 +83,10 @@ class Cable(Component, ABC):
 class ConductorSpec(Cable):
     """Select a reusable phase conductor independently of installation."""
 
+    family: str | None = None
+    codeword: str | None = None
+    stranding: str | None = None
+
     def _cable_kind(self) -> str:
         return "phase"
 

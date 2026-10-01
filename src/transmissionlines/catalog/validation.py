@@ -31,7 +31,7 @@ def validate_catalog(path: str | Path, *, source_root: str | Path | None = None)
         return ["manifest.json is missing"]
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     is_v2 = manifest.get("catalog_version") == "v2"
-    if is_v2 and manifest.get("schema_version") != "4.0.0":
+    if is_v2 and manifest.get("schema_version") != "4.2.0":
         errors.append("invalid v2 schema version")
     if source_root is not None:
         for source in manifest.get("sources", []):

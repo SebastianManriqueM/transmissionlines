@@ -46,18 +46,18 @@ identify multiple constructions. For example:
 
 .. code-block:: python
 
-   from transmissionlines.api import open_catalog
-   from transmissionlines.catalog.schemas import ConductorV2Record
+   from transmissionlines.user_api import build
 
-   catalog = open_catalog()
-   row = catalog.select_exact(
-       "conductors", record_id="ACSR:954:cardinal:standard:54/7"
-   )
-   record = ConductorV2Record.model_validate(row)
+   catalog = build.open_catalog()
+   choices = catalog.conductors(family="ACSR", diameter_min_in=1.19,
+                                diameter_max_in=1.20)
+   print(catalog.format_choices(choices))
+   conductor = build.conductor(catalog, record_id="ACSR:954:cardinal:standard:54/7")
 
-``select_exact`` raises ``AmbiguousCatalogMatch`` rather than selecting a
-variant implicitly. The builder prefers published AC resistance at 75 C,
+``build.conductor`` requires an exact ID rather than selecting a variant
+implicitly. The builder prefers published AC resistance at 75 C,
 then 50 C, then 25 C; it does not substitute a 200 C or generic value when
 these are absent. Missing measurements remain ``None``. Consult the record's
 temperature-specific columns and provenance before using ratings in a
-calculation.
+calculation. Cardinal has no published GMR in v2, so this selection emits an
+outer-radius estimate warning; verify it for engineering use.

@@ -52,6 +52,8 @@ class StClairLineConstants(CalculationResultModel):
     """Natural-unit positive-sequence constants and resolved terminal voltages."""
 
     circuit_id: str = "circuit-1"
+    conductor_family: str | None = None
+    conductor_codeword: str | None = None
     r_ohm_per_mile: float
     x_ohm_per_mile: float
     b_siemens_per_mile: float

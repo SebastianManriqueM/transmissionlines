@@ -22,7 +22,7 @@ def test_build_v2_preserves_v1_and_publishes_auditable_conductors(tmp_path: Path
     manifest = build_conductor_catalog(ROOT, output)
 
     assert manifest["catalog_version"] == "v2"
-    assert manifest["schema_version"] != "3.0.0"
+    assert manifest["schema_version"] == "4.2.0"
     assert "generated_at" not in manifest
     assert validate_catalog(output, source_root=ROOT) == []
     assert {file.name: file.read_bytes() for file in v1.iterdir() if file.is_file()} == original
@@ -38,6 +38,14 @@ def test_build_v2_preserves_v1_and_publishes_auditable_conductors(tmp_path: Path
     crosswalk = pd.read_parquet(output / "conductor_crosswalk.parquet")
     assert len(conductors) == 641
     assert len(conductors.record_id.unique()) == 641
+    assert conductors[conductors.family == "ACSR"].gmr_ft.isna().all()
+    raven = conductors[conductors.record_id == "ACSR:1/0:raven:standard:6/1"].iloc[0]
+    assert raven.strand_diameter_al_in == "0.1327"
+    assert raven.strand_diameter_core_in == "0.1327"
+    assert set(provenance[(provenance.record_id == raven.record_id)
+                          & (provenance.field == "strand_diameter_core_in")].source_field) == {"strand_diameter_stl_in"}
+    assert conductors[conductors.family == "ACCC"].gmr_ft.notna().any()
+    assert set(provenance[provenance.field == "gmr_ft"].method) == {"published"}
     tw = conductors[conductors.family == "ACSS/TW"]
     assert len(tw) == 216
     assert tw.dc_resistance_20c_ohm_kft.notna().all()

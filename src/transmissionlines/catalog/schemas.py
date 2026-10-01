@@ -79,12 +79,15 @@ class ConductorV2Record(ConductorRecord):
     codeword: str | None = None
     size: str | None = None
     variant: str
+    gmr_ft: Decimal | None = None
     weight_lb_kft: Decimal | None = None
     rated_strength_lb: Decimal | None = None
     aluminum_area_in2: Decimal | None = None
     core_area_in2: Decimal | None = None
     total_area_in2: Decimal | None = None
     core_diameter_in: Decimal | None = None
+    strand_diameter_al_in: Decimal | None = None
+    strand_diameter_core_in: Decimal | None = None
     ac_resistance_temperature_c: int | None = None
     ampacity_temperature_c: int | None = None
     dc_resistance_20c_ohm_kft: Decimal | None = None

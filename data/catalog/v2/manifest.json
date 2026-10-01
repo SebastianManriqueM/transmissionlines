@@ -3,7 +3,7 @@
   "extraction_version": "1",
   "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",
   "parser_version": "1.28.2",
-  "schema_version": "4.0.0",
+  "schema_version": "4.2.0",
   "sources": [
     {
       "path": "data/raw/Tower_geometries_DB.xlsx",
@@ -92,8 +92,8 @@
         "input_fields",
         "note"
       ],
-      "row_count": 10730,
-      "sha256": "0cbade78ac28d51aa4059569cc456a7d2f473dc5e4d3fc2e2eed562eb73377b7"
+      "row_count": 11692,
+      "sha256": "1f0d5c91ccda7b0e96be6e48b36e20ee52d91f6158a0a9a6dcada809408d9f46"
     },
     "conductors": {
       "columns": [
@@ -114,12 +114,15 @@
         "ampacity_a",
         "size",
         "variant",
+        "gmr_ft",
         "weight_lb_kft",
         "rated_strength_lb",
         "aluminum_area_in2",
         "core_area_in2",
         "total_area_in2",
         "core_diameter_in",
+        "strand_diameter_al_in",
+        "strand_diameter_core_in",
         "ac_resistance_temperature_c",
         "ampacity_temperature_c",
         "dc_resistance_20c_ohm_kft",
@@ -135,7 +138,7 @@
         "ampacity_250c_a"
       ],
       "row_count": 641,
-      "sha256": "a369ffa3ffb3ae16522c0a0ccb68ae3228a3e62c8c978538b7e3d2cd8905c036"
+      "sha256": "022f2f50e9a0c0f4c3cc41435bcbf538e5c61202d1c7e02fa160e22b4a8296e2"
     },
     "ground_wire_positions": {
       "columns": [

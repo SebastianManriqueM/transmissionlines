@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 from transmissionlines.api import calculate_line_electrical_parameters, calculate_st_clair_curve
 from transmissionlines.models.assets import CrossSectionTransmissionLine
@@ -116,6 +117,9 @@ def test_quickstart_direct_st_clair_example() -> None:
 
 
 def test_catalog_backed_line_example_uses_default_v2() -> None:
+    assert "from transmissionlines.user_api import build" in Path(
+        "docs/source/how-to/examples/catalog_line.py"
+    ).read_text(encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, "docs/source/how-to/examples/catalog_line.py"],
         capture_output=True, text=True, check=True,
@@ -125,6 +129,9 @@ def test_catalog_backed_line_example_uses_default_v2() -> None:
 
 
 def test_catalog_backed_sag_example() -> None:
+    assert "from transmissionlines.user_api import build, plots" in Path(
+        "docs/source/how-to/examples/sag_curve.py"
+    ).read_text(encoding="utf-8")
     completed = subprocess.run(
         [sys.executable, "docs/source/how-to/examples/sag_curve.py"],
         capture_output=True, text=True, check=True,

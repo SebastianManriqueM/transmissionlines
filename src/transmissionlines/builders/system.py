@@ -113,7 +113,7 @@ def assemble_line_into_system(
     candidates: dict[tuple[type[Component], str], Component] = {}
     additions: list[Component] = []
     resolved = _canonicalize(system, line, candidates, additions)
-    if resolved is not additions[-1]:
+    if not additions or resolved is not additions[-1]:
         raise ValueError(f"line {line.name!r} is already registered")
     system.add_components(*additions)
     return resolved

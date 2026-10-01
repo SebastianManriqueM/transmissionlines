@@ -1,4 +1,5 @@
-from math import exp
+from math import cos, exp, pi, sin
+import warnings
 
 import pandas as pd
 import pytest
@@ -7,6 +8,7 @@ from transmissionlines.builders.line import conductor_from_record, ground_wire_f
 from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc
 from transmissionlines.catalog.repository import CatalogRepository
 from transmissionlines.catalog.schemas import ConductorRecord, ConductorV2Record, GroundWireRecord
+from transmissionlines.calculations.cable import strand_geometry_gmr
 from transmissionlines.electrical_constants import (
     CAPACITIVE_REACTANCE_COEFFICIENT,
     EPSILON_AIR,
@@ -80,6 +82,55 @@ def test_v2_conductor_preserves_absent_mechanical_fields() -> None:
     assert equipment.total_material_area is None
     assert equipment.ac_resistance is None
     assert equipment.ampacity is None
+
+
+def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> None:
+    record = ConductorV2Record(
+        record_id="round", source_id="pdf", family="ACSR", variant="standard",
+        stranding="6/1", diameter_inch=0.398, core_diameter_in="0.1327",
+        strand_diameter_al_in="0.1327", strand_diameter_core_in="0.1327",
+    )
+    strand_radius = 0.1327 / 2
+    centers = [(0.0, 0.0)] + [
+        (0.1327 * cos(index * pi / 3), 0.1327 * sin(index * pi / 3))
+        for index in range(6)
+    ]
+    expected = strand_geometry_gmr(centers, [strand_radius] * 7, [1 / 7] * 7) / 12
+
+    with pytest.warns(UserWarning, match="equal.*current.*steel"):
+        equipment = conductor_from_record(record, catalog_version="v2").equipment
+    assert equipment.conductor_gmr.to("foot").magnitude == pytest.approx(expected)
+
+    with pytest.warns(UserWarning, match="ACSR.*solid-round-wire"):
+        multilayer = conductor_from_record(
+            record.model_copy(update={"stranding": "54/7"}), catalog_version="v2",
+        )
+    assert multilayer.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(
+        (0.398 / 24) * exp(-0.25)
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        published = conductor_from_record(record.model_copy(update={"gmr_ft": "0.04"}), catalog_version="v2")
+    assert not caught
+    assert published.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(0.04)
+    with warnings.catch_warnings(record=True) as caught:
+        reactive = conductor_from_record(
+            record.model_copy(update={"internal_reactance_ohm_kft": 0.08}), catalog_version="v2",
+        )
+    assert not caught
+    assert reactive.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(gmr_from_xl(0.08))
+
+    with warnings.catch_warnings(record=True) as caught:
+        external = conductor_from_record(record, catalog_version="v2", gmr_ft=0.03)
+    assert not caught
+    assert external.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(0.03)
+    assert external.name.endswith("external-gmr-ft:0.03")
+    with pytest.raises(ValueError, match="already available"):
+        conductor_from_record(record.model_copy(update={"gmr_ft": "0.04"}), catalog_version="v2", gmr_ft=0.03)
+
+    assert conductor_from_record(
+        record.model_copy(update={"diameter_inch": None}), catalog_version="v2",
+    ).equipment.conductor_gmr is None
 
 
 def test_shared_electrical_constants_preserve_catalog_conversions() -> None:

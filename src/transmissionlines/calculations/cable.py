@@ -56,6 +56,8 @@ def round_six_one_gmr(
                         rel_tol=ROUND_STRAND_DIAMETER_REL_TOLERANCE)):
         return None
     center_distance = (aluminum_strand_in + core_strand_in) / 2
+    if center_distance < aluminum_strand_in:
+        return None
     centers = [(0.0, 0.0)] + [
         (center_distance * cos(index * pi / 3), center_distance * sin(index * pi / 3))
         for index in range(6)

@@ -175,7 +175,7 @@ def calculations(
         if sag_settings is None:
             absent = [
                 key for key in ("elastic_modulus_psi", "thermal_expansion_per_k")
-                if sag_options is None or key not in sag_options
+                if sag_options is None or sag_options.get(key) is None
             ]
             skipped["sag"] = f"missing {', '.join(absent)} in sag_options"
         elif missing_sag is not None:

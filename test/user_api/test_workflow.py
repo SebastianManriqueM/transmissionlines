@@ -99,6 +99,24 @@ def test_partial_sag_material_mapping_reports_missing_field(line) -> None:
     assert "thermal_expansion_per_k" in result.skipped["sag"]
 
 
+@pytest.mark.parametrize(
+    ("options", "expected"),
+    [
+        ({"elastic_modulus_psi": None, "thermal_expansion_per_k": None},
+         "missing elastic_modulus_psi, thermal_expansion_per_k in sag_options"),
+        ({"elastic_modulus_psi": 11.5e6, "thermal_expansion_per_k": None},
+         "missing thermal_expansion_per_k in sag_options"),
+    ],
+)
+def test_null_sag_material_options_report_missing_fields(line, options, expected) -> None:
+    result = build.calculations(
+        line, impedances=False, st_clair=False, sag_options=options,
+    )
+
+    assert result.sag is None
+    assert result.skipped["sag"] == expected
+
+
 def test_default_plot_titles_include_per_circuit_conductor_and_tension_details(line) -> None:
     circuit = line.configuration.circuits[0]
     result = build.calculations(

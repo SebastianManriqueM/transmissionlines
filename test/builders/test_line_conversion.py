@@ -9,6 +9,7 @@ from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_fro
 from transmissionlines.catalog.repository import CatalogRepository
 from transmissionlines.catalog.schemas import ConductorRecord, ConductorV2Record, GroundWireRecord
 from transmissionlines.calculations.cable import strand_geometry_gmr
+from transmissionlines.calculations import constants as calculation_constants
 from transmissionlines.electrical_constants import (
     CAPACITIVE_REACTANCE_COEFFICIENT,
     EPSILON_AIR,
@@ -133,7 +134,23 @@ def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> 
     ).equipment.conductor_gmr is None
 
 
+def test_overlapping_tolerated_six_one_strands_fall_back_to_outer_radius() -> None:
+    record = ConductorV2Record(
+        record_id="tolerated-overlap", source_id="pdf", family="ACSR", variant="standard",
+        stranding="6/1", diameter_inch=3.01, core_diameter_in="1.0",
+        strand_diameter_al_in="1.005", strand_diameter_core_in="1.0",
+    )
+
+    with pytest.warns(UserWarning, match="solid-round-wire"):
+        equipment = conductor_from_record(record, catalog_version="v2").equipment
+
+    assert equipment.conductor_gmr.to("foot").magnitude == pytest.approx(
+        exp(-0.25) * 3.01 / 24
+    )
+
+
 def test_shared_electrical_constants_preserve_catalog_conversions() -> None:
+    assert calculation_constants.__doc__ == "Numerical limits for transmission-line calculation algorithms."
     assert KILOFEET_PER_MILE == 5.28
     assert SERIES_REACTANCE_COEFFICIENT == 0.00202237
     assert CAPACITIVE_REACTANCE_COEFFICIENT == 1.779

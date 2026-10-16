@@ -2,7 +2,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from transmissionlines.api import calculate_line_electrical_parameters, calculate_st_clair_curve
+from transmissionlines.calculations.electrical import calculate_line_electrical_parameters
+from transmissionlines.calculations.st_clair import calculate_st_clair
 from transmissionlines.models.assets import CrossSectionTransmissionLine
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import IdentificationInfo
@@ -92,8 +93,8 @@ def test_quickstart_in_memory_line_example() -> None:
 
 
 def test_quickstart_direct_st_clair_example() -> None:
-    result = calculate_st_clair_curve(
-        positive_sequence={
+    result = calculate_st_clair(
+        {
             "circuit_id": "example",
             "nominal_voltage_kv": 345.0,
             "r_ohm_per_mile": 0.0012,

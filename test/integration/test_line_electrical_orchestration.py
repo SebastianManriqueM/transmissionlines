@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from transmissionlines.api import calculate_st_clair_curve
+from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
 from transmissionlines.calculations.electrical import calculate_line_electrical_parameters
 from transmissionlines.models.assets import CrossSectionTransmissionLine
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
@@ -125,9 +125,9 @@ def test_high_level_calculation_does_not_need_routing_and_preserves_inputs() -> 
 def test_explicit_curve_recalculation_is_immutable_and_keeps_sensitivities() -> None:
     original = _line()
     calculated = calculate_line_electrical_parameters(original)
-    updated = calculate_st_clair_curve(
+    updated = calculate_st_clair_curve_for_line(
         original,
-        previous=calculated,
+        calculated,
         options=StClairOptions(line_length_start_mi=20, line_length_stop_mi=20),
         sensitivities={"n_series_percent": [0, 10]},
     )

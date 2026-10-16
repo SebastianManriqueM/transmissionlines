@@ -64,4 +64,4 @@ The checkout includes a v2 Parquet snapshot and a historical v1 workbook.
 See :doc:`how-to/build-cross-section-line` for the complete runnable script,
 and :doc:`concepts/catalog` for versioning and provenance. For standalone
 positive-sequence inputs without a tower model, use the advanced
-:func:`transmissionlines.api.calculate_st_clair_curve` interface.
+:func:`transmissionlines.calculations.st_clair.calculate_st_clair` interface.

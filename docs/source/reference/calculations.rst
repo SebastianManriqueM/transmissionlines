@@ -1,7 +1,7 @@
 Calculations
 ============
 
-Line-level orchestration is exposed by :mod:`transmissionlines.api`. The
+Line-level orchestration lives in :mod:`transmissionlines.calculations.electrical`. The
 calculation modules below also provide lower-level matrix, geometry, cable,
 and positive-sequence operations.
 

@@ -1,8 +1,8 @@
 Catalog APIs
 ============
 
-Catalog-generation and validation operations are exported from
-``transmissionlines.api``. ``CatalogRepository`` provides read-only exact
+Catalog generation and validation live in :mod:`transmissionlines.catalog`.
+``CatalogRepository`` provides read-only exact
 selection from normalized Parquet tables. See :doc:`../concepts/catalog` for
 the storage boundary and provenance model.
 

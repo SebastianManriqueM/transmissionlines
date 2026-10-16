@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import pytest
 from pydantic import ValidationError
 
-from transmissionlines.api import calculate_sag
-from transmissionlines.api import plot_sag_curve
+from transmissionlines.calculations.sag import calculate_sag
+from transmissionlines.plotting.sag import plot_sag_curve
 from transmissionlines.calculations import constants
 from transmissionlines.calculations import sag as sag_module
 from transmissionlines.calculations.sag import solve_span_sag

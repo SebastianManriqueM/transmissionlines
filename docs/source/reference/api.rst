@@ -1,10 +1,15 @@
-Public facade
-=============
+Public API
+==========
 
-The stable import surface for the current unreleased package is
-``transmissionlines.api``. The top-level ``transmissionlines`` package exports
-the system and value-model base classes; detailed line and result models are
-collected under :mod:`transmissionlines.models`.
+The everyday import surface is :mod:`transmissionlines.user_api`: ``build`` for
+catalog browsing, selection, line construction, and calculations, and ``plots``
+for stored results. Lower-level functions, such as routed lines, direct
+St. Clair constants, and system assembly, are imported from the modules that
+define them; see the other reference pages. The top-level ``transmissionlines``
+package exports the system and value-model base classes.
 
-.. automodule:: transmissionlines.api
+.. automodule:: transmissionlines.user_api.build
+   :members:
+
+.. automodule:: transmissionlines.user_api.plots
    :members:

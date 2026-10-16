@@ -10,40 +10,38 @@ from transmissionlines.models.configurations import CircuitConfiguration, TowerC
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.units import (
-    CableDiameter,
-    CableGMR,
+    Distance,
     Current,
-    EarthResistivity,
+    Resistivity,
     Frequency,
-    ResistancePerKft,
-    TowerCoordinate,
-    VoltageKV,
+    ResistancePerLength,
+    Voltage,
 )
 
 
 def _quickstart_line() -> CrossSectionTransmissionLine:
     conductor = BareConductorEquipment(
-        conductor_diameter=CableDiameter(1, "inch"),
-        conductor_gmr=CableGMR(0.04, "foot"),
+        conductor_diameter=Distance(1, "inch"),
+        conductor_gmr=Distance(0.04, "foot"),
         ampacity=Current(1000, "ampere"),
-        ac_resistance=ResistancePerKft(0.1, "ohm / kilofoot"),
-        dc_resistance=ResistancePerKft(0.2, "ohm / kilofoot"),
+        ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
+        dc_resistance=ResistancePerLength(0.2, "ohm / kilofoot"),
     )
     geometry = TowerGeometry(
         phase_positions=[
             PhasePosition(
                 circuit_id="c1",
                 phase=phase,
-                x=TowerCoordinate(index * 4, "foot"),
-                y=TowerCoordinate(30, "foot"),
+                x=Distance(index * 4, "foot"),
+                y=Distance(30, "foot"),
             )
             for index, phase in enumerate(("A", "B", "C"))
         ],
         ground_wire_positions=[
             GroundWirePosition(
                 wire_id="g1",
-                x=TowerCoordinate(0, "foot"),
-                y=TowerCoordinate(40, "foot"),
+                x=Distance(0, "foot"),
+                y=Distance(40, "foot"),
             )
         ],
     )
@@ -64,9 +62,9 @@ def _quickstart_line() -> CrossSectionTransmissionLine:
     )
     return CrossSectionTransmissionLine(
         name="example-line", configuration=configuration,
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
 
 

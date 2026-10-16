@@ -6,7 +6,7 @@ Unit boundary
 
 The public data models use typed quantities backed by the Infrasys quantity
 system. Construct quantities with an explicit magnitude and unit, as in
-``VoltageKV(230, "kilovolt")``. Calculation orchestration converts compatible
+``Voltage(230, "kilovolt")``. Calculation orchestration converts compatible
 inputs to the unit required by each calculation; for example, voltage to kV,
 frequency to Hz, earth resistivity to ohm-meter, and conductor resistance to
 ohm/kilofoot.

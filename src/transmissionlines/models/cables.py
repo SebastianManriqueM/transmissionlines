@@ -10,30 +10,28 @@ from pydantic import model_validator
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.units import (
-    BundleSpacing,
-    CableDiameter,
-    CableGMR,
-    ConductorWeight,
+    Distance,
+    ForcePerLength,
     Current,
-    MaterialArea,
-    RatedBreakingStrength,
-    ResistancePerKft,
+    Area,
+    Force,
+    ResistancePerLength,
 )
 
 
 class BareConductorEquipment(LineDataModel):
     """Measured or manufacturer-provided conductor properties."""
 
-    conductor_diameter: CableDiameter | None = None
-    conductor_gmr: CableGMR | None = None
-    capacitance_radius: CableGMR | None = None
+    conductor_diameter: Distance | None = None
+    conductor_gmr: Distance | None = None
+    capacitance_radius: Distance | None = None
     ampacity: Current | None = None
-    ac_resistance: ResistancePerKft | None = None
+    ac_resistance: ResistancePerLength | None = None
     emergency_ampacity: Current | None = None
-    dc_resistance: ResistancePerKft | None = None
-    weight: ConductorWeight | None = None
-    rated_breaking_strength: RatedBreakingStrength | None = None
-    total_material_area: MaterialArea | None = None
+    dc_resistance: ResistancePerLength | None = None
+    weight: ForcePerLength | None = None
+    rated_breaking_strength: Force | None = None
+    total_material_area: Area | None = None
 
     @model_validator(mode="after")
     def validate_measurements(self) -> "BareConductorEquipment":
@@ -49,7 +47,7 @@ class BundleSpec(LineDataModel):
     """Describe the number and separation of installed subconductors."""
 
     subconductor_count: int
-    subconductor_spacing: BundleSpacing | None = None
+    subconductor_spacing: Distance | None = None
 
     @model_validator(mode="after")
     def validate_spacing(self) -> "BundleSpec":

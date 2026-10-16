@@ -15,7 +15,7 @@ from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeo
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.system import TransmissionLineSystem
 from transmissionlines.builders.system import assemble_line_into_system
-from transmissionlines.units import Angle, BundleSpacing, EarthResistivity, Frequency, VoltageKV
+from transmissionlines.units import Angle, Distance, Resistivity, Frequency, Voltage
 
 CATALOG = CatalogRepository("data/catalog/v1")
 
@@ -28,9 +28,9 @@ def _line(geometry, phases, ground, voltage: int, kind: str):
         geometry=geometry, circuits=phases, ground_wire_spec=ground,
     )
     electrical = dict(
-        name="fixture-line", nominal_voltage=VoltageKV(voltage, "kilovolt"),
+        name="fixture-line", nominal_voltage=Voltage(voltage, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     if kind == "cross-section":
         return CrossSectionTransmissionLine(**electrical, configuration=configuration)
@@ -102,7 +102,7 @@ def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs(kind: st
     conductor = ConductorRecord.model_validate(conductors[(conductors.family == "ACSR") & (conductors.codeword == "Cardinal")].iloc[0].to_dict())
     wire = GroundWireRecord.model_validate(wires[(wires.family == "Alumoweld") & (wires.awg_or_stranding == "7/8")].iloc[0].to_dict())
     phases = [
-        phase_spec_from_record(conductor, circuit_id=circuit, insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+        phase_spec_from_record(conductor, circuit_id=circuit, insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=Distance(18, "inch"), catalog_version="v1")
         for circuit in ("circuit-1", "circuit-2")
     ]
     ground = ground_wire_from_record(wire, catalog_version="v1")
@@ -157,7 +157,7 @@ def test_two_circuit_3l11_st_clair_curve_matches_reference_values(kind: str, rou
             circuit_id=circuit,
             insulator_string=INSULATOR,
             subconductor_count=2,
-            subconductor_spacing=BundleSpacing(18, "inch"),
+            subconductor_spacing=Distance(18, "inch"),
             catalog_version="v1",
         )
         for circuit in ("circuit-1", "circuit-2")

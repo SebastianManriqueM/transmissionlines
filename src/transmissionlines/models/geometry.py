@@ -5,14 +5,14 @@ from typing import Literal
 from pydantic import model_validator
 
 from transmissionlines.models.base import LineDataModel
-from transmissionlines.units import TowerCoordinate
+from transmissionlines.units import Distance
 
 
 class CablePosition(LineDataModel):
     """A cable coordinate relative to the tower centerline and ground."""
 
-    x: TowerCoordinate
-    y: TowerCoordinate
+    x: Distance
+    y: Distance
 
 
 class PhasePosition(CablePosition):

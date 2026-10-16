@@ -19,7 +19,7 @@ from transmissionlines.electrical_constants import (
     R_C,
     SERIES_REACTANCE_COEFFICIENT,
 )
-from transmissionlines.units import BundleSpacing
+from transmissionlines.units import Distance
 
 
 def test_v2_conductor_projects_mechanical_quantities() -> None:
@@ -186,7 +186,7 @@ def test_catalog_records_convert_to_runtime_specs_with_provenance() -> None:
     bundled_phase = phase_spec_from_record(
         ConductorRecord.model_validate(conductor.to_dict()),
         circuit_id="circuit-1", catalog_version="v1", subconductor_count=2,
-        subconductor_spacing=BundleSpacing(18, "inch"),
+        subconductor_spacing=Distance(18, "inch"),
         insulator_string=dict(insulator_type="glass", number_of_insulators=12,
                               insulator_code="U120B", insulator_coupling="ball_and_socket"),
     )

@@ -16,7 +16,7 @@ Registered system
 -----------------
 
 ``TransmissionLineSystem`` is an Infrasys ``System`` with package schema
-version ``4.0.0``. Use the public Infrasys system serialization methods for the
+version ``5.0.0``. Use the public Infrasys system serialization methods for the
 static input graph so component UUIDs and registered component references are
 retained after reload. Older system files are rejected; there is no legacy
 upgrade or compatibility adapter. Electrical matrices, St. Clair curves, and

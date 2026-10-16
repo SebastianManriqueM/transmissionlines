@@ -27,7 +27,7 @@ from transmissionlines.models.electrical import ElectricalParameters, MatrixResu
 from transmissionlines.models.routing import ElectricalTower
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
-from transmissionlines.units import Frequency, VoltageKV
+from transmissionlines.units import Frequency, Voltage
 
 def _matrix_result(
     name: str,
@@ -241,7 +241,7 @@ def calculate_electrical(
     *,
     phase_specs: list[CircuitConfiguration],
     ground_wire_spec: GroundWireSpec,
-    voltage: VoltageKV,
+    voltage: Voltage,
     frequency: Frequency,
     earth_resistivity: float,
 ) -> ElectricalParameters:
@@ -255,7 +255,7 @@ def calculate_electrical(
         One conductor/bundle specification per geometry circuit.
     ground_wire_spec : GroundWireSpec
         Shared ground-wire conductor properties.
-    voltage : VoltageKV
+    voltage : Voltage
         Nominal line-to-line system voltage.
     frequency : Frequency
         Power frequency.

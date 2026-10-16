@@ -15,14 +15,14 @@ The selected v2 conductor must have positive ``weight``,
 ``rated_breaking_strength``, and ``total_material_area`` measurements. Missing
 measurements produce circuit- and field-specific errors; v1 equipment does not
 gain invented mechanics. Verify the provenance of the selected v2 catalog row.
-Callers must supply effective whole-conductor ``ElasticModulus`` and
-``ThermalExpansion`` quantities in ``SagOptions``. These are not inferred from
+Callers must supply the effective whole-conductor elastic modulus (a ``Pressure``)
+and thermal expansion coefficient (an ``InverseTemperature``) in ``SagOptions``. These are not inferred from
 the catalog, and the same options apply to all selected circuits in a call.
 Use separate calls when conductors require different effective properties.
 ``reference_temperature`` and ``operating_temperature`` require ``Temperature``
 quantities (for example, degrees Celsius, Fahrenheit, or kelvin). ``span_start``,
 ``span_stop``, ``span_step``, and signed ``elevation_difference`` require
-``SpanLength`` quantities (for example, feet or metres). Bare numbers are
+``Distance`` quantities (for example, feet or metres). Bare numbers are
 rejected for all physical options. ``additional_permanent_strain`` is a
 dimensionless float. The calculation converts temperature to degrees Celsius
 and lengths to feet before calling the pure single-conductor solver.

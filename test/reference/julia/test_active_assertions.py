@@ -7,7 +7,7 @@ from transmissionlines.calculations.cable import ground_wire_gmr
 from transmissionlines.calculations.geometry import pairwise_distances
 from transmissionlines.catalog.repository import CatalogRepository
 from transmissionlines.catalog.schemas import ConductorRecord, GroundWirePositionRecord, PhasePositionRecord
-from transmissionlines.units import BundleSpacing
+from transmissionlines.units import Distance
 
 
 CATALOG = CatalogRepository("data/catalog/v1")
@@ -58,7 +58,7 @@ def test_original_conductor_and_ground_wire_records_are_reproduced() -> None:
     assert linnet_gmr.magnitude == pytest.approx(0.0244, rel=0.005)
     assert linnet.ac_resistance_75_ohm_kft * 5.28 == pytest.approx(0.306, rel=0.005)
     assert float(linnet.internal_reactance_ohm_kft) == pytest.approx(0.0854, rel=0.005)
-    pheasant_spec = phase_spec_from_record(ConductorRecord.model_validate(pheasant.to_dict()), circuit_id="circuit-1", insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+    pheasant_spec = phase_spec_from_record(ConductorRecord.model_validate(pheasant.to_dict()), circuit_id="circuit-1", insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=Distance(18, "inch"), catalog_version="v1")
     pheasant_gmr, _ = derived_bundle_values(pheasant_spec.conductor_spec.equipment, pheasant_spec.bundle_spec.subconductor_count, pheasant_spec.bundle_spec.subconductor_spacing)
     assert pheasant_gmr is not None
     assert pheasant_gmr.magnitude == pytest.approx(0.08 * 3.28084, rel=0.008)

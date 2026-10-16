@@ -8,25 +8,33 @@ from transmissionlines.models.common import Bus, GeographicPoint, Identification
 from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
-from transmissionlines.units import Angle, CableDiameter, CableGMR, Current, EarthResistivity, Frequency, ResistancePerKft, TowerCoordinate, VoltageKV
+from transmissionlines.units import (
+    Angle,
+    Distance,
+    Current,
+    Resistivity,
+    Frequency,
+    ResistancePerLength,
+    Voltage,
+)
 
 
 def _configuration() -> TowerConfiguration:
     equipment = BareConductorEquipment(
-        conductor_diameter=CableDiameter(1, "inch"),
-        conductor_gmr=CableGMR(0.04, "foot"),
+        conductor_diameter=Distance(1, "inch"),
+        conductor_gmr=Distance(0.04, "foot"),
         ampacity=Current(1000, "ampere"),
-        ac_resistance=ResistancePerKft(0.1, "ohm / kilofoot"),
-        dc_resistance=ResistancePerKft(0.2, "ohm / kilofoot"),
+        ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
+        dc_resistance=ResistancePerLength(0.2, "ohm / kilofoot"),
     )
     return TowerConfiguration(
         name="configuration", identification_info=IdentificationInfo(),
         geometry=TowerGeometry(
             phase_positions=[
-                PhasePosition(circuit_id="c1", phase=phase, x=TowerCoordinate(index * 4, "foot"), y=TowerCoordinate(30, "foot"))
+                PhasePosition(circuit_id="c1", phase=phase, x=Distance(index * 4, "foot"), y=Distance(30, "foot"))
                 for index, phase in enumerate(("A", "B", "C"))
             ],
-            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(40, "foot"))],
+            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=Distance(0, "foot"), y=Distance(40, "foot"))],
         ),
         circuits=[CircuitConfiguration(
             name="c1", circuit_id="c1", conductor_spec=ConductorSpec(name="conductor", equipment=equipment),
@@ -43,9 +51,9 @@ def _configuration() -> TowerConfiguration:
 def test_cross_section_returns_external_results_without_mutating_inputs() -> None:
     line = CrossSectionTransmissionLine(
         name="line", configuration=_configuration(),
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     result = calculate_line_electrical_parameters(line)
     assert result.line_uuid == line.uuid
@@ -82,8 +90,8 @@ def _routed_line(*, different: bool = False, configuration: TowerConfiguration |
     line = RoutedTransmissionLine(
         name="routed", from_bus=Bus(name="from", location=locations[0]),
         to_bus=Bus(name="to", location=locations[1]), spans=[span],
-        nominal_voltage=VoltageKV(230, "kilovolt"), nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        nominal_voltage=Voltage(230, "kilovolt"), nominal_frequency=Frequency(60, "hertz"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     return line, start, end
 

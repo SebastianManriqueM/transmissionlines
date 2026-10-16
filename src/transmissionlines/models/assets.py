@@ -2,14 +2,16 @@
 
 from abc import ABC, abstractmethod
 import math
+from typing import Any
 
 from infrasys import Component
 from pydantic import ConfigDict, model_validator
 
+from transmissionlines.models.base import reject_bare_numbers
 from transmissionlines.models.common import Bus
 from transmissionlines.models.configurations import TowerConfiguration
 from transmissionlines.models.routing import LineSpan
-from transmissionlines.units import EarthResistivity, Frequency, VoltageKV
+from transmissionlines.units import Resistivity, Frequency, Voltage
 
 
 class AbstractTransmissionLine(Component, ABC):
@@ -17,10 +19,15 @@ class AbstractTransmissionLine(Component, ABC):
 
     model_config = ConfigDict(extra="forbid")
 
-    nominal_voltage: VoltageKV
+    nominal_voltage: Voltage
     nominal_frequency: Frequency
-    earth_resistivity: EarthResistivity
+    earth_resistivity: Resistivity
     everyday_tension_fraction: float | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_bare_numbers(cls, data: Any) -> Any:
+        return reject_bare_numbers(cls, data)
 
     @model_validator(mode="after")
     def validate_everyday_tension(self) -> "AbstractTransmissionLine":

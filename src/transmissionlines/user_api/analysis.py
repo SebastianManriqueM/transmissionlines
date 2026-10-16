@@ -16,7 +16,7 @@ from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.sag import SagCurveResult, SagOptions
 from transmissionlines.models.st_clair import StClairOptions, StClairResult
-from transmissionlines.units import ElasticModulus, SpanLength, Temperature, ThermalExpansion
+from transmissionlines.units import Pressure, Distance, Temperature, InverseTemperature
 
 
 @dataclass(frozen=True)
@@ -33,12 +33,12 @@ class CrossSectionCalculationResults:
 
 
 _SAG_UNITS = {
-    "elastic_modulus_psi": ("elastic_modulus", ElasticModulus, "psi"),
-    "thermal_expansion_per_k": ("thermal_expansion_coefficient", ThermalExpansion, "1 / kelvin"),
-    "span_start_ft": ("span_start", SpanLength, "foot"),
-    "span_stop_ft": ("span_stop", SpanLength, "foot"),
-    "span_step_ft": ("span_step", SpanLength, "foot"),
-    "elevation_difference_ft": ("elevation_difference", SpanLength, "foot"),
+    "elastic_modulus_psi": ("elastic_modulus", Pressure, "psi"),
+    "thermal_expansion_per_k": ("thermal_expansion_coefficient", InverseTemperature, "1 / kelvin"),
+    "span_start_ft": ("span_start", Distance, "foot"),
+    "span_stop_ft": ("span_stop", Distance, "foot"),
+    "span_step_ft": ("span_step", Distance, "foot"),
+    "elevation_difference_ft": ("elevation_difference", Distance, "foot"),
     "reference_temperature_c": ("reference_temperature", Temperature, "degC"),
     "operating_temperature_c": ("operating_temperature", Temperature, "degC"),
 }

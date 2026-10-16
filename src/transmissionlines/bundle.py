@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from transmissionlines.units import CableGMR, EquivalentRadius
+from transmissionlines.units import Distance
 
 if TYPE_CHECKING:
     from transmissionlines.models.cables import BareConductorEquipment
@@ -56,7 +56,7 @@ def derived_bundle_values(
     conductor: BareConductorEquipment,
     count: int,
     spacing: Any,
-) -> tuple[CableGMR | None, EquivalentRadius | None]:
+) -> tuple[Distance | None, Distance | None]:
     """Derive typed bundle values from a runtime conductor.
 
     ``capacitance_radius`` is parity-only catalog data derived from
@@ -74,5 +74,5 @@ def derived_bundle_values(
         count,
         spacing_value,
     )
-    return (None if gmr is None else CableGMR(gmr, "foot"),
-            None if radius is None else EquivalentRadius(radius, "foot"))
+    return (None if gmr is None else Distance(gmr, "foot"),
+            None if radius is None else Distance(radius, "foot"))

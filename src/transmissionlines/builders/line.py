@@ -13,7 +13,14 @@ from transmissionlines.models.configurations import CircuitConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc, select_phase_resistance
 from transmissionlines.calculations.cable import round_six_one_gmr, solid_round_wire_gmr
-from transmissionlines.units import CableDiameter, CableGMR, ConductorWeight, Current, MaterialArea, RatedBreakingStrength, ResistancePerKft, TowerCoordinate
+from transmissionlines.units import (
+    Distance,
+    ForcePerLength,
+    Current,
+    Area,
+    Force,
+    ResistancePerLength,
+)
 
 
 def _reference(record: Any, table: str, catalog_version: str) -> CatalogReference:
@@ -46,12 +53,12 @@ def conductor_gmr_resolution(record: ConductorV2Record | ConductorRecord) -> tup
 
 def _conductor_gmr(
     record: ConductorV2Record | ConductorRecord, *, gmr_ft: float | None = None,
-) -> CableGMR | None:
+) -> Distance | None:
     method, value = conductor_gmr_resolution(record)
     if gmr_ft is not None and method in {"published", "reactance-derived"}:
         raise ValueError("catalog GMR already available; remove the gmr_ft override")
     if gmr_ft is not None:
-        return CableGMR(gmr_ft, "foot")
+        return Distance(gmr_ft, "foot")
     if value is None:
         return None
     if method == "strand-estimated":
@@ -64,7 +71,7 @@ def _conductor_gmr(
             f"conductor {record.record_id!r} ({record.family}): estimated GMR using the solid-round-wire outer-radius approximation; verify for engineering use",
             UserWarning, stacklevel=3,
         )
-    return CableGMR(value, "foot")
+    return Distance(value, "foot")
 
 
 def conductor_from_record(
@@ -97,18 +104,18 @@ def conductor_from_record(
         ampacity = record.ampacity_a
         dc_resistance = record.dc_resistance_ohm_kft
     resistance = select_phase_resistance(
-        *(None if value is None else ResistancePerKft(float(value), "ohm / kilofoot") for value in resistances)
+        *(None if value is None else ResistancePerLength(float(value), "ohm / kilofoot") for value in resistances)
     ) if any(value is not None for value in resistances) else None
     values = BareConductorEquipment(
-        conductor_diameter=None if record.diameter_inch is None else CableDiameter(record.diameter_inch, "inch"),
+        conductor_diameter=None if record.diameter_inch is None else Distance(record.diameter_inch, "inch"),
         conductor_gmr=_conductor_gmr(record, gmr_ft=gmr_ft),
-        capacitance_radius=None if record.capacitance_reactance_mohm_kft is None else CableGMR(req_from_xc(record.capacitance_reactance_mohm_kft), "foot"),
+        capacitance_radius=None if record.capacitance_reactance_mohm_kft is None else Distance(req_from_xc(record.capacitance_reactance_mohm_kft), "foot"),
         ampacity=None if ampacity is None else Current(float(ampacity), "ampere"),
-        ac_resistance=resistance if resistance is not None else (None if isinstance(record, ConductorV2Record) or record.ac_resistance_ohm_kft is None else ResistancePerKft(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
-        dc_resistance=None if dc_resistance is None else ResistancePerKft(float(dc_resistance), "ohm / kilofoot"),
-        weight=None if not isinstance(record, ConductorV2Record) or record.weight_lb_kft is None else ConductorWeight(float(record.weight_lb_kft), "pound_force / kilofoot"),
-        rated_breaking_strength=None if not isinstance(record, ConductorV2Record) or record.rated_strength_lb is None else RatedBreakingStrength(float(record.rated_strength_lb), "pound_force"),
-        total_material_area=None if not isinstance(record, ConductorV2Record) or record.total_area_in2 is None else MaterialArea(float(record.total_area_in2), "inch ** 2"),
+        ac_resistance=resistance if resistance is not None else (None if isinstance(record, ConductorV2Record) or record.ac_resistance_ohm_kft is None else ResistancePerLength(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
+        dc_resistance=None if dc_resistance is None else ResistancePerLength(float(dc_resistance), "ohm / kilofoot"),
+        weight=None if not isinstance(record, ConductorV2Record) or record.weight_lb_kft is None else ForcePerLength(float(record.weight_lb_kft), "pound_force / kilofoot"),
+        rated_breaking_strength=None if not isinstance(record, ConductorV2Record) or record.rated_strength_lb is None else Force(float(record.rated_strength_lb), "pound_force"),
+        total_material_area=None if not isinstance(record, ConductorV2Record) or record.total_area_in2 is None else Area(float(record.total_area_in2), "inch ** 2"),
     )
     name = f"{catalog_version}:conductor:{record.record_id}"
     if gmr_ft is not None:
@@ -154,7 +161,7 @@ def phase_spec_from_record(record: ConductorV2Record | ConductorRecord, *, circu
         Required circuit installation input.
     subconductor_count : int
         Number of phase subconductors.
-    subconductor_spacing : BundleSpacing, optional
+    subconductor_spacing : Distance, optional
         Spacing required for bundled phases.
     catalog_version : str
         Version of the selected catalog record.
@@ -182,8 +189,8 @@ def phase_spec_from_record(record: ConductorV2Record | ConductorRecord, *, circu
 def ground_wire_from_record(record: GroundWireRecord, *, catalog_version: str) -> GroundWireSpec:
     """Build the shared unbundled ground-wire runtime specification."""
     conductor = BareConductorEquipment(
-        conductor_diameter=None if record.diameter_inch is None else CableDiameter(record.diameter_inch, "inch"),
-        dc_resistance=None if record.dc_resistance_ohm_kft is None else ResistancePerKft(record.dc_resistance_ohm_kft, "ohm / kilofoot"),
+        conductor_diameter=None if record.diameter_inch is None else Distance(record.diameter_inch, "inch"),
+        dc_resistance=None if record.dc_resistance_ohm_kft is None else ResistancePerLength(record.dc_resistance_ohm_kft, "ohm / kilofoot"),
     )
     return GroundWireSpec(name=f"{catalog_version}:ground_wire:{record.record_id}", equipment=conductor, catalog_reference=_reference(record, "ground_wires", catalog_version))
 
@@ -199,8 +206,8 @@ def geometry_from_records(
         phase_records = [record for record in phase_records if record.state_id == state_id]
         ground_records = [record for record in ground_records if record.state_id == state_id]
     return TowerGeometry(
-        phase_positions=[PhasePosition(circuit_id=r.circuit_id, phase=r.phase, x=TowerCoordinate(r.x, "foot"), y=TowerCoordinate(r.y, "foot")) for r in phase_records],
-        ground_wire_positions=[GroundWirePosition(wire_id=r.wire_id, x=TowerCoordinate(r.x, "foot"), y=TowerCoordinate(r.y, "foot")) for r in ground_records],
+        phase_positions=[PhasePosition(circuit_id=r.circuit_id, phase=r.phase, x=Distance(r.x, "foot"), y=Distance(r.y, "foot")) for r in phase_records],
+        ground_wire_positions=[GroundWirePosition(wire_id=r.wire_id, x=Distance(r.x, "foot"), y=Distance(r.y, "foot")) for r in ground_records],
     )
 
 

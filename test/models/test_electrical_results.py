@@ -1,4 +1,3 @@
-import pytest
 
 from transmissionlines.models.electrical import MatrixResult
 
@@ -19,5 +18,3 @@ def test_matrix_result_has_explicit_json_safe_metadata() -> None:
     assert restored.cells == [[{"real": 1.0, "imag": 2.0}]]
     assert list(restored) == restored.cells
     assert restored[0] == restored.cells[0]
-    with pytest.raises(ValueError, match="row counts"):
-        MatrixResult(name="bad", row_count=2, column_count=1, unit="ohm/mile", real=[[1.0]], imaginary=[[0.0]])

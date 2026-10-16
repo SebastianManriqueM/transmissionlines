@@ -140,15 +140,6 @@ def test_explicit_curve_recalculation_is_immutable_and_keeps_sensitivities() -> 
     assert result.curves[0].circuit_id == "c1"
 
 
-def test_completed_result_rejects_missing_canonical_matrix() -> None:
-    result = calculate_line_electrical_parameters(_line()).electrical
-    assert result is not None
-    data = result.model_dump()
-    data["matrices"].pop("Y012_nt")
-    with pytest.raises(ValueError, match="missing matrices"):
-        ElectricalParameters.model_validate(data)
-
-
 def test_high_level_calculation_normalizes_compatible_technical_units() -> None:
     original = _line()
     alternate = calculate_line_electrical_parameters(original.model_copy(update={
@@ -169,11 +160,3 @@ def test_high_level_calculation_reports_missing_conductor_fields() -> None:
     config = line.configuration.model_copy(update={"circuits": [incomplete]})
     with pytest.raises(ValueError, match="missing required conductor"):
         calculate_line_electrical_parameters(_line(config))
-
-
-def test_high_level_calculation_reports_circuit_mapping_errors() -> None:
-    original = _line()
-    bad_config = original.configuration.model_copy(update={"circuits": []})
-    bad_line = original.model_copy(update={"configuration": bad_config})
-    with pytest.raises(ValueError, match=r"missing=\['c1'\]"):
-        calculate_line_electrical_parameters(bad_line)

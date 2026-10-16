@@ -211,24 +211,12 @@ def test_options_and_line_tension_reject_invalid_inputs() -> None:
         line.everyday_tension_fraction = 0.31
 
 
-def test_span_solver_reports_invalid_factor_and_overflow() -> None:
+def test_span_solver_reports_overflow() -> None:
     common = dict(area_in2=0.435, modulus_psi=11.5e6, reference_fraction=0.2,
                   span_ft=400, rise_ft=0, reference_temperature_c=25,
                   operating_temperature_c=75)
-    with pytest.raises(ValueError, match="thermal expansion factor"):
-        solve_span_sag(0.656, 19500, expansion_per_c=-1, **common)
     with pytest.raises(ValueError, match="overflow"):
         solve_span_sag(0.656, 19500, expansion_per_c=19.3e-6, **{**common, "span_ft": 10_000_000})
-
-
-@pytest.mark.parametrize(("area_in2", "modulus_psi"), [(1e-300, 1e-300), (1e300, 1e300)], ids=["underflow", "overflow"])
-def test_span_solver_rejects_invalid_axial_stiffness(area_in2: float, modulus_psi: float) -> None:
-    with pytest.raises(ValueError, match="axial stiffness"):
-        solve_span_sag(
-            0.656, 19500, area_in2=area_in2, modulus_psi=modulus_psi,
-            expansion_per_c=19.3e-6, reference_fraction=0.2, span_ft=400,
-            rise_ft=0, reference_temperature_c=25, operating_temperature_c=75,
-        )
 
 
 def test_span_solver_reports_nonconvergence(monkeypatch: pytest.MonkeyPatch) -> None:

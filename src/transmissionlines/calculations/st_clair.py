@@ -342,27 +342,18 @@ def calculate_st_clair_curve_for_line(
     Raises
     ------
     ValueError
-        If the previous result does not match this line and configuration.
+        If the previous result does not match this line and configuration, or
+        a circuit's conductor has no ampacity.
     """
     configuration = resolve_configuration(line, tower=tower)
     if previous.line_uuid != line.uuid or previous.configuration_uuid != configuration.uuid:
         raise ValueError("previous electrical result does not match selected line and configuration")
-    electrical = previous.electrical
-    if electrical.status != "complete":
-        raise ValueError("St. Clair calculation requires complete electrical parameters")
-    if not electrical.circuit_scalars:
-        raise ValueError("electrical result is missing per-circuit positive-sequence scalars")
     specifications = {spec.circuit_id: spec for spec in configuration.circuits}
-    if set(electrical.circuit_scalars) != set(specifications):
-        raise ValueError("previous electrical result circuit IDs do not match selected configuration")
     voltage_kv = line.nominal_voltage.to("kilovolt").magnitude
     inputs = []
-    for circuit_id, scalars in electrical.circuit_scalars.items():
-        missing = {"r1", "x1", "b1"} - scalars.keys()
-        if missing:
-            raise ValueError(f"{circuit_id} is missing positive-sequence scalars: {sorted(missing)}")
-        spec = specifications.get(circuit_id)
-        if spec is None or spec.conductor_spec.equipment.ampacity is None:
+    for circuit_id, scalars in previous.electrical.circuit_scalars.items():
+        spec = specifications[circuit_id]
+        if spec.conductor_spec.equipment.ampacity is None:
             raise ValueError(f"missing conductor ampacity for {circuit_id}")
         inputs.append({
             "circuit_id": circuit_id,

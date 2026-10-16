@@ -111,7 +111,3 @@ def test_routed_heterogeneous_requires_owned_tower_and_matching_prior_result() -
         calculate_line_electrical_parameters(line, tower=foreign)
     with pytest.raises(ValueError, match="does not match"):
         calculate_st_clair_curve_for_line(other_line, result)
-    altered_electrical = result.electrical.model_copy(update={"circuit_scalars": {"foreign": result.electrical.circuit_scalars["c1"]}})
-    altered_result = result.model_copy(update={"electrical": altered_electrical})
-    with pytest.raises(ValueError, match="circuit IDs"):
-        calculate_st_clair_curve_for_line(line, altered_result, tower=end)

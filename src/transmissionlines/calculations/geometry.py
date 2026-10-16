@@ -24,8 +24,6 @@ def image_distance(first: CablePosition, second: CablePosition) -> float:
 
 def pairwise_distances(positions: list[CablePosition]) -> np.ndarray:
     """Return a symmetric matrix of direct distances in feet."""
-    if not positions:
-        raise ValueError("positions cannot be empty")
     n = len(positions)
     result = np.zeros((n, n), dtype=float)
     for i in range(n):
@@ -36,8 +34,6 @@ def pairwise_distances(positions: list[CablePosition]) -> np.ndarray:
 
 def pairwise_image_distances(positions: list[CablePosition]) -> np.ndarray:
     """Return a matrix of image distances in feet."""
-    if not positions:
-        raise ValueError("positions cannot be empty")
     return np.array([[image_distance(a, b) for b in positions] for a in positions], dtype=float)
 
 

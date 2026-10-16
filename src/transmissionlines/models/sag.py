@@ -101,17 +101,6 @@ class SagCurve(CalculationResultModel):
     sag_ft: list[float]
     horizontal_tension_lb: list[float]
 
-    @model_validator(mode="after")
-    def validate_arrays(self) -> "SagCurve":
-        """Ensure that every sampled span has one finite result."""
-        if (not self.span_lengths_ft or len(self.span_lengths_ft) != len(self.sag_ft)
-                or len(self.sag_ft) != len(self.horizontal_tension_lb)):
-            raise ValueError("sag curve arrays must be nonempty and equal length")
-        if (any(not math.isfinite(value) for array in (self.span_lengths_ft, self.sag_ft, self.horizontal_tension_lb) for value in array)
-                or any(end <= start for start, end in zip(self.span_lengths_ft, self.span_lengths_ft[1:]))):
-            raise ValueError("sag curve values must be finite with increasing spans")
-        return self
-
 
 class SagCurveResult(CalculationResultModel):
     """Keep calculated curves separate from the registered input graph."""

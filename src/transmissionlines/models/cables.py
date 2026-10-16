@@ -1,6 +1,7 @@
 """Selected cable components and per-circuit installation inputs."""
 
 from abc import ABC, abstractmethod
+import math
 from typing import Literal
 
 from infrasys import Component
@@ -33,6 +34,15 @@ class BareConductorEquipment(LineDataModel):
     weight: ConductorWeight | None = None
     rated_breaking_strength: RatedBreakingStrength | None = None
     total_material_area: MaterialArea | None = None
+
+    @model_validator(mode="after")
+    def validate_measurements(self) -> "BareConductorEquipment":
+        """Reject nonpositive or non-finite measurements; absent ones stay None."""
+        for field in type(self).model_fields:
+            value = getattr(self, field)
+            if value is not None and not (math.isfinite(value.magnitude) and value.magnitude > 0):
+                raise ValueError(f"{field} must be finite and positive")
+        return self
 
 
 class BundleSpec(LineDataModel):

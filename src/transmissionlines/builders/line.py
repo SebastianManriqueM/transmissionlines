@@ -47,10 +47,6 @@ def conductor_gmr_resolution(record: ConductorV2Record | ConductorRecord) -> tup
 def _conductor_gmr(
     record: ConductorV2Record | ConductorRecord, *, gmr_ft: float | None = None,
 ) -> CableGMR | None:
-    if gmr_ft is not None and not isfinite(gmr_ft):
-        raise ValueError("gmr_ft must be finite and positive")
-    if gmr_ft is not None and gmr_ft <= 0:
-        raise ValueError("gmr_ft must be finite and positive")
     method, value = conductor_gmr_resolution(record)
     if gmr_ft is not None and method in {"published", "reactance-derived"}:
         raise ValueError("catalog GMR already available; remove the gmr_ft override")

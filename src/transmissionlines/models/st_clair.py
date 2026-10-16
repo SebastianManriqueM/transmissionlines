@@ -107,19 +107,6 @@ class StClairCurve(CalculationResultModel):
     circuit_nominal_ampacity_a: float
     thermal_power_mw: float
 
-    @model_validator(mode="after")
-    def validate_parallel_arrays(self) -> "StClairCurve":
-        arrays = (
-            self.pr_w, self.pr_mw, self.ps_w, self.ps_mw, self.loss_w,
-            self.abs_es_volt, self.abs_er_volt, self.abs_er_pu, self.current_a,
-            self.limiting_angle_deg, self.limit_type, self.es_real_volt,
-            self.es_imag_volt, self.er_real_volt, self.er_imag_volt,
-            self.i2_real_a, self.i2_imag_a,
-        )
-        if any(len(array) != len(self.lengths_mi) for array in arrays):
-            raise ValueError("St. Clair curve arrays must have equal lengths")
-        return self
-
 
 class StClairResult(CalculationResultModel):
     """Resolved options, constants, and compact base/sensitivity curves."""

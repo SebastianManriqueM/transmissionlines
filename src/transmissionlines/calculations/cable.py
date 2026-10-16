@@ -19,10 +19,7 @@ from transmissionlines.electrical_constants import (
     KILOFEET_PER_MILE,
     SERIES_REACTANCE_COEFFICIENT,
 )
-from transmissionlines.calculations.constants import (
-    ROUND_STRAND_DIAMETER_REL_TOLERANCE,
-    STRAND_CONTACT_REL_TOLERANCE,
-)
+from transmissionlines.calculations.constants import ROUND_STRAND_DIAMETER_REL_TOLERANCE
 
 
 def ground_wire_gmr(diameter_inch: float) -> float:
@@ -32,8 +29,6 @@ def ground_wire_gmr(diameter_inch: float) -> float:
 
 def solid_round_wire_gmr(diameter_inch: float) -> float:
     """Estimate GMR in feet by treating the entire cable as a solid round wire."""
-    if diameter_inch <= 0:
-        raise ValueError("diameter must be positive")
     return exp(-0.25) * (diameter_inch / 2.0) / 12.0
 
 
@@ -85,38 +80,17 @@ def strand_geometry_gmr(
     -------
     float
         Single-cable GMR in the input length unit.
-
-    Raises
-    ------
-    ValueError
-        If geometry, radii, or normalized current fractions are invalid.
     """
     points = np.asarray(centers, dtype=float)
     radius = np.asarray(radii, dtype=float)
     share = np.asarray(weights, dtype=float)
-    if (points.ndim != 2 or points.shape[1] != 2 or not len(points)
-            or radius.shape != (len(points),) or share.shape != (len(points),)
-            or not np.isfinite(points).all()):
-        raise ValueError("strand centers, radii, and weights must have matching finite geometry")
-    if not np.isfinite(radius).all() or np.any(radius <= 0):
-        raise ValueError("strand radius must be finite and positive")
-    if not np.isfinite(share).all() or np.any(share < 0) or not np.isclose(share.sum(), 1):
-        raise ValueError("strand weights must be nonnegative and sum to one")
     distances = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=-1)
-    off_diagonal = ~np.eye(len(points), dtype=bool)
-    clearance = (radius[:, None] + radius[None, :])[off_diagonal]
-    if np.any((distances[off_diagonal] < clearance) & ~np.isclose(
-        distances[off_diagonal], clearance, rtol=STRAND_CONTACT_REL_TOLERANCE, atol=0,
-    )):
-        raise ValueError("strand geometry contains overlapping strands")
     np.fill_diagonal(distances, radius * exp(-0.25))
     return float(np.exp(np.sum(np.outer(share, share) * np.log(distances))))
 
 
 def xl_from_gmr(gmr: float, frequency: float = 60.0) -> float:
     """Convert GMR in feet to the Julia catalog internal reactance."""
-    if gmr <= 0 or frequency <= 0:
-        raise ValueError("GMR and frequency must be positive")
     return frequency * SERIES_REACTANCE_COEFFICIENT * log(1 / gmr) * (1 / KILOFEET_PER_MILE)
 
 

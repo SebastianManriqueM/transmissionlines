@@ -19,14 +19,8 @@ def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray
     ``spacing`` is the adjacent subconductor spacing (the polygon side), and the
     first point is on the positive x axis.
     """
-    if count < 1:
-        raise ValueError("subconductor count must be positive")
     if count == 1:
-        if spacing is not None:
-            raise ValueError("a single subconductor has no spacing")
         return np.zeros((1, 2), dtype=float)
-    if spacing is None or spacing <= 0:
-        raise ValueError("spacing must be positive")
     radius = spacing / (2 * sin(pi / count))
     angles = 2 * pi * np.arange(count) / count
     return np.column_stack((radius * np.cos(angles), radius * np.sin(angles)))
@@ -34,16 +28,8 @@ def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray
 
 def bundle_gmr(single_gmr: float, count: int, spacing: float | None) -> float:
     """Calculate complete-product bundle GMR in feet."""
-    if single_gmr <= 0:
-        raise ValueError("single GMR must be positive")
-    if count < 1:
-        raise ValueError("subconductor count must be positive")
     if count == 1:
-        if spacing is not None:
-            raise ValueError("single subconductor spacing must be None")
         return single_gmr
-    if spacing is None or spacing <= 0:
-        raise ValueError("positive spacing is required for a bundle")
     coords = regular_polygon_coordinates(count, spacing)
     coords /= 12.0
     product = 1.0
@@ -56,14 +42,8 @@ def bundle_gmr(single_gmr: float, count: int, spacing: float | None) -> float:
 
 def equivalent_radius(radius: float, count: int, spacing: float | None) -> float:
     """Calculate the bundle's equivalent capacitance radius in feet."""
-    if radius <= 0:
-        raise ValueError("single conductor radius must be positive")
     if count == 1:
-        if spacing is not None:
-            raise ValueError("single subconductor spacing must be None")
         return radius
-    if spacing is None or spacing <= 0:
-        raise ValueError("positive spacing is required for a bundle")
     coords = regular_polygon_coordinates(count, spacing) / 12.0
     product = 1.0
     for i in range(count):
@@ -84,12 +64,6 @@ def derived_bundle_values(
     equivalent-radius calculation. It is intentionally optional at the model
     boundary because general runtime models may not have that catalog field.
     """
-    if count < 1:
-        raise ValueError("subconductor count must be positive")
-    if count == 1 and spacing is not None:
-        raise ValueError("single subconductor spacing must be None")
-    if count > 1 and (spacing is None or spacing.to("inch").magnitude <= 0):
-        raise ValueError("positive spacing is required for a bundle")
     spacing_value = None if spacing is None else spacing.to("inch").magnitude
     gmr = None if conductor.conductor_gmr is None else bundle_gmr(
         conductor.conductor_gmr.to("foot").magnitude, count, spacing_value

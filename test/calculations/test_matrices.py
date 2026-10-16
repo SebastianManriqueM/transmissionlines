@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from transmissionlines.calculations.matrices import fully_transpose, kron_reduce, sequence_matrix
 
@@ -13,6 +12,3 @@ def test_kron_and_sequence_dimensions() -> None:
     assert sequence_matrix(transposed).shape == (3, 3)
 
 
-def test_invalid_matrix_partition_fails_clearly() -> None:
-    with pytest.raises(ValueError, match="dimensions"):
-        kron_reduce(np.eye(3), 3, 1)

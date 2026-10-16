@@ -250,3 +250,12 @@ def test_infrasys_does_not_round_trip_component_references_nested_inside_value_m
 
     assert loaded_line.nested.owner.uuid == loaded_bus.uuid
     assert loaded_line.nested.owner is not loaded_bus
+
+
+@pytest.mark.parametrize("ampacity", [0.0, -1.0, float("nan"), float("inf")])
+def test_conductor_equipment_rejects_nonpositive_measurements(ampacity: float) -> None:
+    from transmissionlines.models.cables import BareConductorEquipment
+
+    assert BareConductorEquipment(ampacity=None).ampacity is None
+    with pytest.raises(ValidationError, match="ampacity must be finite and positive"):
+        BareConductorEquipment(ampacity=Current(ampacity, "ampere"))

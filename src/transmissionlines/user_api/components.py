@@ -10,7 +10,7 @@ from transmissionlines.builders.line import (
     ground_wire_from_record,
 )
 from transmissionlines.catalog.schemas import GroundWirePositionRecord, PhasePositionRecord
-from transmissionlines.models.cables import BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
+from transmissionlines.models.cables import ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import IdentificationInfo
 from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
 from transmissionlines.user_api.catalog import BrowsingCatalog
@@ -47,10 +47,7 @@ def select_conductor(
 def select_ground_wire(catalog: BrowsingCatalog, *, record_id: str) -> GroundWireSpec:
     """Select a reusable, electrically complete catalog ground wire."""
     record = catalog.select("ground_wires", record_id)
-    selected = ground_wire_from_record(record, catalog_version=catalog.catalog_version)
-    if selected.equipment.conductor_diameter is None or selected.equipment.dc_resistance is None:
-        raise ValueError(f"ground wire {record_id!r} needs diameter_inch and dc_resistance_ohm_kft")
-    return selected
+    return ground_wire_from_record(record, catalog_version=catalog.catalog_version)
 
 
 def configure_tower(
@@ -58,12 +55,7 @@ def configure_tower(
     ground_wire: GroundWireSpec, circuits: Sequence[Mapping[str, Any]],
 ) -> TowerConfiguration:
     """Join selected circuit equipment to validated tower-local geometry."""
-    if not isinstance(ground_wire, GroundWireSpec):
-        raise TypeError("ground_wire must be a selected GroundWireSpec")
-    if ground_wire.equipment.conductor_diameter is None or ground_wire.equipment.dc_resistance is None:
-        raise ValueError("ground_wire needs diameter and DC resistance")
     geometry = catalog.select("tower_geometries", geometry_id)
-    circuit_ids = catalog.tower_circuits(geometry_id)
     phase_rows = catalog.positions("phase_positions", geometry_id)
     ground_rows = catalog.positions("ground_wire_positions", geometry_id)
     if not ground_rows or (geometry.n_ground_w is not None and len(ground_rows) != geometry.n_ground_w):
@@ -74,15 +66,13 @@ def configure_tower(
     phase = [PhasePositionRecord.model_validate(row) for row in phase_rows]
     ground = [GroundWirePositionRecord.model_validate(row) for row in ground_rows]
     selected_geometry = geometry_from_records(phase, ground)
-    provided_ids = [entry["circuit_id"] for entry in circuits]
-    if sorted(provided_ids) != list(circuit_ids):
-        raise ValueError("circuits must select every geometry circuit exactly once")
+    circuit_count = len({position.circuit_id for position in selected_geometry.phase_positions})
+    if geometry.n_circuits is not None and circuit_count != geometry.n_circuits:
+        raise ValueError("phase-position circuit count disagrees with selected geometry")
     configurations = []
     for entry in circuits:
         conductor = entry["conductor"]
         bundle = entry["bundle"]
-        if not isinstance(conductor, ConductorSpec) or not isinstance(bundle, BundleSpec):
-            raise TypeError("each circuit needs a selected ConductorSpec and BundleSpec")
         insulator = InsulatorStringSpec.model_validate(entry["insulator"])
         circuit_id = entry["circuit_id"]
         configurations.append(CircuitConfiguration(

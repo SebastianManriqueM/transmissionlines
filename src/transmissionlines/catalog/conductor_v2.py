@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from transmissionlines.catalog.mechanical_area import AreaCandidate
 from transmissionlines.catalog.pdf_tables import SourceCell, SourceRow
-from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorV2Record
+from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorRecord
 
 
 _ELECTRICAL_FIELDS = (
@@ -32,7 +32,7 @@ def _provenance(
 def project_conductor(
     staged: AreaCandidate,
     *, electrical_row: SourceRow | None = None,
-) -> tuple[ConductorV2Record, tuple[ConductorFieldProvenance, ...]]:
+) -> tuple[ConductorRecord, tuple[ConductorFieldProvenance, ...]]:
     """Project one staged candidate without publishing it or inventing missing fields.
 
     Parameters
@@ -45,7 +45,7 @@ def project_conductor(
 
     Returns
     -------
-    tuple[ConductorV2Record, tuple[ConductorFieldProvenance, ...]]
+    tuple[ConductorRecord, tuple[ConductorFieldProvenance, ...]]
         A versioned record and one provenance entry per contributing source cell.
     """
     candidate = staged.candidate
@@ -68,7 +68,7 @@ def project_conductor(
             electrical_sources[field] = source_field
     ac_temperatures = [int(field.split("_")[2][:-1]) for field in electrical if field.startswith("ac_resistance_")]
     ampacity_temperatures = [int(field.split("_")[1][:-1]) for field in electrical if field.startswith("ampacity_")]
-    record = ConductorV2Record(
+    record = ConductorRecord(
         record_id=candidate.record_id, source_id=row.source_sha256,
         family=candidate.family, codeword=candidate.codeword, size=candidate.size,
         variant=candidate.variant, stranding=row.cells["stranding"].raw if "stranding" in row.cells else None,

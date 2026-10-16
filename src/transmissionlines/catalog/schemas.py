@@ -1,9 +1,9 @@
 """Versioned catalog record schemas and source-header mappings."""
 
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CatalogRecord(BaseModel):
@@ -57,28 +57,35 @@ class SourceRecord(CatalogRecord):
     sha256: str
 
 
+# v1 (workbook) column names and their v2 equivalents. The workbook headers state
+# these temperatures (R_20dc, R_25AC, ...); ac_resistance_ohm_kft duplicates R_75AC.
+_V1_CONDUCTOR_COLUMNS = {
+    "dc_resistance_ohm_kft": "dc_resistance_20c_ohm_kft",
+    "ac_resistance_25_ohm_kft": "ac_resistance_25c_ohm_kft",
+    "ac_resistance_50_ohm_kft": "ac_resistance_50c_ohm_kft",
+    "ac_resistance_75_ohm_kft": "ac_resistance_75c_ohm_kft",
+    "ac_resistance_ohm_kft": None,
+}
+
+
 class ConductorRecord(CatalogRecord):
+    """One conductor row from either catalog version.
+
+    v1 rows come from the Julia workbook and lack the PDF-backed fields; their
+    legacy column names are mapped on load. ``ampacity_a`` and the reactances
+    exist only in v1, whose ampacity rating conditions are unstated.
+    """
+
     family: str
-    codeword: str
+    codeword: str | None = None
     stranding: str | None = None
+    size: str | None = None
     size_kcmil: float | None = None
+    variant: str | None = None
     diameter_inch: float | None = None
-    ac_resistance_ohm_kft: float | None = None
-    ac_resistance_25_ohm_kft: float | None = None
-    ac_resistance_50_ohm_kft: float | None = None
-    ac_resistance_75_ohm_kft: float | None = None
-    dc_resistance_ohm_kft: float | None = None
     capacitance_reactance_mohm_kft: float | None = None
     internal_reactance_ohm_kft: float | None = None
     ampacity_a: float | None = None
-
-
-class ConductorV2Record(ConductorRecord):
-    """Represent a PDF-backed conductor without requiring absent measurements."""
-
-    codeword: str | None = None
-    size: str | None = None
-    variant: str
     gmr_ft: Decimal | None = None
     weight_lb_kft: Decimal | None = None
     rated_strength_lb: Decimal | None = None
@@ -101,6 +108,17 @@ class ConductorV2Record(ConductorRecord):
     ampacity_180c_a: Decimal | None = None
     ampacity_200c_a: Decimal | None = None
     ampacity_250c_a: Decimal | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _rename_v1_columns(cls, data: Any) -> Any:
+        if isinstance(data, dict) and _V1_CONDUCTOR_COLUMNS.keys() & data.keys():
+            data = dict(data)
+            for old, new in _V1_CONDUCTOR_COLUMNS.items():
+                value = data.pop(old, None)
+                if new and value is not None:
+                    data[new] = value
+        return data
 
 
 class ConductorFieldProvenance(BaseModel):
@@ -168,7 +186,6 @@ __all__ = [
     "CatalogRecord",
     "ConductorFieldProvenance",
     "ConductorRecord",
-    "ConductorV2Record",
     "GeometryRecord",
     "GeometryStateRecord",
     "GroundWirePositionRecord",

@@ -3,7 +3,7 @@
   "extraction_version": "1",
   "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",
   "parser_version": "1.28.2",
-  "schema_version": "4.2.0",
+  "schema_version": "5.0.0",
   "sources": [
     {
       "path": "data/raw/Tower_geometries_DB.xlsx",
@@ -102,18 +102,13 @@
         "family",
         "codeword",
         "stranding",
+        "size",
         "size_kcmil",
+        "variant",
         "diameter_inch",
-        "ac_resistance_ohm_kft",
-        "ac_resistance_25_ohm_kft",
-        "ac_resistance_50_ohm_kft",
-        "ac_resistance_75_ohm_kft",
-        "dc_resistance_ohm_kft",
         "capacitance_reactance_mohm_kft",
         "internal_reactance_ohm_kft",
         "ampacity_a",
-        "size",
-        "variant",
         "gmr_ft",
         "weight_lb_kft",
         "rated_strength_lb",
@@ -138,7 +133,7 @@
         "ampacity_250c_a"
       ],
       "row_count": 641,
-      "sha256": "022f2f50e9a0c0f4c3cc41435bcbf538e5c61202d1c7e02fa160e22b4a8296e2"
+      "sha256": "1ef9af2332f862ed558d7361333536fa251a1f2df2aac3d218655e6c67b582db"
     },
     "ground_wire_positions": {
       "columns": [

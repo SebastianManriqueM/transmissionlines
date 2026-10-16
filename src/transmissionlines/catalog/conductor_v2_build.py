@@ -16,7 +16,7 @@ from transmissionlines.catalog.conductor_v2 import project_conductor
 from transmissionlines.catalog.importer import sha256_file
 from transmissionlines.catalog.mechanical_area import resolve_areas
 from transmissionlines.catalog.pdf_tables import SourceRow, extract
-from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorV2Record
+from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorRecord
 
 
 PINNED_SOURCES = {
@@ -48,7 +48,7 @@ def _issue_row(issue: StagingIssue) -> dict[str, Any]:
     }
 
 
-def _crosswalk(v1: pd.DataFrame, records: list[ConductorV2Record]) -> list[dict[str, Any]]:
+def _crosswalk(v1: pd.DataFrame, records: list[ConductorRecord]) -> list[dict[str, Any]]:
     index: dict[tuple[str, str, Decimal, str | None], list[str]] = {}
     for record in records:
         if record.codeword is None or record.size is None:
@@ -162,7 +162,7 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
         shutil.copyfile(v1 / f"{name}.parquet", output / f"{name}.parquet")
     tables["conductors"] = _write_table(
         output, "conductors", (record.model_dump(mode="json") for record in records),
-        list(ConductorV2Record.model_fields),
+        list(ConductorRecord.model_fields),
     )
     tables["conductor_provenance"] = _write_table(
         output, "conductor_provenance", (entry.model_dump(mode="json") for entry in provenance),
@@ -181,7 +181,7 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
     for name, metadata in tables.items():
         metadata["sha256"] = sha256_file(output / f"{name}.parquet")
     manifest = {
-        "catalog_version": "v2", "schema_version": "4.2.0",
+        "catalog_version": "v2", "schema_version": "5.0.0",
         "extraction_version": "1", "parser_version": pymupdf.VersionBind,
         "sources": source_info, "tables": dict(sorted(tables.items())),
         "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",

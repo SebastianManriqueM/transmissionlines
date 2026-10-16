@@ -6,7 +6,7 @@ import warnings
 from math import isfinite
 from typing import Any
 
-from transmissionlines.catalog.schemas import ConductorRecord, ConductorV2Record, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
+from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord, PhasePositionRecord, GroundWirePositionRecord
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.models.configurations import CircuitConfiguration
@@ -27,9 +27,9 @@ def _reference(record: Any, table: str, catalog_version: str) -> CatalogReferenc
     return CatalogReference(catalog_version=catalog_version, table_name=table, record_id=record.record_id, source_id=record.source_id)
 
 
-def conductor_gmr_resolution(record: ConductorV2Record | ConductorRecord) -> tuple[str, float | None]:
+def conductor_gmr_resolution(record: ConductorRecord) -> tuple[str, float | None]:
     """Identify the best catalog-backed or estimated phase GMR without warning."""
-    if isinstance(record, ConductorV2Record) and record.gmr_ft is not None:
+    if record.gmr_ft is not None:
         return "published", float(record.gmr_ft)
     if record.internal_reactance_ohm_kft is not None:
         return "reactance-derived", gmr_from_xl(record.internal_reactance_ohm_kft)
@@ -38,7 +38,7 @@ def conductor_gmr_resolution(record: ConductorV2Record | ConductorRecord) -> tup
     diameter = float(record.diameter_inch)
     if not isfinite(diameter) or diameter <= 0:
         raise ValueError(f"conductor {record.record_id!r}: diameter_inch must be finite and positive")
-    if (isinstance(record, ConductorV2Record) and record.family in {"ACSR", "ACSR/AW", "ACSS"}
+    if (record.family in {"ACSR", "ACSR/AW", "ACSS"}
             and record.stranding == "6/1" and record.strand_diameter_al_in is not None
             and record.strand_diameter_core_in is not None and record.core_diameter_in is not None):
         estimate = round_six_one_gmr(
@@ -52,7 +52,7 @@ def conductor_gmr_resolution(record: ConductorV2Record | ConductorRecord) -> tup
 
 
 def _conductor_gmr(
-    record: ConductorV2Record | ConductorRecord, *, gmr_ft: float | None = None,
+    record: ConductorRecord, *, gmr_ft: float | None = None,
 ) -> Distance | None:
     method, value = conductor_gmr_resolution(record)
     if gmr_ft is not None and method in {"published", "reactance-derived"}:
@@ -75,15 +75,15 @@ def _conductor_gmr(
 
 
 def conductor_from_record(
-    record: ConductorV2Record | ConductorRecord, *, catalog_version: str,
+    record: ConductorRecord, *, catalog_version: str,
     gmr_ft: float | None = None,
 ) -> ConductorSpec:
     """Convert a record to typed equipment with source-first backend GMR resolution.
 
     Parameters
     ----------
-    record : ConductorV2Record or ConductorRecord
-        Validated versioned conductor data.
+    record : ConductorRecord
+        Validated conductor data from either catalog version.
     catalog_version : str
         Selected catalog version for the persistent reference.
     gmr_ft : float, optional
@@ -95,14 +95,10 @@ def conductor_from_record(
     ConductorSpec
         Selected conductor with resolved cable GMR when sufficient data exist.
     """
-    if isinstance(record, ConductorV2Record):
-        resistances = (record.ac_resistance_75c_ohm_kft, record.ac_resistance_50c_ohm_kft, record.ac_resistance_25c_ohm_kft)
-        ampacity = record.ampacity_75c_a
-        dc_resistance = record.dc_resistance_20c_ohm_kft
-    else:
-        resistances = (record.ac_resistance_75_ohm_kft, record.ac_resistance_50_ohm_kft, record.ac_resistance_25_ohm_kft)
-        ampacity = record.ampacity_a
-        dc_resistance = record.dc_resistance_ohm_kft
+    resistances = (record.ac_resistance_75c_ohm_kft, record.ac_resistance_50c_ohm_kft, record.ac_resistance_25c_ohm_kft)
+    # v1 ampacity_a has unstated rating conditions; prefer the PDF's 75 C rating.
+    ampacity = record.ampacity_75c_a if record.ampacity_75c_a is not None else record.ampacity_a
+    dc_resistance = record.dc_resistance_20c_ohm_kft
     resistance = select_phase_resistance(
         *(None if value is None else ResistancePerLength(float(value), "ohm / kilofoot") for value in resistances)
     ) if any(value is not None for value in resistances) else None
@@ -111,11 +107,11 @@ def conductor_from_record(
         conductor_gmr=_conductor_gmr(record, gmr_ft=gmr_ft),
         capacitance_radius=None if record.capacitance_reactance_mohm_kft is None else Distance(req_from_xc(record.capacitance_reactance_mohm_kft), "foot"),
         ampacity=None if ampacity is None else Current(float(ampacity), "ampere"),
-        ac_resistance=resistance if resistance is not None else (None if isinstance(record, ConductorV2Record) or record.ac_resistance_ohm_kft is None else ResistancePerLength(record.ac_resistance_ohm_kft, "ohm / kilofoot")),
+        ac_resistance=resistance,
         dc_resistance=None if dc_resistance is None else ResistancePerLength(float(dc_resistance), "ohm / kilofoot"),
-        weight=None if not isinstance(record, ConductorV2Record) or record.weight_lb_kft is None else ForcePerLength(float(record.weight_lb_kft), "pound_force / kilofoot"),
-        rated_breaking_strength=None if not isinstance(record, ConductorV2Record) or record.rated_strength_lb is None else Force(float(record.rated_strength_lb), "pound_force"),
-        total_material_area=None if not isinstance(record, ConductorV2Record) or record.total_area_in2 is None else Area(float(record.total_area_in2), "inch ** 2"),
+        weight=None if record.weight_lb_kft is None else ForcePerLength(float(record.weight_lb_kft), "pound_force / kilofoot"),
+        rated_breaking_strength=None if record.rated_strength_lb is None else Force(float(record.rated_strength_lb), "pound_force"),
+        total_material_area=None if record.total_area_in2 is None else Area(float(record.total_area_in2), "inch ** 2"),
     )
     name = f"{catalog_version}:conductor:{record.record_id}"
     if gmr_ft is not None:
@@ -148,7 +144,7 @@ def _circuit_configuration_name(
     return f"{conductor.name}:{circuit_id}:{digest}"
 
 
-def phase_spec_from_record(record: ConductorV2Record | ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
+def phase_spec_from_record(record: ConductorRecord, *, circuit_id: str, insulator_string: InsulatorStringSpec | dict[str, Any], subconductor_count: int = 1, subconductor_spacing: Any = None, catalog_version: str) -> CircuitConfiguration:
     """Build a registered circuit selection from one conductor record.
 
     Parameters

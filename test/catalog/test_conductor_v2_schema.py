@@ -1,24 +1,15 @@
-"""Check v2 conductor contracts without changing the v1 catalog."""
+"""Check the conductor record shared by both catalog versions."""
 
 from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
 
-from transmissionlines.catalog.schemas import (
-    ConductorRecord, ConductorV2Record, ConductorFieldProvenance, TABLE_MODELS,
-)
+from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorRecord
 
 
-def test_v2_conductor_fields_do_not_change_v1_schema() -> None:
-    assert TABLE_MODELS["conductors"] is ConductorRecord
-    with pytest.raises(ValidationError):
-        ConductorRecord.model_validate({
-            "record_id": "ACSS:266.8:partridge:standard", "source_id": "pdf",
-            "family": "ACSS", "codeword": "Partridge", "variant": "standard",
-        })
-
-    record = ConductorV2Record.model_validate({
+def test_conductor_record_keeps_pdf_measurements_as_decimals() -> None:
+    record = ConductorRecord.model_validate({
         "record_id": "ACSS:266.8:partridge:standard", "source_id": "pdf",
         "family": "ACSS", "codeword": "Partridge", "variant": "standard",
         "weight_lb_kft": Decimal("548"), "rated_strength_lb": Decimal("8880"),
@@ -31,14 +22,23 @@ def test_v2_conductor_fields_do_not_change_v1_schema() -> None:
     assert record.model_dump(mode="json")["total_area_in2"] == "0.261"
 
 
-def test_v2_requires_variant_but_preserves_unknown_measurements() -> None:
-    with pytest.raises(ValidationError):
-        ConductorV2Record.model_validate({
-            "record_id": "ACCC:irving:standard", "source_id": "pdf",
-            "family": "ACCC", "codeword": "IRVING",
-        })
+def test_v1_columns_map_to_temperature_named_fields() -> None:
+    record = ConductorRecord.model_validate({
+        "record_id": "ACSR:Cardinal:954:1", "source_id": "Cardinal", "family": "ACSR",
+        "codeword": "Cardinal", "dc_resistance_ohm_kft": 0.0179, "ac_resistance_ohm_kft": 0.0222,
+        "ac_resistance_25_ohm_kft": 0.0184, "ac_resistance_50_ohm_kft": None,
+        "ac_resistance_75_ohm_kft": 0.0222, "ampacity_a": 990.0,
+    })
+    assert record.variant is None
+    assert record.dc_resistance_20c_ohm_kft == Decimal("0.0179")
+    assert record.ac_resistance_25c_ohm_kft == Decimal("0.0184")
+    assert record.ac_resistance_50c_ohm_kft is None
+    assert record.ac_resistance_75c_ohm_kft == Decimal("0.0222")
+    assert record.ampacity_a == 990.0 and record.ampacity_75c_a is None
 
-    record = ConductorV2Record(
+
+def test_absent_measurements_stay_absent() -> None:
+    record = ConductorRecord(
         record_id="ACCC:irving:uls", source_id="pdf", family="ACCC",
         codeword="IRVING", variant="uls",
     )

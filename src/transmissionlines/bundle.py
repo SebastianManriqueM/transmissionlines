@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from math import pi, sin
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,18 +11,26 @@ if TYPE_CHECKING:
     from transmissionlines.models.cables import BareConductorEquipment
 
 
-def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray:
-    r"""Return regular-polygon subconductor coordinates in inches.
+def _polygon(count: int, spacing: float | None) -> np.ndarray:
+    r"""Subconductor positions as complex numbers :math:`x + jy`.
 
-    ``spacing`` :math:`s` is the adjacent subconductor spacing (the polygon side),
-    so the circumradius is :math:`R = s / (2 \sin(\pi/n))`. The first point is on
-    the positive x axis.
+    The n-th roots of unity :math:`\omega^k`, scaled so adjacent points are
+    ``spacing`` :math:`s` apart: the circumradius is
+    :math:`s / |1 - \omega| = s / (2 \sin(\pi/n))`. The first point is on the
+    positive x axis.
     """
     if count == 1:
-        return np.zeros((1, 2), dtype=float)
-    radius = spacing / (2 * sin(pi / count))
-    angles = 2 * pi * np.arange(count) / count
-    return np.column_stack((radius * np.cos(angles), radius * np.sin(angles)))
+        return np.zeros(1, dtype=complex)
+    roots = np.exp(2j * np.pi * np.arange(count) / count)
+    return roots * spacing / abs(roots[1] - roots[0])
+
+
+def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray:
+    """Return regular-polygon subconductor (x, y) coordinates, in the units of ``spacing``.
+
+    The complex positions of :func:`_polygon`, viewed as (real, imaginary) pairs.
+    """
+    return _polygon(count, spacing).view(np.float64).reshape(-1, 2)
 
 
 def bundle_gmr(self_ft: float, count: int, spacing_in: float | None) -> float:
@@ -40,8 +47,8 @@ def bundle_gmr(self_ft: float, count: int, spacing_in: float | None) -> float:
     """
     if count == 1:
         return self_ft
-    xy = regular_polygon_coordinates(count, spacing_in) / 12.0
-    distances = np.hypot(*(xy[:, None, :] - xy[None, :, :]).transpose(2, 0, 1))
+    z = _polygon(count, spacing_in) / 12.0
+    distances = np.abs(z[:, None] - z[None, :])
     np.fill_diagonal(distances, self_ft)
     return float(np.prod(distances) ** (1.0 / count**2))
 

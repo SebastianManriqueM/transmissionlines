@@ -25,30 +25,23 @@ def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray
     return np.column_stack((radius * np.cos(angles), radius * np.sin(angles)))
 
 
-def bundle_gmr(single_gmr: float, count: int, spacing: float | None) -> float:
-    """Calculate complete-product bundle GMR in feet."""
+def bundle_gmr(self_ft: float, count: int, spacing_in: float | None) -> float:
+    """Geometric mean of all subconductor-pair distances in a regular bundle, in feet.
+
+    The ``count**2`` distances include each subconductor with itself, which is
+    ``self_ft``: its GMR for the series-impedance GMR, or its radius for the
+    capacitance equivalent radius (see ``equivalent_radius``).
+    """
     if count == 1:
-        return single_gmr
-    coords = regular_polygon_coordinates(count, spacing)
-    coords /= 12.0
-    product = 1.0
-    for i in range(count):
-        for j in range(count):
-            distance = single_gmr if i == j else float(np.linalg.norm(coords[i] - coords[j]))
-            product *= distance
-    return product ** (1.0 / (count * count))
+        return self_ft
+    xy = regular_polygon_coordinates(count, spacing_in) / 12.0
+    distances = np.hypot(*(xy[:, None, :] - xy[None, :, :]).transpose(2, 0, 1))
+    np.fill_diagonal(distances, self_ft)
+    return float(np.prod(distances) ** (1.0 / count**2))
 
 
-def equivalent_radius(radius: float, count: int, spacing: float | None) -> float:
-    """Calculate the bundle's equivalent capacitance radius in feet."""
-    if count == 1:
-        return radius
-    coords = regular_polygon_coordinates(count, spacing) / 12.0
-    product = 1.0
-    for i in range(count):
-        for j in range(count):
-            product *= radius if i == j else float(np.linalg.norm(coords[i] - coords[j]))
-    return product ** (1.0 / (count * count))
+# Same geometric mean, with the subconductor radius as the self term.
+equivalent_radius = bundle_gmr
 
 
 def derived_bundle_values(

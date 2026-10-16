@@ -11,7 +11,7 @@ import numpy as np
 
 from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.calculations.cable import ground_wire_gmr
-from transmissionlines.calculations.geometry import direct_distance, image_distance
+from transmissionlines.calculations.geometry import pairwise_distances, pairwise_image_distances
 from transmissionlines.calculations.input_resolver import resolve_configuration
 from transmissionlines.calculations.matrices import (
     fully_transpose,
@@ -82,28 +82,14 @@ def build_primitive_z(
     numpy.ndarray
         Complex square primitive series matrix in ohm/mile.
     """
-    n = len(positions)
-    result = np.zeros((n, n), dtype=complex)
+    distances = pairwise_distances(positions)
+    np.fill_diagonal(distances, gmrs)
+    resistance = np.diag(np.asarray(resistances) / np.asarray(bundle_counts) * KILOFEET_PER_MILE)
     correction = L_F + 0.5 * log(earth_resistivity / frequency)
-    for i, position in enumerate(positions):
-        for j in range(i, n):
-            if i == j:
-                distance = gmrs[i]
-                resistance = resistances[i] / bundle_counts[i] * KILOFEET_PER_MILE
-            else:
-                distance = direct_distance(position, positions[j])
-                resistance = 0.0
-            value = resistance + R_C * frequency + 1j * L_C * frequency * (log(1 / distance) + correction)
-            result[i, j] = result[j, i] = value
-    return result
+    return resistance + R_C * frequency + 1j * L_C * frequency * (np.log(1 / distances) + correction)
 
 
-def build_primitive_p(
-    positions: list[CablePosition],
-    *,
-    radii: list[float],
-    frequency: float,
-) -> np.ndarray:
+def build_primitive_p(positions: list[CablePosition], *, radii: list[float]) -> np.ndarray:
     """Build the primitive potential matrix in the Julia micro-unit contract.
 
     Parameters
@@ -112,9 +98,6 @@ def build_primitive_p(
         Ordered phase and ground-wire coordinates in feet.
     radii : list of float
         Equivalent phase radii or physical ground-wire radii in feet.
-    frequency : float
-        Retained for the calculation interface; the potential formula does not
-        use frequency.
 
     Returns
     -------
@@ -122,14 +105,9 @@ def build_primitive_p(
         Real square potential coefficient matrix using the parity
         ``1/(microSiemens/mile)`` contract.
     """
-    del frequency  # retained in the signature to make the unit boundary explicit
-    result = np.zeros((len(positions), len(positions)), dtype=float)
-    for i, position in enumerate(positions):
-        result[i, i] = log(image_distance(position, position) / radii[i]) / (2 * pi * EPSILON_AIR)
-        for j in range(i):
-            value = log(image_distance(position, positions[j]) / direct_distance(position, positions[j])) / (2 * pi * EPSILON_AIR)
-            result[i, j] = result[j, i] = value
-    return result
+    direct = pairwise_distances(positions)
+    np.fill_diagonal(direct, radii)
+    return np.log(pairwise_image_distances(positions) / direct) / (2 * pi * EPSILON_AIR)
 
 
 def _ordered_inputs(
@@ -340,7 +318,7 @@ def calculate_electrical(
     positions, gmrs, radii, resistances, counts, labels, phase_count = _ordered_inputs(geometry, specs, ground_wire_spec)
     ground_count = len(geometry.ground_wire_positions)
     z_primitive = build_primitive_z(positions, gmrs=gmrs, resistances=resistances, bundle_counts=counts, frequency=frequency_hz, earth_resistivity=earth_resistivity_ohm_m)
-    p_primitive = build_primitive_p(positions, radii=radii, frequency=frequency_hz)
+    p_primitive = build_primitive_p(positions, radii=radii)
     z_kron = kron_reduce(z_primitive, phase_count, ground_count)
     p_kron = kron_reduce(p_primitive, phase_count, ground_count)
     y_kron = shunt_admittance(p_kron, frequency_hz)
@@ -349,8 +327,8 @@ def calculate_electrical(
     circuits = phase_count // 3
     if circuits > 2:
         raise ValueError(f"only one- and two-circuit lines are supported, got {circuits} circuits")
-    z_transposed = fully_transpose(z_kron, circuits)
-    y_transposed = fully_transpose(y_kron, circuits)
+    z_transposed = fully_transpose(z_kron)
+    y_transposed = fully_transpose(y_kron)
     z_sequence = sequence_matrix(z_transposed)
     y_sequence = sequence_matrix(y_transposed)
     circuit_ids = list(dict.fromkeys(position.circuit_id for position in geometry.phase_positions))

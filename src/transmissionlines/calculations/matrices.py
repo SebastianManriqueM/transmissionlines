@@ -20,26 +20,22 @@ def shunt_admittance(potential: np.ndarray, frequency: float) -> np.ndarray:
     return 1j * 2 * pi * frequency * np.linalg.inv(potential)
 
 
-def fully_transpose(matrix: np.ndarray, circuit_count: int | None = None) -> np.ndarray:
-    """Apply full transposition to a 3- or 3N-conductor phase matrix."""
+def fully_transpose(matrix: np.ndarray) -> np.ndarray:
+    """Apply full transposition to a 3N-conductor phase matrix (N circuits).
+
+    Within each circuit's 3x3 block, every diagonal entry becomes the block's mean
+    self term and every off-diagonal entry its mean mutual term. Every block
+    coupling two different circuits becomes its overall mean.
+    """
     value = np.asarray(matrix, dtype=complex)
-    circuit_count = circuit_count or value.shape[0] // 3
-    result = np.zeros_like(value)
-    for c in range(circuit_count):
-        block = value[3 * c : 3 * c + 3, 3 * c : 3 * c + 3]
-        diagonal = np.mean(np.diag(block))
-        off_diagonal = (np.sum(block) - np.trace(block)) / 6
-        result[3 * c : 3 * c + 3, 3 * c : 3 * c + 3] = (
-            np.eye(3, dtype=complex) * diagonal
-            + (np.ones((3, 3), dtype=complex) - np.eye(3)) * off_diagonal
-        )
-    for left in range(circuit_count):
-        for right in range(circuit_count):
-            if left == right:
-                continue
-            block = value[3 * left : 3 * left + 3, 3 * right : 3 * right + 3]
-            result[3 * left : 3 * left + 3, 3 * right : 3 * right + 3] = np.mean(block)
-    return result
+    circuits = value.shape[0] // 3
+    blocks = value.reshape(circuits, 3, circuits, 3)
+    self_mean = np.einsum("aiai->a", blocks) / 3
+    mutual_mean = (np.einsum("aiaj->a", blocks) - 3 * self_mean) / 6
+    eye, ones, own_block = np.eye(3), np.ones((3, 3)), np.kron(np.eye(circuits), np.ones((3, 3)))
+    within = np.kron(np.diag(self_mean), eye) + np.kron(np.diag(mutual_mean), ones - eye)
+    between = np.kron(blocks.mean(axis=(1, 3)), ones)
+    return np.where(own_block == 1, within, between)
 
 
 def sequence_matrix(matrix: np.ndarray) -> np.ndarray:

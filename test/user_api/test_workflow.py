@@ -70,7 +70,7 @@ def test_flags_and_sag_options_keep_solvers_independent(line) -> None:
 def test_missing_electrical_keeps_sag_and_invalid_options_raise(line) -> None:
     circuit = line.configuration.circuits[0]
     missing = circuit.conductor_spec.model_copy(update={
-        "equipment": circuit.conductor_spec.equipment.model_copy(update={"conductor_gmr": None}),
+        "equipment": circuit.conductor_spec.equipment.model_copy(update={"gmr_ft": None}),
     })
     configuration = line.configuration.model_copy(update={
         "circuits": [circuit.model_copy(update={"conductor_spec": missing}), *line.configuration.circuits[1:]],
@@ -80,7 +80,7 @@ def test_missing_electrical_keeps_sag_and_invalid_options_raise(line) -> None:
                    span_start_ft=100, span_stop_ft=100)
     result = build.calculations(line, sag_options=options)
     assert result.impedances is result.st_clair is None
-    assert "conductor_gmr" in result.skipped["impedances"]
+    assert "gmr_ft" in result.skipped["impedances"]
     assert "electrical inputs" in result.skipped["st_clair"]
     assert len(result.sag.curves) == 2
     with pytest.raises(ValueError, match="unknown sag_options"):
@@ -127,9 +127,9 @@ def test_default_plot_titles_include_per_circuit_conductor_and_tension_details(l
     )
     electrical = result.impedances.circuit_scalars[circuit.circuit_id]
     equipment = circuit.conductor_spec.equipment
-    ampacity = equipment.ampacity.to("ampere").magnitude
-    strength = equipment.rated_breaking_strength.to("pound_force").magnitude
-    weight = equipment.weight.to("pound_force / kilofoot").magnitude
+    ampacity = equipment.ampacity_a
+    strength = equipment.rated_strength_lb
+    weight = equipment.weight_lb_kft
 
     stored_st_clair = type(result.st_clair).model_validate_json(result.st_clair.model_dump_json())
     stored_sag = type(result.sag).model_validate_json(result.sag.model_dump_json())

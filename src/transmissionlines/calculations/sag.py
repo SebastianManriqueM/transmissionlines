@@ -174,9 +174,7 @@ def solve_span_sag(
 
 
 def _span_grid(options: SagOptions) -> list[float]:
-    start = options.span_start.to("foot").magnitude
-    stop = options.span_stop.to("foot").magnitude
-    step = options.span_step.to("foot").magnitude
+    start, stop, step = options.span_start_ft, options.span_stop_ft, options.span_step_ft
     count = math.floor((stop - start) / step)
     if count > SAG_MAX_GRID_POINTS:
         raise ValueError("span grid exceeds one million points")
@@ -231,22 +229,22 @@ def calculate_sag(
     curves = []
     for circuit in circuits:
         equipment = circuit.conductor_spec.equipment
-        for field in ("weight", "rated_breaking_strength", "total_material_area"):
+        for field in ("weight_lb_kft", "rated_strength_lb", "total_area_in2"):
             if getattr(equipment, field) is None:
                 raise ValueError(f"line {line.name} circuit {circuit.circuit_id}: {field} must be present")
         sag, tensions = [], []
         for span in grid:
             try:
                 value, _, tension = solve_span_sag(
-                    equipment.weight.to("pound_force / foot").magnitude,
-                    equipment.rated_breaking_strength.to("pound_force").magnitude,
-                    area_in2=equipment.total_material_area.to("inch ** 2").magnitude,
-                    modulus_psi=options.elastic_modulus.to("psi").magnitude,
-                    expansion_per_c=options.thermal_expansion_coefficient.to("1 / kelvin").magnitude,
+                    equipment.weight_lb_kft / 1000,
+                    equipment.rated_strength_lb,
+                    area_in2=equipment.total_area_in2,
+                    modulus_psi=options.elastic_modulus_psi,
+                    expansion_per_c=options.thermal_expansion_per_k,
                     reference_fraction=fraction,
-                    span_ft=span, rise_ft=options.elevation_difference.to("foot").magnitude,
-                    reference_temperature_c=options.reference_temperature.to("degC").magnitude,
-                    operating_temperature_c=options.operating_temperature.to("degC").magnitude,
+                    span_ft=span, rise_ft=options.elevation_difference_ft,
+                    reference_temperature_c=options.reference_temperature_c,
+                    operating_temperature_c=options.operating_temperature_c,
                     additional_permanent_strain=options.additional_permanent_strain,
                 )
             except ValueError as error:
@@ -258,8 +256,8 @@ def calculate_sag(
             conductor_family=circuit.conductor_spec.family,
             conductor_codeword=circuit.conductor_spec.codeword,
             stranding=circuit.conductor_spec.stranding,
-            rated_strength_lb=equipment.rated_breaking_strength.to("pound_force").magnitude,
-            weight_lb_kft=equipment.weight.to("pound_force / kilofoot").magnitude,
+            rated_strength_lb=equipment.rated_strength_lb,
+            weight_lb_kft=equipment.weight_lb_kft,
             span_lengths_ft=grid, sag_ft=sag, horizontal_tension_lb=tensions,
         ))
     return SagCurveResult(line_uuid=line.uuid, line_name=line.name, options=options,

@@ -11,33 +11,26 @@ from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.st_clair import StClairOptions
 from test.integration.test_calculation_input_graph import _routed_line
-from transmissionlines.units import (
-    Distance,
-    Current,
-    Resistivity,
-    Frequency,
-    ResistancePerLength,
-    Voltage,
-)
+from transmissionlines.units import Quantity
 
 
 def _conductor() -> BareConductorEquipment:
     return BareConductorEquipment(
-        conductor_diameter=Distance(1, "inch"),
-        conductor_gmr=Distance(0.04, "foot"),
-        ampacity=Current(1000, "ampere"),
-        ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
-        dc_resistance=ResistancePerLength(0.2, "ohm / kilofoot"),
+        diameter_in=1,
+        gmr_ft=0.04,
+        ampacity_a=1000,
+        ac_resistance_ohm_kft=0.1,
+        dc_resistance_ohm_kft=0.2,
     )
 
 
 def _geometry() -> TowerGeometry:
     return TowerGeometry(
         phase_positions=[
-            PhasePosition(circuit_id="c1", phase=phase, x=Distance(index * 4, "foot"), y=Distance(30, "foot"))
+            PhasePosition(circuit_id="c1", phase=phase, x_ft=index * 4, y_ft=30)
             for index, phase in enumerate(("A", "B", "C"))
         ],
-        ground_wire_positions=[GroundWirePosition(wire_id="g1", x=Distance(0, "foot"), y=Distance(40, "foot"))],
+        ground_wire_positions=[GroundWirePosition(wire_id="g1", x_ft=0, y_ft=40)],
     )
 
 
@@ -61,8 +54,8 @@ def _line(configuration: TowerConfiguration | None = None) -> CrossSectionTransm
     )
     return CrossSectionTransmissionLine(
         name="line", configuration=configuration,
-        nominal_voltage=Voltage(230, "kilovolt"), nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=Resistivity(100, "ohm * meter"),
+        nominal_voltage_kv=230, nominal_frequency_hz=60,
+        earth_resistivity_ohm_m=100,
     )
 
 
@@ -71,16 +64,16 @@ def test_two_circuit_orchestration_dimensions_labels_and_mutual_scalars(kind: st
     line = _line()
     phases = [
         *line.configuration.geometry.phase_positions,
-        PhasePosition(circuit_id="c2", phase="A", x=Distance(20, "foot"), y=Distance(30, "foot")),
-        PhasePosition(circuit_id="c2", phase="B", x=Distance(24, "foot"), y=Distance(30, "foot")),
-        PhasePosition(circuit_id="c2", phase="C", x=Distance(28, "foot"), y=Distance(30, "foot")),
+        PhasePosition(circuit_id="c2", phase="A", x_ft=20, y_ft=30),
+        PhasePosition(circuit_id="c2", phase="B", x_ft=24, y_ft=30),
+        PhasePosition(circuit_id="c2", phase="C", x_ft=28, y_ft=30),
     ]
     grounds = [
         *line.configuration.geometry.ground_wire_positions,
-        GroundWirePosition(wire_id="g2", x=Distance(10, "foot"), y=Distance(40, "foot")),
+        GroundWirePosition(wire_id="g2", x_ft=10, y_ft=40),
     ]
     geometry = TowerGeometry(phase_positions=phases, ground_wire_positions=grounds)
-    second_conductor = _conductor().model_copy(update={"ampacity": Current(1500, "ampere")})
+    second_conductor = _conductor().model_copy(update={"ampacity_a": 1500})
     phase_specs = [
         *line.configuration.circuits,
         _circuit("c2", second_conductor),
@@ -138,11 +131,12 @@ def test_explicit_curve_recalculation_is_immutable_and_keeps_sensitivities() -> 
 
 def test_high_level_calculation_normalizes_compatible_technical_units() -> None:
     original = _line()
-    alternate = calculate_line_electrical_parameters(original.model_copy(update={
-        "nominal_voltage": Voltage(230000, "volt"),
-        "nominal_frequency": Frequency(0.06, "kilohertz"),
-        "earth_resistivity": Resistivity(10000, "ohm * centimeter"),
-    }))
+    alternate = calculate_line_electrical_parameters(type(original)(
+        name=original.name, configuration=original.configuration,
+        nominal_voltage_kv=Quantity(230000, "volt"),
+        nominal_frequency_hz=Quantity(0.06, "kilohertz"),
+        earth_resistivity_ohm_m=Quantity(10000, "ohm * centimeter"),
+    ))
     baseline = calculate_line_electrical_parameters(original)
     assert alternate.electrical.scalars == pytest.approx(
         baseline.electrical.scalars
@@ -152,7 +146,7 @@ def test_high_level_calculation_normalizes_compatible_technical_units() -> None:
 def test_high_level_calculation_reports_missing_conductor_fields() -> None:
     line = _line()
     phase = line.configuration.circuits[0]
-    incomplete = phase.model_copy(update={"conductor_spec": ConductorSpec(name="incomplete", equipment=BareConductorEquipment(ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot")))})
+    incomplete = phase.model_copy(update={"conductor_spec": ConductorSpec(name="incomplete", equipment=BareConductorEquipment(ac_resistance_ohm_kft=0.1))})
     config = line.configuration.model_copy(update={"circuits": [incomplete]})
     with pytest.raises(ValueError, match="missing required conductor"):
         calculate_line_electrical_parameters(_line(config))

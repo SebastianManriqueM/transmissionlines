@@ -3,11 +3,10 @@ import pytest
 
 from transmissionlines.calculations.geometry import direct_distance, image_distance
 from transmissionlines.models.geometry import CablePosition
-from transmissionlines.units import Distance
 
 
 def position(x: float, y: float) -> CablePosition:
-    return CablePosition(x=Distance(x, "foot"), y=Distance(y, "foot"))
+    return CablePosition(x_ft=x, y_ft=y)
 
 
 def test_direct_and_image_distances_use_tower_local_feet() -> None:

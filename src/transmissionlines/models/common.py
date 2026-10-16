@@ -4,25 +4,23 @@ from infrasys import Component
 from pydantic import model_validator
 
 from transmissionlines.models.base import LineDataModel
-from transmissionlines.units import Angle, Distance
+from transmissionlines.units import Degrees, Feet
 from transmissionlines.models.geometry import CablePosition, GroundWirePosition, PhasePosition
 
 
 class GeographicPoint(LineDataModel):
     """Geographic location of a terminal or tower."""
 
-    latitude: Angle
-    longitude: Angle
-    elevation: Distance | None = None
+    latitude_deg: Degrees
+    longitude_deg: Degrees
+    elevation_ft: Feet | None = None
 
     @model_validator(mode="after")
     def validate_wgs84_coordinates(self) -> "GeographicPoint":
         """Reject latitude and longitude outside WGS84 degree bounds."""
-        latitude = self.latitude.to("degree").magnitude
-        longitude = self.longitude.to("degree").magnitude
-        if not -90 <= latitude <= 90:
+        if not -90 <= self.latitude_deg <= 90:
             raise ValueError("latitude must be between -90 and 90 degrees")
-        if not -180 <= longitude <= 180:
+        if not -180 <= self.longitude_deg <= 180:
             raise ValueError("longitude must be between -180 and 180 degrees")
         return self
 

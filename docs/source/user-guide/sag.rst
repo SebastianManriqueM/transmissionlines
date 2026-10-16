@@ -11,21 +11,20 @@ area. Results are frozen and external to the input graph.
 Inputs and reference state
 --------------------------
 
-The selected v2 conductor must have positive ``weight``,
-``rated_breaking_strength``, and ``total_material_area`` measurements. Missing
+The selected v2 conductor must have ``weight_lb_kft``, ``rated_strength_lb``,
+and ``total_area_in2`` measurements. Missing
 measurements produce circuit- and field-specific errors; v1 equipment does not
 gain invented mechanics. Verify the provenance of the selected v2 catalog row.
-Callers must supply the effective whole-conductor elastic modulus (a ``Pressure``)
-and thermal expansion coefficient (an ``InverseTemperature``) in ``SagOptions``. These are not inferred from
+Callers must supply the effective whole-conductor ``elastic_modulus_psi`` and
+``thermal_expansion_per_k`` in ``SagOptions``. These are not inferred from
 the catalog, and the same options apply to all selected circuits in a call.
 Use separate calls when conductors require different effective properties.
-``reference_temperature`` and ``operating_temperature`` require ``Temperature``
-quantities (for example, degrees Celsius, Fahrenheit, or kelvin). ``span_start``,
-``span_stop``, ``span_step``, and signed ``elevation_difference`` require
-``Distance`` quantities (for example, feet or metres). Bare numbers are
-rejected for all physical options. ``additional_permanent_strain`` is a
-dimensionless float. The calculation converts temperature to degrees Celsius
-and lengths to feet before calling the pure single-conductor solver.
+Temperatures are ``reference_temperature_c`` and ``operating_temperature_c``;
+the span grid is ``span_start_ft``, ``span_stop_ft``, ``span_step_ft``, and the
+signed ``elevation_difference_ft``. Each also accepts a pint quantity in other
+units (for example, kelvin or metres), converted when the options are built.
+``additional_permanent_strain`` is a dimensionless float. The ``SagOptions``
+field names are the same as the ``sag_options`` keys of ``build.calculations``.
 
 ``everyday_tension_fraction`` belongs to the line and must be in ``(0, 0.30]``.
 When omitted, each conductor uses 20% of its own RBS at the reference state;

@@ -9,17 +9,12 @@ from transmissionlines.models.geometry import CablePosition
 
 def direct_distance(first: CablePosition, second: CablePosition) -> float:
     """Return the direct distance between two cable positions in feet."""
-    dx = first.x.to("foot").magnitude - second.x.to("foot").magnitude
-    dy = first.y.to("foot").magnitude - second.y.to("foot").magnitude
-    return hypot(dx, dy)
+    return hypot(first.x_ft - second.x_ft, first.y_ft - second.y_ft)
 
 
 def image_distance(first: CablePosition, second: CablePosition) -> float:
     """Return distance to the image of ``second`` below ground, in feet."""
-    dx = first.x.to("foot").magnitude - second.x.to("foot").magnitude
-    y1 = first.y.to("foot").magnitude
-    y2 = second.y.to("foot").magnitude
-    return hypot(dx, y1 + y2)
+    return hypot(first.x_ft - second.x_ft, first.y_ft + second.y_ft)
 
 
 def pairwise_distances(positions: list[CablePosition]) -> np.ndarray:

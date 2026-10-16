@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.result_base import CalculationResultModel
+from transmissionlines.units import Degrees, Miles, Ohms
 
 
 class StClairOptions(LineDataModel):
@@ -12,19 +13,19 @@ class StClairOptions(LineDataModel):
 
     abs_e1_pu: float = 1.0
     abs_e2_pu: float = 1.0
-    r_system_1_ohm: float = 0.1
-    x_system_1_ohm: float = 1.0
-    r_system_2_ohm: float = 0.1
-    x_system_2_ohm: float = 1.0
+    r_system_1_ohm: Ohms = 0.1
+    x_system_1_ohm: Ohms = 1.0
+    r_system_2_ohm: Ohms = 0.1
+    x_system_2_ohm: Ohms = 1.0
     n_s_percent: float = 0.0
     n_r_percent: float = 0.0
     n_series_percent: float = 0.0
     receiving_voltage_limit_pu: float = 0.95
-    stability_angle_limit_deg: float = 45.0
-    angle_step_deg: float = 0.5
-    line_length_start_mi: float = 20.0
-    line_length_stop_mi: float = 600.0
-    line_length_step_mi: float = 1.0
+    stability_angle_limit_deg: Degrees = 45.0
+    angle_step_deg: Degrees = 0.5
+    line_length_start_mi: Miles = 20.0
+    line_length_stop_mi: Miles = 600.0
+    line_length_step_mi: Miles = 1.0
     allow_near_zero_series_reactance: bool = False
 
     @model_validator(mode="after")

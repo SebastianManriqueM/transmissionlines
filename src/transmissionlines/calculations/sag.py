@@ -20,6 +20,10 @@ from transmissionlines.models.sag import SagCurve, SagCurveResult, SagOptions
 
 
 def _arc_length(tension_lb: float, weight_lb_ft: float, span_ft: float, rise_ft: float) -> float:
+    r"""Catenary arc length between supports :math:`S` apart horizontally and :math:`h` vertically.
+
+    .. math:: L = \sqrt{h^2 + \left(2c \sinh\frac{S}{2c}\right)^2}, \qquad c = H / w
+    """
     parameter = tension_lb / weight_lb_ft
     argument = span_ft / (2 * parameter)
     if argument > SAG_MAX_CATENARY_SINH_ARGUMENT:
@@ -103,7 +107,27 @@ def solve_span_sag(
     operating_temperature_c: float,
     additional_permanent_strain: float = 0.0,
 ) -> tuple[float, float, float]:
-    """Solve one physical conductor's maximum chord-relative sag.
+    r"""Solve one physical conductor's maximum chord-relative sag.
+
+    The operating horizontal tension :math:`H` makes the catenary length equal the
+    conductor's stretched, heated length (length compatibility):
+
+    .. math::
+        L_{\text{cat}}(H) = L_0 (1 + \varepsilon_p)\,\big(1 + \alpha (T - T_{\text{ref}})\big)
+                             \left(1 + \frac{H}{EA}\right),
+        \qquad L_0 = \frac{L_{\text{cat}}(H_{\text{ref}})}{1 + H_{\text{ref}}/EA},
+
+    where :math:`H_{\text{ref}}` is the everyday fraction of rated strength and the
+    elastic stretch uses horizontal tension in place of average tension. With
+    :math:`c = H/w`, the catenary vertex is at
+    :math:`x_v = S/2 - c \,\operatorname{asinh}\!\big(h / (2c \sinh(S/2c))\big)`, and the
+    sag measured from the chord is greatest where the conductor slope equals the
+    chord slope, :math:`x^* = x_v + c \operatorname{asinh}(h/S)`:
+
+    .. math::
+        D = \frac{h\, x^*}{S} - 2c \sinh\frac{x^*}{2c} \sinh\frac{x^* - 2 x_v}{2c}.
+
+    For a level span this is the familiar :math:`c\,(\cosh\frac{S}{2c} - 1) \approx \frac{w S^2}{8H}`.
 
     Parameters
     ----------

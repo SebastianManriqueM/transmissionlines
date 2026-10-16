@@ -28,7 +28,11 @@ def ground_wire_gmr(diameter_inch: float) -> float:
 
 
 def solid_round_wire_gmr(diameter_inch: float) -> float:
-    """Estimate GMR in feet by treating the entire cable as a solid round wire."""
+    r"""Estimate GMR in feet by treating the entire cable as a solid round wire.
+
+    For uniform current density in a solid conductor of radius :math:`r`,
+    :math:`\mathrm{GMR} = r\, e^{-1/4} \approx 0.7788\, r`.
+    """
     return exp(-0.25) * (diameter_inch / 2.0) / 12.0
 
 
@@ -36,10 +40,14 @@ def round_six_one_gmr(
     diameter_inch: float, *, aluminum_strand_in: float,
     core_strand_in: float, core_diameter_in: float,
 ) -> float | None:
-    """Estimate feet GMR for a verified round 6/1 layout with equal strand current.
+    r"""Estimate feet GMR for a verified round 6/1 layout with equal strand current.
 
-    Return None when the supplied dimensions cannot support a concentric
-    single-ring layout; the caller can then apply an explicit fallback policy.
+    Six outer strands sit on a ring of radius :math:`(d_{al} + d_{core})/2` around
+    the core, and :func:`strand_geometry_gmr` weights every strand by 1/7. Steel
+    carries far less current than aluminum in practice, so this equal-share
+    assumption is an approximation the caller warns about. Return None when the
+    supplied dimensions cannot support a concentric single-ring layout; the
+    caller can then apply an explicit fallback policy.
     """
     measurements = (diameter_inch, aluminum_strand_in, core_strand_in, core_diameter_in)
     if not all(np.isfinite(value) and value > 0 for value in measurements):
@@ -64,7 +72,13 @@ def round_six_one_gmr(
 def strand_geometry_gmr(
     centers: list[tuple[float, float]], radii: list[float], weights: list[float],
 ) -> float:
-    """Calculate cable GMR from validated round-strand geometry and current shares.
+    r"""Calculate cable GMR from validated round-strand geometry and current shares.
+
+    The current-weighted geometric mean distance between strands,
+
+    .. math:: \ln \mathrm{GMR} = \sum_i \sum_j w_i w_j \ln d_{ij}, \qquad d_{ii} = r_i e^{-1/4},
+
+    with current shares :math:`w_i` summing to one.
 
     Parameters
     ----------
@@ -90,7 +104,13 @@ def strand_geometry_gmr(
 
 
 def xl_from_gmr(gmr: float, frequency: float = 60.0) -> float:
-    """Convert GMR in feet to the Julia catalog internal reactance."""
+    r"""Convert GMR in feet to the catalog's internal reactance in ohm/kilofoot.
+
+    .. math:: X_a = \frac{L_C\, f}{5.28} \ln\frac{1}{\mathrm{GMR}}
+
+    the one-foot-spacing inductive reactance of the conductor; inverse of
+    :func:`~transmissionlines.catalog.electrical_conversion.gmr_from_xl`.
+    """
     return frequency * SERIES_REACTANCE_COEFFICIENT * log(1 / gmr) * (1 / KILOFEET_PER_MILE)
 
 

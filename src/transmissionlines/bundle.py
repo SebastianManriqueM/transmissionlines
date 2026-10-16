@@ -13,10 +13,11 @@ if TYPE_CHECKING:
 
 
 def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray:
-    """Return regular-polygon subconductor coordinates in inches.
+    r"""Return regular-polygon subconductor coordinates in inches.
 
-    ``spacing`` is the adjacent subconductor spacing (the polygon side), and the
-    first point is on the positive x axis.
+    ``spacing`` :math:`s` is the adjacent subconductor spacing (the polygon side),
+    so the circumradius is :math:`R = s / (2 \sin(\pi/n))`. The first point is on
+    the positive x axis.
     """
     if count == 1:
         return np.zeros((1, 2), dtype=float)
@@ -26,11 +27,16 @@ def regular_polygon_coordinates(count: int, spacing: float | None) -> np.ndarray
 
 
 def bundle_gmr(self_ft: float, count: int, spacing_in: float | None) -> float:
-    """Geometric mean of all subconductor-pair distances in a regular bundle, in feet.
+    r"""Geometric mean of all subconductor-pair distances in a regular bundle, in feet.
 
-    The ``count**2`` distances include each subconductor with itself, which is
-    ``self_ft``: its GMR for the series-impedance GMR, or its radius for the
-    capacitance equivalent radius (see ``equivalent_radius``).
+    .. math:: \mathrm{GMR}_{\text{bundle}} = \Big( \prod_{i=1}^{n} \prod_{j=1}^{n} d_{ij} \Big)^{1/n^2},
+              \qquad d_{ii} = \text{self}
+
+    The self term is the subconductor's GMR for series impedance, or its radius
+    for the capacitance equivalent radius (``equivalent_radius``). Every row of a
+    regular bundle is alike, so this equals the textbook
+    :math:`(\text{self} \cdot d_{12} \cdots d_{1n})^{1/n}`; for two subconductors,
+    :math:`\sqrt{\text{self} \cdot s}`.
     """
     if count == 1:
         return self_ft

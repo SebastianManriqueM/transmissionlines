@@ -22,14 +22,24 @@ def select_phase_resistance(
 
 
 def gmr_from_xl(xl: float, frequency: float = 60.0) -> float:
-    """Convert catalog internal reactance to GMR in feet."""
+    r"""Convert catalog internal reactance (ohm/kilofoot) to GMR in feet.
+
+    .. math:: \mathrm{GMR} = \exp\!\left( -\frac{5.28\, X_a}{L_C\, f} \right)
+    """
     if xl <= 0 or frequency <= 0:
         raise ValueError("reactance and frequency must be positive")
     return exp(-(xl / (1 / KILOFEET_PER_MILE)) / (SERIES_REACTANCE_COEFFICIENT * frequency))
 
 
 def req_from_xc(xc: float, frequency: float = 60.0) -> float:
-    """Convert catalog capacitive reactance to equivalent radius in feet."""
+    r"""Convert catalog capacitive reactance (MΩ·kilofoot) to equivalent radius in feet.
+
+    The capacitive reactance at one-foot spacing is
+    :math:`X'_a = \frac{1}{2\pi f}\frac{1}{2\pi\varepsilon} \ln\frac{1}{r} = \frac{1.779}{f} \ln\frac1r`
+    MΩ·mile, so
+
+    .. math:: r = \exp\!\left( -\frac{f\, X'_a / 5.28}{1.779} \right).
+    """
     if xc <= 0 or frequency <= 0:
         raise ValueError("reactance and frequency must be positive")
     return exp(-(xc * frequency * (1 / KILOFEET_PER_MILE)) / CAPACITIVE_REACTANCE_COEFFICIENT)

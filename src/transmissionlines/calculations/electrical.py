@@ -60,7 +60,17 @@ def build_primitive_z(
     frequency: float,
     earth_resistivity: float,
 ) -> np.ndarray:
-    """Build the primitive series impedance matrix in ohm/mile.
+    r"""Build the primitive series impedance matrix in ohm/mile (modified Carson).
+
+    .. math::
+        z_{ii} &= \frac{r_i}{n_i} + R_C f + j L_C f \left( \ln\frac{1}{\mathrm{GMR}_i} + L_F
+                  + \tfrac12 \ln\frac{\rho}{f} \right) \\
+        z_{ij} &= R_C f + j L_C f \left( \ln\frac{1}{D_{ij}} + L_F + \tfrac12 \ln\frac{\rho}{f} \right)
+
+    with :math:`D_{ij}` and :math:`\mathrm{GMR}_i` in feet, :math:`r_i` in ohm/mile,
+    :math:`n_i` subconductors in parallel, and the coefficients derived in
+    :mod:`transmissionlines.electrical_constants`. At 60 Hz and 100 ohm-m this is
+    the familiar :math:`z_{ii} = r_i + 0.09530 + j\,0.12134 (\ln(1/\mathrm{GMR}_i) + 7.93402)`.
 
     Parameters
     ----------
@@ -90,7 +100,17 @@ def build_primitive_z(
 
 
 def build_primitive_p(positions: list[CablePosition], *, radii: list[float]) -> np.ndarray:
-    """Build the primitive potential matrix in the Julia micro-unit contract.
+    r"""Build the primitive potential-coefficient matrix in mile/µF (method of images).
+
+    Each conductor :math:`i` has an image at the mirrored height below ground, at
+    distance :math:`S_{ij}` from conductor :math:`j`:
+
+    .. math::
+        P_{ii} = \frac{1}{2\pi\varepsilon} \ln\frac{S_{ii}}{r_i}, \qquad
+        P_{ij} = \frac{1}{2\pi\varepsilon} \ln\frac{S_{ij}}{D_{ij}},
+
+    where :math:`S_{ii} = 2 h_i`, :math:`r_i` is the (equivalent) conductor radius,
+    and :math:`1/(2\pi\varepsilon) = 11.17689` mile/µF.
 
     Parameters
     ----------
@@ -341,6 +361,7 @@ def calculate_electrical(
         for index in range(circuits)
     }
     r1, x1, b1 = (circuit_scalars[circuit_ids[0]][name] for name in ("r1", "x1", "b1"))
+    # Lossless surge impedance Z_c = sqrt(L/C) = sqrt(x1 / b1); SIL = V_LL^2 / Z_c (kV^2 / ohm = MW).
     z_sil = (x1 / (b1 / 1e6)) ** 0.5
     scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage_kv**2 / z_sil)}
     if circuits == 2:

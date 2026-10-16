@@ -54,7 +54,16 @@ def nominal_pi_to_equivalent_pi(
     y_s_siemens: complex,
     y_r_siemens: complex,
 ) -> tuple[complex, complex, complex]:
-    """Extract an exact asymmetric pi from its ABCD two-port matrix.
+    r"""Convert nominal-pi parameters to the pi network with the same ABCD matrix.
+
+    For a nominal pi, :math:`A = 1 + Z Y_r`, :math:`B = Z`, :math:`D = 1 + Z Y_s`, and
+
+    .. math:: Z' = B = Z, \qquad Y'_s = \frac{D - 1}{B} = Y_s, \qquad Y'_r = \frac{A - 1}{B} = Y_r,
+
+    so the result equals the input up to rounding. It does **not** apply the
+    distributed-parameter (long-line) correction
+    :math:`Z' = Z \frac{\sinh \gamma\ell}{\gamma\ell}`,
+    :math:`Y'/2 = \frac{Y}{2} \frac{\tanh(\gamma\ell/2)}{\gamma\ell/2}`.
 
     Parameters
     ----------
@@ -82,10 +91,23 @@ def nominal_pi_to_equivalent_pi(
 def _solve_mesh(
     constants: StClairLineConstants, options: StClairOptions, length_mi: float, angle_deg: float | np.ndarray
 ) -> dict[str, Any]:
-    """Solve the balanced three-mesh circuit at one line length for one or more angles.
+    r"""Solve the balanced three-mesh circuit at one line length for one or more angles.
 
-    The mesh matrix depends only on the line length; the source angle enters only
-    through E1. All angles share one solve, and results have the shape of ``angle_deg``.
+    Per phase, a sending source :math:`E_1 = |E_1| e^{j\delta}` behind :math:`Z_1` and a
+    receiving source :math:`E_2` behind :math:`Z_2` connect through the line's pi
+    (shunt impedances :math:`Z_{s,r} = 1/Y_{s,r}`, series :math:`Z`). Kirchhoff's
+    voltage law around the three meshes gives
+
+    .. math::
+        \begin{bmatrix} Z_1 + Z_s & -Z_s & 0 \\ -Z_s & Z_s + Z + Z_r & -Z_r \\ 0 & -Z_r & Z_2 + Z_r \end{bmatrix}
+        \begin{bmatrix} I_1 \\ I_2 \\ I_3 \end{bmatrix}
+        = \begin{bmatrix} E_1 \\ 0 \\ -E_2 \end{bmatrix},
+
+    with terminal voltages :math:`E_s = E_1 - Z_1 I_1`, :math:`E_r = E_2 + Z_2 I_3`, and
+    three-phase power :math:`P = 3\,\mathrm{Re}(V I_2^*)` at each terminal (the shunt
+    branches are lossless, so :math:`I_2` carries all the real power). The matrix
+    depends only on the line length; :math:`\delta` enters only through :math:`E_1`, so
+    all angles share one solve, and results have the shape of ``angle_deg``.
     """
     r = constants.r_ohm_per_mile * length_mi
     x = constants.x_ohm_per_mile * length_mi * (1 - options.n_series_percent / 100)
@@ -95,6 +117,11 @@ def _solve_mesh(
     b_total = constants.b_siemens_per_mile * length_mi
     y_s_nom = 1j * b_total / 2 * (1 - options.n_s_percent / 100)
     y_r_nom = 1j * b_total / 2 * (1 - options.n_r_percent / 100)
+    # Known limitation, likely inherited from the Julia original: this is the nominal pi at
+    # every length, with no distributed-parameter correction. For a 230 kV Cardinal circuit
+    # the exact long-line pi has Z' = Z sinh(gl)/gl about 0.94 Z at 300 mi and 0.76 Z at
+    # 600 mi, and Y' about 1.03 Y and 1.15 Y, so curves past ~200 mi overstate series
+    # impedance. Fix: scale Z and Y by those factors, with gamma = sqrt(z * y) per mile.
     z_line, y_s, y_r = nominal_pi_to_equivalent_pi(z_line, y_s_nom, y_r_nom)
     z_s, z_r = 1 / y_s, 1 / y_r
     z_1 = complex(options.r_system_1_ohm, options.x_system_1_ohm)

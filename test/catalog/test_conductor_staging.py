@@ -6,14 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from transmissionlines.catalog.acss_pdf import extract_acss
-from transmissionlines.catalog.acss_hs285_tw_pdf import extract_acss_hs285_tw
-from transmissionlines.catalog.acss_tw_pdf import extract_acss_tw_areas
-from transmissionlines.catalog.acsr_pdf import extract_acsr
-from transmissionlines.catalog.acsr_aw_pdf import extract_acsr_aw
-from transmissionlines.catalog.acsr_tw_pdf import extract_acsr_tw_areas
-from transmissionlines.catalog.aac_pdf import extract_aac
-from transmissionlines.catalog.accc_pdf import extract_accc
+from transmissionlines.catalog.pdf_tables import extract
 from transmissionlines.catalog.conductor_staging import stage_acss, stage_sources
 from transmissionlines.catalog.mechanical_area import resolve_areas
 
@@ -22,7 +15,7 @@ PDF = Path(__file__).resolve().parents[2] / "data/raw/conductors/southwire/ACSS.
 
 
 def test_acss_stages_only_printed_strengths_with_stable_ids() -> None:
-    rows = extract_acss(PDF)
+    rows = extract(PDF)
     staged = stage_acss(rows)
 
     partridge = {item.variant: item for item in staged if item.source.codeword == "Partridge"}
@@ -36,7 +29,7 @@ def test_acss_stages_only_printed_strengths_with_stable_ids() -> None:
 
 
 def test_acss_rejects_duplicate_identity() -> None:
-    row = extract_acss(PDF)[0]
+    row = extract(PDF)[0]
 
     with pytest.raises(ValueError, match="duplicate conductor ID"):
         stage_acss([row, row])
@@ -44,8 +37,8 @@ def test_acss_rejects_duplicate_identity() -> None:
 
 def test_existing_acsr_construction_keys_remain_candidate_ids() -> None:
     base = PDF.parent
-    acsr = extract_acsr(base / "ACSR.pdf")[0]
-    acsr_aw = extract_acsr_aw(base / "ACSR_AW.pdf")[0]
+    acsr = extract(base / "ACSR.pdf")[0]
+    acsr_aw = extract(base / "ACSR_AW.pdf")[0]
 
     staged = stage_sources(acsr=[acsr], acsr_aw=[acsr_aw])
 
@@ -55,12 +48,12 @@ def test_existing_acsr_construction_keys_remain_candidate_ids() -> None:
 def test_source_staging_keeps_constructions_and_missing_grades_distinct() -> None:
     base = PDF.parent
     result = stage_sources(
-        acsr=extract_acsr(base / "ACSR.pdf"),
-        acsr_aw=extract_acsr_aw(base / "ACSR_AW.pdf"),
-        acss=extract_acss(PDF),
-        aac=extract_aac(base / "AAC.pdf"),
-        accc=extract_accc(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf"),
-        hs285_tw=extract_acss_hs285_tw(base / "ACSS Hs285.pdf"),
+        acsr=extract(base / "ACSR.pdf"),
+        acsr_aw=extract(base / "ACSR_AW.pdf"),
+        acss=extract(PDF),
+        aac=extract(base / "AAC.pdf"),
+        accc=extract(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf"),
+        hs285_tw=extract(base / "ACSS Hs285.pdf"),
     )
     assert len({item.record_id for item in result.candidates}) == len(result.candidates)
     assert {(item.family, item.variant) for item in result.candidates} >= {
@@ -78,9 +71,9 @@ def test_source_staging_keeps_constructions_and_missing_grades_distinct() -> Non
 
 
 def test_round_wire_area_prefers_verified_family_tw_and_derives_without_match() -> None:
-    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
+    partridge = next(row for row in extract(PDF) if row.codeword == "Partridge")
     source = stage_sources(acss=[partridge])
-    tw = extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+    tw = extract(PDF.with_name("ACSS TW.pdf"))
     selected = resolve_areas(source, acss_tw=tw)
     from_tw = selected.records[0].area
     assert from_tw is not None
@@ -98,8 +91,8 @@ def test_round_wire_area_prefers_verified_family_tw_and_derives_without_match() 
 
 
 def test_area_missing_geometry_and_incompatible_tw_are_audited() -> None:
-    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
-    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+    partridge = next(row for row in extract(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract(PDF.with_name("ACSS TW.pdf"))
               if row.codeword == "Partridge" and row.size == partridge.size)
     cells = dict(tw.cells)
     cells["total_area_in2"] = replace(cells["total_area_in2"], raw="100")
@@ -116,8 +109,8 @@ def test_area_missing_geometry_and_incompatible_tw_are_audited() -> None:
 
 
 def test_tw_material_split_must_match_round_wire_geometry() -> None:
-    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
-    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+    partridge = next(row for row in extract(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract(PDF.with_name("ACSS TW.pdf"))
               if row.codeword == "Partridge" and row.size == partridge.size)
     cells = dict(tw.cells)
     cells["aluminum_area_in2"] = replace(cells["aluminum_area_in2"], raw="0.01")
@@ -130,8 +123,8 @@ def test_tw_material_split_must_match_round_wire_geometry() -> None:
 
 
 def test_overlapping_and_duplicate_tw_keys_are_not_silently_resolved() -> None:
-    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
-    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+    partridge = next(row for row in extract(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract(PDF.with_name("ACSS TW.pdf"))
               if row.codeword == "Partridge" and row.size == partridge.size)
     cells = dict(tw.cells)
     cells["total_area_in2"] = replace(cells["total_area_in2"],
@@ -152,9 +145,9 @@ def test_overlapping_and_duplicate_tw_keys_are_not_silently_resolved() -> None:
 
 def test_printed_tw_differences_retain_both_sources_and_magnitudes() -> None:
     base = PDF.parent
-    acsr_tw = extract_acsr_tw_areas(base / "ACSR_TW.pdf")
-    acss_tw = extract_acss_tw_areas(base / "ACSS TW.pdf")
-    finch = next(row for row in extract_acss(PDF) if row.codeword == "Finch")
+    acsr_tw = extract(base / "ACSR_TW.pdf")
+    acss_tw = extract(base / "ACSS TW.pdf")
+    finch = next(row for row in extract(PDF) if row.codeword == "Finch")
     result = resolve_areas(stage_sources(acss=[finch]), acsr_tw=acsr_tw, acss_tw=acss_tw)
 
     difference = next(issue for issue in result.issues if issue.reason == "tw_area_rounding_difference")
@@ -170,8 +163,8 @@ def test_printed_tw_differences_retain_both_sources_and_magnitudes() -> None:
     [("0.0006", "tw_area_rounding_difference"), ("0.0007", "tw_area_disagreement")],
 )
 def test_tw_total_comparison_tolerance_includes_boundary(difference: str, reason: str) -> None:
-    partridge = next(row for row in extract_acss(PDF) if row.codeword == "Partridge")
-    tw = next(row for row in extract_acss_tw_areas(PDF.with_name("ACSS TW.pdf"))
+    partridge = next(row for row in extract(PDF) if row.codeword == "Partridge")
+    tw = next(row for row in extract(PDF.with_name("ACSS TW.pdf"))
               if row.codeword == "Partridge" and row.size == partridge.size)
     cells = dict(tw.cells)
     original_total = tw.numeric("total_area_in2")
@@ -189,10 +182,10 @@ def test_tw_total_comparison_tolerance_includes_boundary(difference: str, reason
 
 def test_incompatible_preferred_tw_reports_values_before_using_fallback() -> None:
     base = PDF.parent
-    bluebird = next(row for row in extract_acsr(base / "ACSR.pdf") if row.codeword == "Bluebird")
+    bluebird = next(row for row in extract(base / "ACSR.pdf") if row.codeword == "Bluebird")
     result = resolve_areas(stage_sources(acsr=[bluebird]),
-                           acsr_tw=extract_acsr_tw_areas(base / "ACSR_TW.pdf"),
-                           acss_tw=extract_acss_tw_areas(base / "ACSS TW.pdf"))
+                           acsr_tw=extract(base / "ACSR_TW.pdf"),
+                           acss_tw=extract(base / "ACSS TW.pdf"))
 
     area = result.records[0].area
     assert area is not None
@@ -215,9 +208,9 @@ def test_incompatible_preferred_tw_reports_values_before_using_fallback() -> Non
 
 
 def test_accc_uls_area_reuses_assumed_core_and_aac_published_area() -> None:
-    accc = next(row for row in extract_accc(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf")
+    accc = next(row for row in extract(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf")
                 if row.codeword == "IRVING")
-    aac = extract_aac(PDF.with_name("AAC.pdf"))[0]
+    aac = extract(PDF.with_name("AAC.pdf"))[0]
     result = resolve_areas(stage_sources(accc=[accc], aac=[aac]))
     standard, uls = (next(record.area for record in result.records if record.candidate.family == "ACCC"
                           and record.candidate.variant == variant) for variant in ("standard", "uls"))
@@ -234,14 +227,14 @@ def test_accc_uls_area_reuses_assumed_core_and_aac_published_area() -> None:
 def test_full_source_inventory_resolves_or_reports_every_candidate() -> None:
     base = PDF.parent
     staged = stage_sources(
-        acsr=extract_acsr(base / "ACSR.pdf"),
-        acsr_aw=extract_acsr_aw(base / "ACSR_AW.pdf"),
-        acss=extract_acss(PDF), aac=extract_aac(base / "AAC.pdf"),
-        accc=extract_accc(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf"),
-        hs285_tw=extract_acss_hs285_tw(base / "ACSS Hs285.pdf"),
+        acsr=extract(base / "ACSR.pdf"),
+        acsr_aw=extract(base / "ACSR_AW.pdf"),
+        acss=extract(PDF), aac=extract(base / "AAC.pdf"),
+        accc=extract(PDF.parents[1] / "ACCC_electrical_data_ctc.pdf"),
+        hs285_tw=extract(base / "ACSS Hs285.pdf"),
     )
-    result = resolve_areas(staged, acsr_tw=extract_acsr_tw_areas(base / "ACSR_TW.pdf"),
-                           acss_tw=extract_acss_tw_areas(base / "ACSS TW.pdf"))
+    result = resolve_areas(staged, acsr_tw=extract(base / "ACSR_TW.pdf"),
+                           acss_tw=extract(base / "ACSS TW.pdf"))
     assert len(result.records) == len(staged.candidates)
     assert all(record.area is not None or any(issue.row_key == record.candidate.source.row_key
                                                for issue in result.issues) for record in result.records)

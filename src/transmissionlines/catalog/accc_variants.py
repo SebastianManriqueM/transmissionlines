@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable, Literal
 
-from transmissionlines.catalog.accc_pdf import ACCCSourceRow
-from transmissionlines.catalog.acsr_pdf import SourceCell
+from transmissionlines.catalog.pdf_tables import SourceCell, SourceRow
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -20,15 +19,15 @@ class ACCCVariant:
     rated_strength_lb: Decimal
     rated_strength_cell: SourceCell
     weight_total_lb_kft: Decimal | None
-    source: ACCCSourceRow
+    source: SourceRow
 
 
-def stage_accc_variants(rows: Iterable[ACCCSourceRow]) -> list[ACCCVariant]:
+def stage_accc_variants(rows: Iterable[SourceRow]) -> list[ACCCVariant]:
     """Stage ACCC strength variants using the shared row's total weight.
 
     Parameters
     ----------
-    rows : Iterable[ACCCSourceRow]
+    rows : Iterable[SourceRow]
         ACCC PDF rows with separately printed standard and ULS strengths.
 
     Returns

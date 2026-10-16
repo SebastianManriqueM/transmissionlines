@@ -5,12 +5,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable, Literal
 
-from transmissionlines.catalog.acsr_pdf import SourceCell
-from transmissionlines.catalog.acsr_tw_pdf import TWAreaSourceRow
-from transmissionlines.catalog.acss_tw_pdf import ACSSTWAreaSourceRow
-from transmissionlines.catalog.conductor_staging import (
-    ConductorCandidate, SourceRow, StagingIssue, StagingResult,
-)
+from transmissionlines.catalog.conductor_staging import ConductorCandidate, StagingIssue, StagingResult
+from transmissionlines.catalog.pdf_tables import SourceCell, SourceRow
 
 
 PI_OVER_FOUR = Decimal("0.7853981633974483096156608458")
@@ -18,7 +14,6 @@ GEOMETRY_TOLERANCE = Decimal("0.02")
 ENVELOPE_TOLERANCE = Decimal("0.01")
 PRINTED_AREA_TOLERANCE = Decimal("0.0002")
 TW_TOTAL_COMPARISON_TOLERANCE = Decimal("0.0006")
-TWRow = TWAreaSourceRow | ACSSTWAreaSourceRow
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -35,7 +30,7 @@ class AreaValue:
 
     value: Decimal
     method: Literal["published", "cross_pdf", "derived", "assumed"]
-    source_rows: tuple[SourceRow | TWRow, ...]
+    source_rows: tuple[SourceRow, ...]
     input_cells: tuple[AreaInput, ...]
     note: str = ""
 
@@ -65,7 +60,7 @@ class AreaStageResult:
     issues: list[StagingIssue]
 
 
-def _inputs(row: SourceRow | TWRow, *fields: str) -> tuple[AreaInput, ...]:
+def _inputs(row: SourceRow, *fields: str) -> tuple[AreaInput, ...]:
     return tuple(AreaInput(field=field, cell=row.cells[field]) for field in fields)
 
 
@@ -95,7 +90,7 @@ def _round_geometry(row: SourceRow) -> MechanicalArea | None:
     )
 
 
-def _from_tw(row: TWRow) -> MechanicalArea | None:
+def _from_tw(row: SourceRow) -> MechanicalArea | None:
     aluminum = row.numeric("aluminum_area_in2")
     total = row.numeric("total_area_in2")
     if aluminum is None or total is None or not 0 < aluminum <= total:
@@ -121,8 +116,8 @@ def _area_mismatch(transfer: MechanicalArea, derived: MechanicalArea) -> tuple[s
     return None
 
 
-def _index(rows: Iterable[TWRow]) -> dict[tuple[str, str], list[TWRow]]:
-    index: dict[tuple[str, str], list[TWRow]] = defaultdict(list)
+def _index(rows: Iterable[SourceRow]) -> dict[tuple[str, str], list[SourceRow]]:
+    index: dict[tuple[str, str], list[SourceRow]] = defaultdict(list)
     for row in rows:
         index[(row.codeword.casefold().strip(), row.size)].append(row)
     return index
@@ -178,8 +173,8 @@ def _own_area(candidate: ConductorCandidate) -> MechanicalArea | None:
 
 def resolve_areas(
     staged: StagingResult, *,
-    acsr_tw: Iterable[TWAreaSourceRow] = (),
-    acss_tw: Iterable[ACSSTWAreaSourceRow] = (),
+    acsr_tw: Iterable[SourceRow] = (),
+    acss_tw: Iterable[SourceRow] = (),
 ) -> AreaStageResult:
     """Resolve candidate material areas, quarantining incompatible transfers.
 

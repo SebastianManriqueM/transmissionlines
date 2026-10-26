@@ -11,6 +11,7 @@ from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord,
 from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
 from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
 from transmissionlines.models.configurations import TowerConfiguration
+from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.system import TransmissionLineSystem
@@ -278,6 +279,20 @@ def test_kersting_nontransposed_and_transposed_matrix_outputs(kind: str, round_t
     assert result.scalars["surge_impedance_ohm"] == pytest.approx(301.24, rel=0.005)
     assert result.scalars["sil_mw"] == pytest.approx(3.6151, rel=0.005)
     assert result.matrices["Z_kron"] is result.matrices["Z_kron_nt"]
+
+
+def test_more_than_two_circuits_is_rejected() -> None:
+    geometry, phase, ground = _kersting_inputs()
+    ids = ["circuit-1", "circuit-2", "circuit-3"]
+    positions = [
+        position.model_copy(update={"circuit_id": circuit_id, "x": Distance(position.x.to("foot").magnitude + 40 * index, "foot")})
+        for index, circuit_id in enumerate(ids)
+        for position in geometry.phase_positions
+    ]
+    geometry = TowerGeometry(phase_positions=positions, ground_wire_positions=geometry.ground_wire_positions)
+    phases = [phase.model_copy(update={"circuit_id": circuit_id}) for circuit_id in ids]
+    with pytest.raises(ValueError, match="3 circuits"):
+        _calculated(geometry, phases, ground, 33, "cross-section")
 
 
 @pytest.mark.parametrize("kind", ["cross-section", "routed"])

@@ -338,7 +338,8 @@ def calculate_electrical(
     Raises
     ------
     ValueError
-        If required physical cable values are absent.
+        If required physical cable values are absent, or the geometry has more
+        than two circuits.
     """
     voltage = voltage.to("kilovolt")
     frequency = frequency.to("hertz")
@@ -353,6 +354,8 @@ def calculate_electrical(
     z_sequence_nt = sequence_matrix(z_kron)
     y_sequence_nt = sequence_matrix(y_kron)
     circuits = phase_count // 3
+    if circuits > 2:
+        raise ValueError(f"only one- and two-circuit lines are supported, got {circuits} circuits")
     z_transposed = fully_transpose(z_kron, circuits)
     y_transposed = fully_transpose(y_kron, circuits)
     z_sequence = sequence_matrix(z_transposed)

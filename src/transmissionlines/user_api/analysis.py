@@ -4,15 +4,12 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import UUID
 
 from pydantic import ValidationError
 
-from transmissionlines.calculations.electrical import calculate_electrical
+from transmissionlines.calculations.electrical import calculate_electrical, calculate_st_clair_curve_for_line
 from transmissionlines.calculations.sag import calculate_sag
-from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
 from transmissionlines.models.assets import CrossSectionTransmissionLine
-from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.sag import SagCurveResult, SagOptions
 from transmissionlines.models.st_clair import StClairOptions, StClairResult
@@ -24,8 +21,6 @@ class CrossSectionCalculationResults:
     """Hold optional stored results and reasons for unavailable result groups."""
 
     line_name: str
-    line_uuid: UUID
-    configuration_uuid: UUID
     impedances: ElectricalParameters | None = None
     st_clair: StClairResult | None = None
     sag: SagCurveResult | None = None
@@ -161,11 +156,7 @@ def calculations(
                 if missing_ampacity is not None:
                     skipped["st_clair"] = f"circuit {missing_ampacity}: missing ampacity"
                 else:
-                    previous = LineCalculationResult(
-                        line_name=line.name, line_uuid=line.uuid,
-                        configuration_uuid=line.configuration.uuid, electrical=electrical,
-                    )
-                    curve = calculate_st_clair_curve_for_line(line, previous, options=curve_options)
+                    curve = calculate_st_clair_curve_for_line(line, options=curve_options)
     if not impedances:
         skipped["impedances"] = "disabled"
     if not st_clair:
@@ -185,7 +176,7 @@ def calculations(
     else:
         skipped["sag"] = "disabled"
     return CrossSectionCalculationResults(
-        line_name=line.name, line_uuid=line.uuid, configuration_uuid=line.configuration.uuid,
+        line_name=line.name,
         impedances=electrical if impedances else None, st_clair=curve, sag=sag_result,
         skipped=skipped,
     )

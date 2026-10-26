@@ -1,7 +1,6 @@
 import pytest
 
-from transmissionlines.calculations.electrical import calculate_line_electrical_parameters
-from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+from transmissionlines.calculations.electrical import calculate_line_electrical_parameters, calculate_st_clair_curve_for_line
 from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec, GroundWireSpec, InsulatorStringSpec
 from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
@@ -56,8 +55,7 @@ def test_cross_section_returns_external_results_without_mutating_inputs() -> Non
         earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     result = calculate_line_electrical_parameters(line)
-    assert result.line_uuid == line.uuid
-    assert result.configuration_uuid == line.configuration.uuid
+    assert result.line_name == line.name
     assert result.electrical.status == "complete"
     assert result.st_clair is not None
     assert result.st_clair.curves[0].circuit_id == "c1"
@@ -99,23 +97,22 @@ def _routed_line(*, different: bool = False, configuration: TowerConfiguration |
 def test_routed_shared_configuration_returns_selected_cross_section() -> None:
     line, start, _ = _routed_line()
     result = calculate_line_electrical_parameters(line)
-    assert result.configuration_uuid == start.configuration.uuid
+    assert result.st_clair.line_name == line.name
     assert result.electrical.status == "complete"
     assert result.st_clair is not None
     assert "line_parameters" not in type(line).model_fields
 
 
-def test_routed_heterogeneous_requires_owned_tower_and_matching_prior_result() -> None:
+def test_routed_heterogeneous_requires_an_owned_tower() -> None:
     line, start, end = _routed_line(different=True)
     with pytest.raises(ValueError, match="select a tower"):
         calculate_line_electrical_parameters(line)
     result = calculate_line_electrical_parameters(line, tower=end)
-    assert result.configuration_uuid == end.configuration.uuid
-    assert calculate_st_clair_curve_for_line(line, result, tower=end).line_name == line.name
-    with pytest.raises(ValueError, match="does not match"):
-        calculate_st_clair_curve_for_line(line, result, tower=start)
-    other_line, foreign, _ = _routed_line()
+    assert result.electrical.status == "complete"
+    assert calculate_st_clair_curve_for_line(line, tower=end).line_name == line.name
+    assert calculate_st_clair_curve_for_line(line, tower=start).line_name == line.name
+    _, foreign, _ = _routed_line()
     with pytest.raises(ValueError, match="does not belong"):
         calculate_line_electrical_parameters(line, tower=foreign)
-    with pytest.raises(ValueError, match="does not match"):
-        calculate_st_clair_curve_for_line(other_line, result)
+    with pytest.raises(ValueError, match="does not belong"):
+        calculate_st_clair_curve_for_line(line, tower=foreign)

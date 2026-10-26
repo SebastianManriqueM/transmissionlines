@@ -22,10 +22,6 @@ from transmissionlines.models.st_clair import (
     StClairOptions,
     StClairResult,
 )
-from transmissionlines.calculations.input_resolver import resolve_configuration
-from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
-from transmissionlines.models.calculation_result import LineCalculationResult
-from transmissionlines.models.routing import ElectricalTower
 
 
 def _resolve_constants(
@@ -311,68 +307,7 @@ def calculate_st_clair(
     )
 
 
-def calculate_st_clair_curve_for_line(
-    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
-    previous: LineCalculationResult,
-    *,
-    tower: ElectricalTower | None = None,
-    options: StClairOptions | None = None,
-    sensitivities: Mapping[str, Sequence[float]] | None = None,
-) -> StClairResult:
-    """Calculate a standalone curve from a matching external electrical result.
-
-    Parameters
-    ----------
-    line : CrossSectionTransmissionLine or RoutedTransmissionLine
-        Original static input line.
-    previous : LineCalculationResult
-        Completed electrical result for this line and selected configuration.
-    tower : ElectricalTower, optional
-        Support selecting a heterogeneous routed cross-section.
-    options : StClairOptions, optional
-        Curve operating limits and resolution.
-    sensitivities : mapping, optional
-        Option names and sampled settings for extra curves.
-
-    Returns
-    -------
-    StClairResult
-        Transient curves for the selected cross-section.
-
-    Raises
-    ------
-    ValueError
-        If the previous result does not match this line and configuration, or
-        a circuit's conductor has no ampacity.
-    """
-    configuration = resolve_configuration(line, tower=tower)
-    if previous.line_uuid != line.uuid or previous.configuration_uuid != configuration.uuid:
-        raise ValueError("previous electrical result does not match selected line and configuration")
-    specifications = {spec.circuit_id: spec for spec in configuration.circuits}
-    voltage_kv = line.nominal_voltage.to("kilovolt").magnitude
-    inputs = []
-    for circuit_id, scalars in previous.electrical.circuit_scalars.items():
-        spec = specifications[circuit_id]
-        if spec.conductor_spec.equipment.ampacity is None:
-            raise ValueError(f"missing conductor ampacity for {circuit_id}")
-        inputs.append({
-            "circuit_id": circuit_id,
-            "conductor_family": spec.conductor_spec.family,
-            "conductor_codeword": spec.conductor_spec.codeword,
-            "nominal_voltage_kv": voltage_kv,
-            "r_ohm_per_mile": scalars["r1"],
-            "x_ohm_per_mile": scalars["x1"],
-            "b_microsiemens_per_mile": scalars["b1"],
-            "conductor_ampacity_a": spec.conductor_spec.equipment.ampacity.to("ampere").magnitude,
-            "subconductor_count": spec.bundle_spec.subconductor_count,
-        })
-    return calculate_st_clair(
-        inputs, options=options, sensitivities=sensitivities
-    ).model_copy(update={"line_name": line.name})
-
-
 __all__ = [
     "calculate_st_clair",
-    "calculate_st_clair_curve_for_line",
     "nominal_pi_to_equivalent_pi",
 ]

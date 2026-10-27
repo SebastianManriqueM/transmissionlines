@@ -4,10 +4,10 @@ Serialization
 Embedded values
 ---------------
 
-``LineDataModel`` serializes nested Infrasys quantities to JSON-compatible
-values with serialized-type metadata and restores them before Pydantic field
-validation. This preserves quantity classes and units across embedded input
-model round trips. Standalone result models store matrix values as real and
+Model fields store plain floats in the unit their name states (``x_ft``,
+``nominal_voltage_kv``), so embedded values serialize as JSON numbers with no
+quantity metadata. Pint quantities are accepted on construction and converted
+to the field's unit; they are not restored on reload. Standalone result models store matrix values as real and
 imaginary numeric arrays with shape, labels, and unit metadata rather than
 Python complex values or opaque cells. Calculations return new results without
 updating the input components.
@@ -16,7 +16,7 @@ Registered system
 -----------------
 
 ``TransmissionLineSystem`` is an Infrasys ``System`` with package schema
-version ``5.0.0``. Use the public Infrasys system serialization methods for the
+version ``6.0.0``. Use the public Infrasys system serialization methods for the
 static input graph so component UUIDs and registered component references are
 retained after reload. Older system files are rejected; there is no legacy
 upgrade or compatibility adapter. Electrical matrices, St. Clair curves, and
@@ -28,5 +28,3 @@ calculated fields are absent from the input JSON.
 ``ElectricalParameters.model_dump_json()`` followed by
 ``ElectricalParameters.model_validate_json(...)`` checks the standalone result
 shape in memory; result-file persistence is not part of system serialization.
-When comparing reloaded Pint units, compare unit names or dimensionality
-rather than registry-object identity.

@@ -11,20 +11,20 @@ fault, or mutual multi-circuit coupling model. A line-level call uses each circu
 ``r1``, ``x1``, and ``b1`` values, conductor ampacity, bundle count, and
 nominal line-to-line voltage. ``calculate_line_electrical_parameters`` returns
 a standalone ``LineCalculationResult`` with sibling electrical and St. Clair
-results. To recalculate curves from its electrical result, call
-``calculate_st_clair_curve(line, previous=calculated)``; it returns a standalone
-``StClairResult`` without modifying the input line or the prior result.
+results. To calculate curves with other options or sensitivities, call
+``calculate_st_clair_curve_for_line(line, options=...)``; it calculates the
+positive-sequence constants from the line itself and returns a standalone
+``StClairResult`` without modifying the input line.
 
 Direct input uses ``nominal_voltage_kv``, ``r_ohm_per_mile``,
 ``x_ohm_per_mile``, either ``b_siemens_per_mile`` or
 ``b_microsiemens_per_mile``, and ``conductor_ampacity_a`` (or ``ampacity_a``).
-The facade ``calculate_st_clair_curve`` accepts a concrete
-``CrossSectionTransmissionLine`` or ``RoutedTransmissionLine`` with a matching
-external ``previous`` result, or one mapping. A routed line with differing
-tower configurations also requires a line-owned ``tower`` selection; its curve
-describes that cross-section, not the whole route. The lower-level
-``calculations.st_clair.calculate_st_clair`` also accepts a sequence of circuit
-mappings. Electrical results express ``b1`` in microsiemens/mile, converted to
+``calculations.st_clair.calculate_st_clair`` accepts one mapping or a sequence
+of circuit mappings. ``calculations.electrical.calculate_st_clair_curve_for_line``
+accepts a concrete ``CrossSectionTransmissionLine`` or ``RoutedTransmissionLine``.
+A routed line with differing tower configurations
+also requires a line-owned ``tower`` selection; its curve describes that
+cross-section, not the whole route. Electrical results express ``b1`` in microsiemens/mile, converted to
 siemens/mile at the St. Clair boundary.
 
 .. mermaid::
@@ -200,12 +200,9 @@ Notation and units
      - MW
 
 The older planning proposal called for natural-unit inputs and a compact
-positive-sequence model; current code agrees, but its facade overload is
-narrower than the proposed examples: ``transmissionlines.api.calculate_st_clair_curve``
-accepts one mapping or one completed line, while the lower-level
-``calculate_st_clair`` accepts a sequence of mappings for multiple circuits.
-The line-level facade builds that sequence internally from per-circuit
-``ElectricalParameters.circuit_scalars``. The older reference text also uses
+positive-sequence model; current code agrees: ``calculate_st_clair`` accepts one mapping or a sequence of
+mappings for multiple circuits, and ``calculate_st_clair_curve_for_line`` builds that sequence from the per-circuit
+``ElectricalParameters.circuit_scalars`` it calculates for the line. The older reference text also uses
 some generic line-end power identities; this page states the line-terminal
 phasor and current products actually evaluated by ``_solve_mesh``.
 

@@ -7,14 +7,14 @@ from transmissionlines.electrical_constants import (
     KILOFEET_PER_MILE,
     SERIES_REACTANCE_COEFFICIENT,
 )
-from transmissionlines.units import ResistancePerKft
+from transmissionlines.units import ResistancePerLength
 
 
 def select_phase_resistance(
-    resistance_75: ResistancePerKft | None = None,
-    resistance_50: ResistancePerKft | None = None,
-    resistance_25: ResistancePerKft | None = None,
-) -> ResistancePerKft:
+    resistance_75: ResistancePerLength | None = None,
+    resistance_50: ResistancePerLength | None = None,
+    resistance_25: ResistancePerLength | None = None,
+) -> ResistancePerLength:
     """Select AC resistance at 75, then 50, then 25 degrees C."""
     for value in (resistance_75, resistance_50, resistance_25):
         if value is not None:

@@ -9,7 +9,6 @@ import pandas as pd
 from transmissionlines.catalog.repository import CatalogRepository, NoCatalogMatch
 from transmissionlines.catalog.schemas import (
     ConductorRecord,
-    ConductorV2Record,
     GeometryRecord,
     GroundWireRecord,
 )
@@ -19,7 +18,7 @@ from transmissionlines.builders.line import conductor_gmr_resolution
 def catalog_gmr_available(row: dict[str, Any]) -> bool:
     """Report whether a v2 catalog row has a resolved phase-conductor GMR."""
     normalized = {key: None if pd.isna(value) else value for key, value in row.items()}
-    return conductor_gmr_resolution(ConductorV2Record.model_validate(normalized))[1] is not None
+    return conductor_gmr_resolution(ConductorRecord.model_validate(normalized))[1] is not None
 
 
 def _threshold(value: float | None) -> float | None:
@@ -86,9 +85,8 @@ class BrowsingCatalog:
         ampacity = "ampacity_75c_a" if self.catalog_version == "v2" else "_unrated"
         frame = _filter_numeric(frame, resistance, maximum=ac_resistance_75c_max_ohm_kft)
         frame = _filter_numeric(frame, ampacity, minimum=ampacity_75c_min_a)
-        model = ConductorV2Record if self.catalog_version == "v2" else ConductorRecord
         methods = {
-            row["record_id"]: conductor_gmr_resolution(model.model_validate({
+            row["record_id"]: conductor_gmr_resolution(ConductorRecord.model_validate({
                 key: None if pd.isna(value) else value for key, value in row.items()
             }))[0]
             for _, row in frame.iterrows()
@@ -145,7 +143,7 @@ class BrowsingCatalog:
         """Validate one explicitly selected equipment or geometry record."""
         row = self.repository.select_exact(table, record_id=record_id)
         model = {
-            "conductors": ConductorV2Record if self.catalog_version == "v2" else ConductorRecord,
+            "conductors": ConductorRecord,
             "tower_geometries": GeometryRecord, "ground_wires": GroundWireRecord,
         }[table]
         return model.model_validate(row)

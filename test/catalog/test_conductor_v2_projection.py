@@ -3,11 +3,7 @@
 from decimal import Decimal
 from pathlib import Path
 
-from transmissionlines.catalog.accc_pdf import extract_accc
-from transmissionlines.catalog.acss_pdf import extract_acss
-from transmissionlines.catalog.acsr_pdf import extract_acsr
-from transmissionlines.catalog.acss_hs285_tw_pdf import extract_acss_hs285_tw
-from transmissionlines.catalog.acss_tw_pdf import extract_acss_tw_areas
+from transmissionlines.catalog.pdf_tables import extract
 from transmissionlines.catalog.conductor_staging import stage_sources
 from transmissionlines.catalog.conductor_v2 import project_conductor
 from transmissionlines.catalog.mechanical_area import resolve_areas
@@ -17,7 +13,7 @@ BASE = Path(__file__).resolve().parents[2] / "data/raw/conductors"
 
 
 def test_round_acsr_strand_diameters_retain_pdf_cell_provenance() -> None:
-    raven = next(row for row in extract_acsr(BASE / "southwire/ACSR.pdf")
+    raven = next(row for row in extract(BASE / "southwire/ACSR.pdf")
                  if row.codeword == "Raven" and row.cells["stranding"].raw == "6/1")
     candidate = resolve_areas(stage_sources(acsr=[raven])).records[0]
 
@@ -34,8 +30,8 @@ def test_round_acsr_strand_diameters_retain_pdf_cell_provenance() -> None:
 
 def test_projection_retains_transferred_area_and_published_strength_sources() -> None:
     acss = BASE / "southwire" / "ACSS.pdf"
-    partridge = next(row for row in extract_acss(acss) if row.codeword == "Partridge")
-    tw = next(row for row in extract_acss_tw_areas(acss.with_name("ACSS TW.pdf"))
+    partridge = next(row for row in extract(acss) if row.codeword == "Partridge")
+    tw = next(row for row in extract(acss.with_name("ACSS TW.pdf"))
               if row.codeword == "Partridge" and row.size == partridge.size)
     staged = resolve_areas(stage_sources(acss=[partridge]), acss_tw=[tw])
     candidate = next(item for item in staged.records if item.candidate.variant == "standard")
@@ -71,7 +67,7 @@ def test_projection_retains_transferred_area_and_published_strength_sources() ->
 
 
 def test_projection_retains_uls_assumptions_and_absent_values() -> None:
-    irving = next(row for row in extract_accc(BASE / "ACCC_electrical_data_ctc.pdf")
+    irving = next(row for row in extract(BASE / "ACCC_electrical_data_ctc.pdf")
                   if row.codeword == "IRVING")
     staged = resolve_areas(stage_sources(accc=[irving]))
     candidate = next(item for item in staged.records if item.candidate.variant == "uls")
@@ -100,7 +96,7 @@ def test_projection_retains_uls_assumptions_and_absent_values() -> None:
 
 def test_projection_of_missing_area_keeps_null_and_no_area_provenance() -> None:
     acss = BASE / "southwire" / "ACSS.pdf"
-    partridge = next(row for row in extract_acss(acss) if row.codeword == "Partridge")
+    partridge = next(row for row in extract(acss) if row.codeword == "Partridge")
     candidate = resolve_areas(stage_sources(acss=[partridge])).records[0]
     without_area = type(candidate)(candidate=candidate.candidate, area=None)
 
@@ -111,7 +107,7 @@ def test_projection_of_missing_area_keeps_null_and_no_area_provenance() -> None:
 
 
 def test_hs285_tw_electrical_join_keeps_its_own_pdf_page() -> None:
-    rows = extract_acss_hs285_tw(BASE / "southwire/ACSS Hs285.pdf")
+    rows = extract(BASE / "southwire/ACSS Hs285.pdf")
     geometry = next(row for row in rows if row.page == 3 and row.codeword == "Linnet")
     electrical = next(row for row in rows if row.page == 4 and row.codeword == "Linnet")
     candidate = resolve_areas(stage_sources(hs285_tw=[geometry])).records[0]

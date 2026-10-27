@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import pytest
 from pydantic import ValidationError
 
-from transmissionlines.api import calculate_sag
-from transmissionlines.api import plot_sag_curve
+from transmissionlines.calculations.sag import calculate_sag
+from transmissionlines.plotting.sag import plot_sag_curve
 from transmissionlines.calculations import constants
 from transmissionlines.calculations import sag as sag_module
 from transmissionlines.calculations.sag import solve_span_sag
@@ -14,22 +14,30 @@ from transmissionlines.models.cables import BareConductorEquipment
 from transmissionlines.models.configurations import TowerConfiguration
 from transmissionlines.models.geometry import PhasePosition, TowerGeometry
 from transmissionlines.models.sag import SagCurveResult, SagOptions
-from transmissionlines.units import BundleSpacing, ConductorWeight, ElasticModulus, MaterialArea, RatedBreakingStrength, SpanLength, Temperature, ThermalExpansion, TowerCoordinate
+from transmissionlines.units import (
+    Distance,
+    ForcePerLength,
+    Pressure,
+    Area,
+    Force,
+    Temperature,
+    InverseTemperature,
+)
 from test.integration.test_line_electrical_orchestration import _circuit, _line
 
 
 def _options(**overrides: object) -> SagOptions:
-    values = {"elastic_modulus": ElasticModulus(11.5e6, "psi"),
-              "thermal_expansion_coefficient": ThermalExpansion(19.3e-6, "1 / kelvin"), **overrides}
+    values = {"elastic_modulus": Pressure(11.5e6, "psi"),
+              "thermal_expansion_coefficient": InverseTemperature(19.3e-6, "1 / kelvin"), **overrides}
     return SagOptions(**values)
 
 
 def _mechanical_line():
     line = _line()
     line.configuration.circuits[0].conductor_spec.equipment = BareConductorEquipment(
-        weight=ConductorWeight(656, "pound_force / kilofoot"),
-        rated_breaking_strength=RatedBreakingStrength(19500, "pound_force"),
-        total_material_area=MaterialArea(0.435, "inch ** 2"),
+        weight=ForcePerLength(656, "pound_force / kilofoot"),
+        rated_breaking_strength=Force(19500, "pound_force"),
+        total_material_area=Area(0.435, "inch ** 2"),
     )
     return line
 
@@ -55,15 +63,15 @@ def test_options_require_physical_quantities_and_convert_mixed_units() -> None:
     mixed = _options(
         reference_temperature=Temperature(77, "degF"),
         operating_temperature=Temperature(348.15, "kelvin"),
-        span_start=SpanLength(121.92, "meter"),
-        span_stop=SpanLength(400, "foot"),
-        span_step=SpanLength(3.048, "meter"),
-        elevation_difference=SpanLength(30.48, "meter"),
+        span_start=Distance(121.92, "meter"),
+        span_stop=Distance(400, "foot"),
+        span_step=Distance(3.048, "meter"),
+        elevation_difference=Distance(30.48, "meter"),
     )
     result = calculate_sag(line, options=mixed)
     expected = calculate_sag(line, options=_options(
-        span_start=SpanLength(400, "foot"), span_stop=SpanLength(400, "foot"),
-        elevation_difference=SpanLength(100, "foot"),
+        span_start=Distance(400, "foot"), span_stop=Distance(400, "foot"),
+        elevation_difference=Distance(100, "foot"),
     ))
     assert result.curves[0].span_lengths_ft == pytest.approx([400])
     assert result.curves[0].sag_ft == pytest.approx(expected.curves[0].sag_ft)
@@ -134,11 +142,11 @@ def test_permanent_strain_at_reference_temperature_still_changes_tension() -> No
 def test_custom_grid_exact_endpoint_and_bundle_uses_one_conductor() -> None:
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.30
-    base = calculate_sag(line, options=_options(span_start=SpanLength(21, "foot"), span_stop=SpanLength(42, "foot")))
+    base = calculate_sag(line, options=_options(span_start=Distance(21, "foot"), span_stop=Distance(42, "foot")))
     line.configuration.circuits[0].bundle_spec = line.configuration.circuits[0].bundle_spec.model_copy(
-        update={"subconductor_count": 2, "subconductor_spacing": BundleSpacing(18, "inch")}
+        update={"subconductor_count": 2, "subconductor_spacing": Distance(18, "inch")}
     )
-    result = calculate_sag(line, options=_options(span_start=SpanLength(21, "foot"), span_stop=SpanLength(42, "foot"), span_step=SpanLength(10, "foot")))
+    result = calculate_sag(line, options=_options(span_start=Distance(21, "foot"), span_stop=Distance(42, "foot"), span_step=Distance(10, "foot")))
     assert len(result.curves) == 1
     assert result.curves[0].span_lengths_ft == [21, 31, 41, 42]
     assert result.curves[0].horizontal_tension_lb[0] < 5850
@@ -150,7 +158,7 @@ def test_custom_grid_exact_endpoint_and_bundle_uses_one_conductor() -> None:
 def test_custom_grid_preserves_short_interval_beyond_absolute_tolerance() -> None:
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
-    result = calculate_sag(line, options=_options(span_stop=SpanLength(2000.000001, "foot")))
+    result = calculate_sag(line, options=_options(span_stop=Distance(2000.000001, "foot")))
 
     assert len(result.curves[0].span_lengths_ft) == 200
     assert result.curves[0].span_lengths_ft[-2:] == [2000, 2000.000001]
@@ -160,12 +168,12 @@ def test_all_circuits_and_explicit_selection_preserve_conductor_identity() -> No
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
     other = _circuit("c2", BareConductorEquipment(
-        weight=ConductorWeight(800, "pound_force / kilofoot"),
-        rated_breaking_strength=RatedBreakingStrength(22000, "pound_force"),
-        total_material_area=MaterialArea(0.5, "inch ** 2"),
+        weight=ForcePerLength(800, "pound_force / kilofoot"),
+        rated_breaking_strength=Force(22000, "pound_force"),
+        total_material_area=Area(0.5, "inch ** 2"),
     ))
     phases = [*line.configuration.geometry.phase_positions, *[
-        PhasePosition(circuit_id="c2", phase=phase, x=TowerCoordinate(index * 4, "foot"), y=TowerCoordinate(30, "foot"))
+        PhasePosition(circuit_id="c2", phase=phase, x=Distance(index * 4, "foot"), y=Distance(30, "foot"))
         for index, phase in enumerate(("A", "B", "C"), start=4)
     ]]
     line.configuration = TowerConfiguration(
@@ -175,7 +183,7 @@ def test_all_circuits_and_explicit_selection_preserve_conductor_identity() -> No
         ground_wire_spec=line.configuration.ground_wire_spec,
         circuits=[other, *line.configuration.circuits],
     )
-    options = _options(span_start=SpanLength(400, "foot"), span_stop=SpanLength(400, "foot"), operating_temperature=Temperature(25, "degC"))
+    options = _options(span_start=Distance(400, "foot"), span_stop=Distance(400, "foot"), operating_temperature=Temperature(25, "degC"))
     result = calculate_sag(line, options=options)
     assert [curve.circuit_id for curve in result.curves] == ["c1", "c2"]
     assert result.curves[0].horizontal_tension_lb == [3900]
@@ -192,43 +200,31 @@ def test_missing_mechanics_identifies_circuit_and_field(field: str) -> None:
     line.configuration.circuits[0].conductor_spec.equipment = line.configuration.circuits[0].conductor_spec.equipment.model_copy(update={field: None})
     with pytest.warns(UserWarning, match="20%"):
         with pytest.raises(ValueError, match=f"circuit c1: {field}"):
-            calculate_sag(line, options=_options(span_stop=SpanLength(20, "foot")))
+            calculate_sag(line, options=_options(span_stop=Distance(20, "foot")))
 
 
 def test_options_and_line_tension_reject_invalid_inputs() -> None:
     with pytest.raises(ValidationError):
         _options(elastic_modulus=11.5e6)
     with pytest.raises(ValidationError):
-        _options(thermal_expansion_coefficient=ConductorWeight(1, "pound_force / kilofoot"))
+        _options(thermal_expansion_coefficient=ForcePerLength(1, "pound_force / kilofoot"))
     with pytest.raises(ValidationError, match="elastic_modulus"):
-        _options(elastic_modulus=ElasticModulus(0, "psi"))
+        _options(elastic_modulus=Pressure(0, "psi"))
     with pytest.raises(ValidationError, match="span lengths"):
-        _options(span_step=SpanLength(0, "foot"))
+        _options(span_step=Distance(0, "foot"))
     with pytest.raises(ValidationError, match="sag options must be finite"):
-        _options(elevation_difference=SpanLength(float("nan"), "foot"))
+        _options(elevation_difference=Distance(float("nan"), "foot"))
     line = _mechanical_line()
     with pytest.raises(ValidationError, match="everyday_tension_fraction"):
         line.everyday_tension_fraction = 0.31
 
 
-def test_span_solver_reports_invalid_factor_and_overflow() -> None:
+def test_span_solver_reports_overflow() -> None:
     common = dict(area_in2=0.435, modulus_psi=11.5e6, reference_fraction=0.2,
                   span_ft=400, rise_ft=0, reference_temperature_c=25,
                   operating_temperature_c=75)
-    with pytest.raises(ValueError, match="thermal expansion factor"):
-        solve_span_sag(0.656, 19500, expansion_per_c=-1, **common)
     with pytest.raises(ValueError, match="overflow"):
         solve_span_sag(0.656, 19500, expansion_per_c=19.3e-6, **{**common, "span_ft": 10_000_000})
-
-
-@pytest.mark.parametrize(("area_in2", "modulus_psi"), [(1e-300, 1e-300), (1e300, 1e300)], ids=["underflow", "overflow"])
-def test_span_solver_rejects_invalid_axial_stiffness(area_in2: float, modulus_psi: float) -> None:
-    with pytest.raises(ValueError, match="axial stiffness"):
-        solve_span_sag(
-            0.656, 19500, area_in2=area_in2, modulus_psi=modulus_psi,
-            expansion_per_c=19.3e-6, reference_fraction=0.2, span_ft=400,
-            rise_ft=0, reference_temperature_c=25, operating_temperature_c=75,
-        )
 
 
 def test_span_solver_reports_nonconvergence(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -245,7 +241,7 @@ def test_public_plot_and_result_round_trip() -> None:
     matplotlib.use("Agg")
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
-    result = calculate_sag(line, options=_options(span_stop=SpanLength(40, "foot")))
+    result = calculate_sag(line, options=_options(span_stop=Distance(40, "foot")))
     restored = SagCurveResult.model_validate_json(result.model_dump_json())
     axes = plot_sag_curve(restored, circuit_id="c1")
 

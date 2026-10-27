@@ -5,18 +5,9 @@ from math import pi
 import numpy as np
 
 
-def _square(matrix: np.ndarray, name: str) -> np.ndarray:
-    value = np.asarray(matrix, dtype=complex)
-    if value.ndim != 2 or value.shape[0] != value.shape[1]:
-        raise ValueError(f"{name} must be square")
-    return value
-
-
 def kron_reduce(matrix: np.ndarray, phase_count: int, ground_count: int) -> np.ndarray:
     """Kron-reduce the final ``ground_count`` rows and columns."""
-    value = _square(matrix, "matrix")
-    if phase_count <= 0 or ground_count <= 0 or value.shape != (phase_count + ground_count,) * 2:
-        raise ValueError("matrix dimensions do not match phase and ground partitions")
+    value = np.asarray(matrix, dtype=complex)
     pp = value[:phase_count, :phase_count]
     pg = value[:phase_count, phase_count:]
     gp = value[phase_count:, :phase_count]
@@ -26,20 +17,13 @@ def kron_reduce(matrix: np.ndarray, phase_count: int, ground_count: int) -> np.n
 
 def shunt_admittance(potential: np.ndarray, frequency: float) -> np.ndarray:
     """Return ``j 2 pi f P^-1`` in microSiemens/mile."""
-    if frequency <= 0:
-        raise ValueError("frequency must be positive")
-    return 1j * 2 * pi * frequency * np.linalg.inv(_square(potential, "potential"))
+    return 1j * 2 * pi * frequency * np.linalg.inv(potential)
 
 
 def fully_transpose(matrix: np.ndarray, circuit_count: int | None = None) -> np.ndarray:
     """Apply full transposition to a 3- or 3N-conductor phase matrix."""
-    value = _square(matrix, "matrix")
-    if circuit_count is None:
-        if value.shape[0] % 3:
-            raise ValueError("phase matrix must have a multiple of three rows")
-        circuit_count = value.shape[0] // 3
-    if circuit_count < 1 or value.shape != (3 * circuit_count,) * 2:
-        raise ValueError("matrix dimensions do not match circuit count")
+    value = np.asarray(matrix, dtype=complex)
+    circuit_count = circuit_count or value.shape[0] // 3
     result = np.zeros_like(value)
     for c in range(circuit_count):
         block = value[3 * c : 3 * c + 3, 3 * c : 3 * c + 3]
@@ -60,9 +44,7 @@ def fully_transpose(matrix: np.ndarray, circuit_count: int | None = None) -> np.
 
 def sequence_matrix(matrix: np.ndarray) -> np.ndarray:
     """Transform a 3N phase matrix into symmetrical-component coordinates."""
-    value = _square(matrix, "matrix")
-    if value.shape[0] % 3:
-        raise ValueError("matrix dimension must be a multiple of three")
+    value = np.asarray(matrix, dtype=complex)
     a = np.exp(2j * pi / 3)
     transform = np.array([[1, 1, 1], [1, a**2, a], [1, a, a**2]], dtype=complex)
     inverse = np.linalg.inv(transform)

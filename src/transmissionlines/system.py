@@ -5,7 +5,7 @@ from typing import Any
 from infrasys import System
 from infrasys.exceptions import ISOperationNotAllowed
 
-SCHEMA_VERSION = "4.0.0"
+SCHEMA_VERSION = "5.0.0"
 """Current transmission-line system schema version."""
 
 

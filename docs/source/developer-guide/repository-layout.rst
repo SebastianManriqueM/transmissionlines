@@ -31,8 +31,8 @@ Python package
 The package is installed from ``src/``. Its modules are organized by the
 responsibility that owns each change:
 
-* ``api.py`` is the public convenience facade, collecting supported builders,
-  calculations, catalog access, models, and plotting functions.
+* ``user_api/`` is the public import surface: ``build`` for catalog browsing,
+  selection, line construction, and calculations, and ``plots`` for results.
 * ``models/`` defines the typed domain models for cables, geometry,
   configurations, electrical and St. Clair results, and routes.
 * ``catalog/`` imports source data, defines catalog schemas, validates

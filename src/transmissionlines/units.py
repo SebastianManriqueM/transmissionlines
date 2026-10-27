@@ -1,151 +1,65 @@
-"""Quantity types for the transmission-line public model surface.
+"""Quantity types, one per physical dimension.
 
-All quantities derive from :mod:`infrasys` ``BaseQuantity`` and therefore use the
-same Pint unit registry that Infrasys uses for component and system serialization.
+Infrasys supplies length (``Distance``), voltage, current, resistance, and angle;
+this module defines only the dimensions it lacks. All share the Pint registry
+Infrasys uses for serialization. Models reject bare numbers for quantity fields,
+so ``Distance(3, "foot")``, never ``3``.
 """
 
 from infrasys import BaseQuantity
 from infrasys.quantities import Angle, Current, Distance, Resistance, Voltage
 
 
-class TowerCoordinate(BaseQuantity):
-    """Tower-local Cartesian coordinate using Julia-parity feet."""
-
-    __base_unit__ = "foot"
-
-
-class CableGMR(BaseQuantity):
-    """Cable geometric mean radius using Julia-parity feet."""
-
-    __base_unit__ = "foot"
-
-
-class EquivalentRadius(BaseQuantity):
-    """Equivalent conductor radius using Julia-parity feet."""
-
-    __base_unit__ = "foot"
-
-
-class BundleSpacing(BaseQuantity):
-    """Subconductor bundle spacing using Julia-parity inches."""
-
-    __base_unit__ = "inch"
-
-
-class CableDiameter(BaseQuantity):
-    """Cable diameter using Julia-parity inches."""
-
-    __base_unit__ = "inch"
-
-
-class ConductorWeight(BaseQuantity):
-    """Conductor weight per unit length in pounds-force per kilofoot."""
-
-    __base_unit__ = "pound_force / kilofoot"
-
-
-class RatedBreakingStrength(BaseQuantity):
-    """Rated conductor breaking strength in pounds-force."""
-
-    __base_unit__ = "pound_force"
-
-
-class MaterialArea(BaseQuantity):
-    """Total conductor material cross-sectional area in square inches."""
-
+class Area(BaseQuantity):
     __base_unit__ = "inch ** 2"
 
 
-class ElasticModulus(BaseQuantity):
-    """Effective axial elastic modulus in pounds-force per square inch."""
-
-    __base_unit__ = "psi"
+class Force(BaseQuantity):
+    __base_unit__ = "pound_force"
 
 
-class ThermalExpansion(BaseQuantity):
-    """Effective linear expansion coefficient per kelvin (or degree Celsius)."""
-
-    __base_unit__ = "1 / kelvin"
-
-
-class SpanLength(BaseQuantity):
-    """Horizontal span length or signed attachment elevation difference in feet."""
-
-    __base_unit__ = "foot"
-
-
-class RouteDistance(BaseQuantity):
-    """Route or span length using mile-compatible distance units."""
-
-    __base_unit__ = "mile"
-
-
-class VoltageKV(BaseQuantity):
-    """Nominal line voltage using kilovolts at persisted boundaries."""
-
-    __base_unit__ = "kilovolt"
+class ForcePerLength(BaseQuantity):
+    __base_unit__ = "pound_force / kilofoot"
 
 
 class Frequency(BaseQuantity):
-    """Electrical frequency in hertz."""
-
     __base_unit__ = "hertz"
 
 
-class EarthResistivity(BaseQuantity):
-    """Earth resistivity in ohm-meter."""
-
-    __base_unit__ = "ohm * meter"
+class InverseTemperature(BaseQuantity):
+    __base_unit__ = "1 / kelvin"
 
 
-class ResistancePerKft(BaseQuantity):
-    """Cable resistance in ohms per kilofoot."""
+class Pressure(BaseQuantity):
+    __base_unit__ = "psi"
 
+
+class ResistancePerLength(BaseQuantity):
     __base_unit__ = "ohm / kilofoot"
 
 
-class SeriesImpedance(BaseQuantity):
-    """Series impedance in ohms per mile."""
-
-    __base_unit__ = "ohm / mile"
-
-
-class ShuntAdmittance(BaseQuantity):
-    """Shunt admittance in microsiemens per mile."""
-
-    __base_unit__ = "microsiemens / mile"
+class Resistivity(BaseQuantity):
+    __base_unit__ = "ohm * meter"
 
 
 class Temperature(BaseQuantity):
-    """Temperature in kelvin."""
-
     __base_unit__ = "kelvin"
 
 
 __all__ = [
     "Angle",
+    "Area",
     "BaseQuantity",
-    "BundleSpacing",
-    "CableDiameter",
-    "CableGMR",
-    "ConductorWeight",
     "Current",
     "Distance",
-    "EarthResistivity",
-    "ElasticModulus",
-    "EquivalentRadius",
+    "Force",
+    "ForcePerLength",
     "Frequency",
-    "MaterialArea",
-    "RatedBreakingStrength",
+    "InverseTemperature",
+    "Pressure",
     "Resistance",
-    "ResistancePerKft",
-    "RouteDistance",
-    "SeriesImpedance",
-    "ShuntAdmittance",
-    "SpanLength",
+    "ResistancePerLength",
+    "Resistivity",
     "Temperature",
-    "ThermalExpansion",
-    "TowerCoordinate",
     "Voltage",
-    "VoltageKV",
 ]

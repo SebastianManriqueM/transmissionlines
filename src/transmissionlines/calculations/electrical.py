@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from collections.abc import Mapping, Sequence
 from math import log, pi
+from typing import Any
 
 import numpy as np
 
@@ -17,18 +19,17 @@ from transmissionlines.calculations.matrices import (
     sequence_matrix,
     shunt_admittance,
 )
-from transmissionlines.calculations.st_clair import calculate_st_clair_curve_for_line
+from transmissionlines.calculations.st_clair import calculate_st_clair
 from transmissionlines.electrical_constants import EPSILON_AIR, KILOFEET_PER_MILE, L_C, L_F, R_C
-from transmissionlines.exceptions import CalculationInputError
 from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
 from transmissionlines.models.calculation_result import LineCalculationResult
 from transmissionlines.models.cables import GroundWireSpec
-from transmissionlines.models.configurations import CircuitConfiguration
+from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
 from transmissionlines.models.electrical import ElectricalParameters, MatrixResult
 from transmissionlines.models.routing import ElectricalTower
-from transmissionlines.models.st_clair import StClairOptions
+from transmissionlines.models.st_clair import StClairOptions, StClairResult
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
-from transmissionlines.units import Frequency, VoltageKV
+from transmissionlines.units import Frequency, Voltage
 
 def _matrix_result(
     name: str,
@@ -81,19 +82,8 @@ def build_primitive_z(
     -------
     numpy.ndarray
         Complex square primitive series matrix in ohm/mile.
-
-    Raises
-    ------
-    ValueError
-        If array lengths differ or required physical inputs are not positive.
     """
     n = len(positions)
-    if n < 1 or not (len(gmrs) == len(resistances) == len(bundle_counts) == n):
-        raise ValueError("primitive Z inputs must have equal non-empty lengths")
-    if any(gmr <= 0 for gmr in gmrs) or any(count < 1 for count in bundle_counts):
-        raise ValueError("GMR values must be positive and bundle counts must be positive")
-    if frequency <= 0 or earth_resistivity <= 0:
-        raise ValueError("frequency and earth resistivity must be positive")
     result = np.zeros((n, n), dtype=complex)
     correction = L_F + 0.5 * log(earth_resistivity / frequency)
     for i, position in enumerate(positions):
@@ -104,8 +94,6 @@ def build_primitive_z(
             else:
                 distance = direct_distance(position, positions[j])
                 resistance = 0.0
-            if distance <= 0:
-                raise ValueError("all conductor GMR and mutual distances must be positive")
             value = resistance + R_C * frequency + 1j * L_C * frequency * (log(1 / distance) + correction)
             result[i, j] = result[j, i] = value
     return result
@@ -134,17 +122,8 @@ def build_primitive_p(
     numpy.ndarray
         Real square potential coefficient matrix using the parity
         ``1/(microSiemens/mile)`` contract.
-
-    Raises
-    ------
-    ValueError
-        If positions and radii differ in length or any radius is not positive.
     """
     del frequency  # retained in the signature to make the unit boundary explicit
-    if not positions or len(radii) != len(positions):
-        raise ValueError("potential radii and positions must have equal non-empty lengths")
-    if any(radius <= 0 for radius in radii):
-        raise ValueError("potential radii must be positive")
     result = np.zeros((len(positions), len(positions)), dtype=float)
     for i, position in enumerate(positions):
         result[i, i] = log(image_distance(position, position) / radii[i]) / (2 * pi * EPSILON_AIR)
@@ -222,37 +201,85 @@ def calculate_line_electrical_parameters(
         If selection is ambiguous or foreign, or required cable values are absent.
     """
     configuration = resolve_configuration(line, tower=tower)
-    geometry = configuration.geometry
-    geometry_ids = {position.circuit_id for position in geometry.phase_positions}
-    specs = configuration.circuits
-    spec_ids = [spec.circuit_id for spec in specs]
-    spec_id_set = set(spec_ids)
-    missing = sorted(geometry_ids - spec_id_set)
-    unexpected = sorted(spec_id_set - geometry_ids)
-    duplicates = sorted({item for item in spec_ids if spec_ids.count(item) > 1})
-    if missing or unexpected or duplicates:
-        details = []
-        if missing:
-            details.append(f"missing={missing}")
-        if unexpected:
-            details.append(f"unexpected={unexpected}")
-        if duplicates:
-            details.append(f"duplicates={duplicates}")
-        raise CalculationInputError("phase conductor circuit mapping is invalid: " + ", ".join(details))
-    result = calculate_electrical(
-        geometry,
-        phase_specs=specs,
+    electrical = _line_electrical(line, configuration)
+    curve = calculate_st_clair(_st_clair_inputs(line, configuration, electrical), options=st_clair_options)
+    return LineCalculationResult(
+        line_name=line.name, electrical=electrical, st_clair=curve.model_copy(update={"line_name": line.name}),
+    )
+
+
+def calculate_st_clair_curve_for_line(
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
+    *,
+    tower: ElectricalTower | None = None,
+    options: StClairOptions | None = None,
+    sensitivities: Mapping[str, Sequence[float]] | None = None,
+) -> StClairResult:
+    """Calculate St. Clair curves for a line's selected cross-section.
+
+    The positive-sequence constants are calculated from the line itself, so the
+    curves always describe its current configuration.
+
+    Parameters
+    ----------
+    line : CrossSectionTransmissionLine or RoutedTransmissionLine
+        Static input line.
+    tower : ElectricalTower, optional
+        Support selecting a heterogeneous routed cross-section.
+    options : StClairOptions, optional
+        Curve operating limits and resolution.
+    sensitivities : mapping, optional
+        Option names and sampled settings for extra curves.
+
+    Raises
+    ------
+    ValueError
+        If the cross-section selection is ambiguous or foreign, or a circuit's
+        conductor lacks a required value.
+    """
+    configuration = resolve_configuration(line, tower=tower)
+    inputs = _st_clair_inputs(line, configuration, _line_electrical(line, configuration))
+    result = calculate_st_clair(inputs, options=options, sensitivities=sensitivities)
+    return result.model_copy(update={"line_name": line.name})
+
+
+def _line_electrical(
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine, configuration: TowerConfiguration,
+) -> ElectricalParameters:
+    return calculate_electrical(
+        configuration.geometry,
+        phase_specs=configuration.circuits,
         ground_wire_spec=configuration.ground_wire_spec,
         voltage=line.nominal_voltage.to("kilovolt"),
         frequency=line.nominal_frequency.to("hertz"),
         earth_resistivity=line.earth_resistivity.to("ohm * meter").magnitude,
     )
-    previous = LineCalculationResult(
-        line_name=line.name, line_uuid=line.uuid, configuration_uuid=configuration.uuid,
-        electrical=result,
-    )
-    curve = calculate_st_clair_curve_for_line(line, previous, tower=tower, options=st_clair_options)
-    return previous.model_copy(update={"st_clair": curve})
+
+
+def _st_clair_inputs(
+    line: CrossSectionTransmissionLine | RoutedTransmissionLine,
+    configuration: TowerConfiguration,
+    electrical: ElectricalParameters,
+) -> list[dict[str, Any]]:
+    """Pair each circuit's positive-sequence constants with its conductor ampacity."""
+    inputs = []
+    for spec in configuration.circuits:
+        equipment = spec.conductor_spec.equipment
+        if equipment.ampacity is None:
+            raise ValueError(f"missing conductor ampacity for {spec.circuit_id}")
+        scalars = electrical.circuit_scalars[spec.circuit_id]
+        inputs.append({
+            "circuit_id": spec.circuit_id,
+            "conductor_family": spec.conductor_spec.family,
+            "conductor_codeword": spec.conductor_spec.codeword,
+            "nominal_voltage_kv": line.nominal_voltage.to("kilovolt").magnitude,
+            "r_ohm_per_mile": scalars["r1"],
+            "x_ohm_per_mile": scalars["x1"],
+            "b_microsiemens_per_mile": scalars["b1"],
+            "conductor_ampacity_a": equipment.ampacity.to("ampere").magnitude,
+            "subconductor_count": spec.bundle_spec.subconductor_count,
+        })
+    return inputs
 
 
 def calculate_electrical_parameters(
@@ -281,7 +308,7 @@ def calculate_electrical(
     *,
     phase_specs: list[CircuitConfiguration],
     ground_wire_spec: GroundWireSpec,
-    voltage: VoltageKV,
+    voltage: Voltage,
     frequency: Frequency,
     earth_resistivity: float,
 ) -> ElectricalParameters:
@@ -295,7 +322,7 @@ def calculate_electrical(
         One conductor/bundle specification per geometry circuit.
     ground_wire_spec : GroundWireSpec
         Shared ground-wire conductor properties.
-    voltage : VoltageKV
+    voltage : Voltage
         Nominal line-to-line system voltage.
     frequency : Frequency
         Power frequency.
@@ -311,8 +338,8 @@ def calculate_electrical(
     Raises
     ------
     ValueError
-        If required physical cable values or positive-sequence SIL inputs are
-        absent or invalid.
+        If required physical cable values are absent, or the geometry has more
+        than two circuits.
     """
     voltage = voltage.to("kilovolt")
     frequency = frequency.to("hertz")
@@ -327,6 +354,8 @@ def calculate_electrical(
     z_sequence_nt = sequence_matrix(z_kron)
     y_sequence_nt = sequence_matrix(y_kron)
     circuits = phase_count // 3
+    if circuits > 2:
+        raise ValueError(f"only one- and two-circuit lines are supported, got {circuits} circuits")
     z_transposed = fully_transpose(z_kron, circuits)
     y_transposed = fully_transpose(y_kron, circuits)
     z_sequence = sequence_matrix(z_transposed)
@@ -341,8 +370,6 @@ def calculate_electrical(
         for index in range(circuits)
     }
     r1, x1, b1 = (circuit_scalars[circuit_ids[0]][name] for name in ("r1", "x1", "b1"))
-    if b1 <= 0 or x1 <= 0:
-        raise ValueError("positive sequence reactance and susceptance are required for SIL")
     z_sil = (x1 / (b1 / 1e6)) ** 0.5
     scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage.magnitude**2 / z_sil)}
     if circuits == 2:
@@ -410,4 +437,4 @@ def calculate_electrical(
     )
 
 
-__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters", "resolve_configuration"]
+__all__ = ["EPSILON_AIR", "L_C", "L_F", "R_C", "build_primitive_p", "build_primitive_z", "calculate_electrical", "calculate_electrical_parameters", "calculate_line_electrical_parameters", "calculate_st_clair_curve_for_line", "resolve_configuration"]

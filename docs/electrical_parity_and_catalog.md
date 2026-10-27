@@ -97,13 +97,13 @@ flowchart TD
     More -->|No| Attach[Attach result to copied line]
 ```
 
-Every line-level electrical calculation attaches the default St. Clair result. Explicit recalculation and sensitivity studies use `calculate_st_clair_curve`; mapping input uses natural-unit constants, while a line input returns a copied line. Plotting is optional and consumes stored results:
+Every line-level electrical calculation attaches the default St. Clair result. Explicit recalculation and sensitivity studies use `calculate_st_clair_curve_for_line` on the line, or `calculate_st_clair` with natural-unit constants. Plotting is optional and consumes stored results:
 
 ```python
-from transmissionlines.api import calculate_st_clair_curve, plot_st_clair_curve
+from transmissionlines.calculations.electrical import calculate_st_clair_curve_for_line
+from transmissionlines.plotting.st_clair import plot_st_clair_curve
 
-updated_line = calculate_st_clair_curve(line)
-result = updated_line.line_parameters.electrical_parameters.st_clair_curve
+result = calculate_st_clair_curve_for_line(line)
 axes = plot_st_clair_curve(result, curves="all")
 ```
 

@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from transmissionlines.models.cables import BundleSpec
-from transmissionlines.units import BundleSpacing
+from transmissionlines.units import Distance
 from transmissionlines.user_api.analysis import calculations
 from transmissionlines.user_api.catalog import BrowsingCatalog
 from transmissionlines.user_api.components import (
@@ -38,7 +38,19 @@ def bundle(*, subconductor_count: int, subconductor_spacing_in: float | None = N
     """Select a bundle with adjacent center-to-center spacing in inches."""
     return BundleSpec(
         subconductor_count=subconductor_count,
-        subconductor_spacing=None if subconductor_spacing_in is None else BundleSpacing(
+        subconductor_spacing=None if subconductor_spacing_in is None else Distance(
             subconductor_spacing_in, "inch"
         ),
     )
+
+__all__ = [
+    "add_line",
+    "bundle",
+    "calculations",
+    "conductor",
+    "cross_section_line",
+    "ground_wire",
+    "open_catalog",
+    "system",
+    "tower",
+]

@@ -1,7 +1,7 @@
 """Shared base models for transmission-line data."""
 
 from abc import ABC
-from typing import Any
+from typing import Any, get_args
 
 from infrasys import BaseQuantity, SupplementalAttribute
 from infrasys.serialization import (
@@ -44,7 +44,7 @@ class LineDataModel(BaseModel):
         Any
             Input with serialized quantity dictionaries converted back to quantity objects.
         """
-        return _restore_embedded_quantities(data)
+        return reject_bare_numbers(cls, _restore_embedded_quantities(data))
 
     @model_serializer(mode="plain")
     def _serialize_embedded_quantities(self) -> dict[str, Any]:
@@ -59,6 +59,22 @@ class LineDataModel(BaseModel):
             field: _dump_embedded_value(getattr(self, field))
             for field in type(self).model_fields
         }
+
+
+def _quantity_type(annotation: Any) -> type[BaseQuantity] | None:
+    return next((arg for arg in get_args(annotation) or (annotation,)
+                 if isinstance(arg, type) and issubclass(arg, BaseQuantity)), None)
+
+
+def reject_bare_numbers(cls: type[BaseModel], data: Any) -> Any:
+    """Refuse plain numbers for quantity fields, so units are never guessed."""
+    if isinstance(data, dict):
+        for name, field in cls.model_fields.items():
+            value = data.get(name)
+            quantity = _quantity_type(field.annotation)
+            if quantity and isinstance(value, int | float) and not isinstance(value, bool):
+                raise ValueError(f"{name} needs explicit units: pass a {quantity.__name__}, not a bare number")
+    return data
 
 
 def _dump_embedded_value(value: Any) -> Any:

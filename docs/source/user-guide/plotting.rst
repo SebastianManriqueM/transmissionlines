@@ -9,7 +9,7 @@ calculation. It returns a Matplotlib ``Axes`` with base curves against line
 length in miles and receiving-end real power in MW. It marks the active
 voltage, thermal, or stability limit without opening an interactive window.
 For sensitivity curves or alternate axes, see the advanced
-:func:`transmissionlines.api.plot_st_clair_curve` interface.
+:func:`transmissionlines.plotting.st_clair.plot_st_clair_curve` interface.
 
 For a headless script, select a non-interactive Matplotlib backend before
 creating figures, then close the figure after saving it:

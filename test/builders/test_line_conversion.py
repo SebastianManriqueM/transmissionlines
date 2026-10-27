@@ -7,7 +7,7 @@ import pytest
 from transmissionlines.builders.line import conductor_from_record, ground_wire_from_record, phase_spec_from_record
 from transmissionlines.catalog.electrical_conversion import gmr_from_xl, req_from_xc
 from transmissionlines.catalog.repository import CatalogRepository
-from transmissionlines.catalog.schemas import ConductorRecord, ConductorV2Record, GroundWireRecord
+from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord
 from transmissionlines.calculations.cable import strand_geometry_gmr
 from transmissionlines.calculations import constants as calculation_constants
 from transmissionlines.electrical_constants import (
@@ -19,14 +19,14 @@ from transmissionlines.electrical_constants import (
     R_C,
     SERIES_REACTANCE_COEFFICIENT,
 )
-from transmissionlines.units import BundleSpacing
+from transmissionlines.units import Distance
 
 
 def test_v2_conductor_projects_mechanical_quantities() -> None:
     frame = pd.read_parquet("data/catalog/v2/conductors.parquet")
     row = frame.dropna(subset=["weight_lb_kft", "rated_strength_lb", "total_area_in2"]).iloc[0]
     selected = CatalogRepository("data/catalog/v2").select_exact("conductors", record_id=row.record_id)
-    record = ConductorV2Record.model_validate(selected)
+    record = ConductorRecord.model_validate(selected)
 
     spec = conductor_from_record(record, catalog_version="v2")
 
@@ -52,7 +52,7 @@ def test_v2_conductor_uses_explicit_electrical_temperature_columns() -> None:
     for family in ("ACCC", "ACSS", "ACSS/TW"):
         row = catalog.table("conductors")
         record_id = row[row.family == family].iloc[0].record_id
-        record = ConductorV2Record.model_validate(catalog.select_exact("conductors", record_id=record_id))
+        record = ConductorRecord.model_validate(catalog.select_exact("conductors", record_id=record_id))
         equipment = conductor_from_record(record, catalog_version="v2").equipment
 
         resistance = next(
@@ -71,10 +71,9 @@ def test_v2_conductor_uses_explicit_electrical_temperature_columns() -> None:
 
 
 def test_v2_conductor_preserves_absent_mechanical_fields() -> None:
-    record = ConductorV2Record(
+    record = ConductorRecord(
         record_id="test", source_id="source", family="AAC", variant="standard",
-        ac_resistance_ohm_kft=0.1, ac_resistance_200c_ohm_kft="0.2",
-        ampacity_a=900, ampacity_200c_a="1100",
+        ac_resistance_200c_ohm_kft="0.2", ampacity_200c_a="1100",
     )
     equipment = conductor_from_record(record, catalog_version="v2").equipment
 
@@ -85,8 +84,15 @@ def test_v2_conductor_preserves_absent_mechanical_fields() -> None:
     assert equipment.ampacity is None
 
 
+def test_unrated_v1_ampacity_is_used_only_without_a_75c_rating() -> None:
+    record = ConductorRecord(record_id="test", source_id="source", family="ACSR", ampacity_a=990)
+    assert conductor_from_record(record, catalog_version="v1").equipment.ampacity.magnitude == 990
+    rated = record.model_copy(update={"ampacity_75c_a": 996})
+    assert conductor_from_record(rated, catalog_version="v2").equipment.ampacity.magnitude == 996
+
+
 def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> None:
-    record = ConductorV2Record(
+    record = ConductorRecord(
         record_id="round", source_id="pdf", family="ACSR", variant="standard",
         stranding="6/1", diameter_inch=0.398, core_diameter_in="0.1327",
         strand_diameter_al_in="0.1327", strand_diameter_core_in="0.1327",
@@ -135,7 +141,7 @@ def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> 
 
 
 def test_overlapping_tolerated_six_one_strands_fall_back_to_outer_radius() -> None:
-    record = ConductorV2Record(
+    record = ConductorRecord(
         record_id="tolerated-overlap", source_id="pdf", family="ACSR", variant="standard",
         stranding="6/1", diameter_inch=3.01, core_diameter_in="1.0",
         strand_diameter_al_in="1.005", strand_diameter_core_in="1.0",
@@ -186,7 +192,7 @@ def test_catalog_records_convert_to_runtime_specs_with_provenance() -> None:
     bundled_phase = phase_spec_from_record(
         ConductorRecord.model_validate(conductor.to_dict()),
         circuit_id="circuit-1", catalog_version="v1", subconductor_count=2,
-        subconductor_spacing=BundleSpacing(18, "inch"),
+        subconductor_spacing=Distance(18, "inch"),
         insulator_string=dict(insulator_type="glass", number_of_insulators=12,
                               insulator_code="U120B", insulator_coupling="ball_and_socket"),
     )

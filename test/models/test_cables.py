@@ -2,15 +2,15 @@ import pytest
 
 from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.models.cables import BareConductorEquipment, BundleSpec, ConductorSpec
-from transmissionlines.units import BundleSpacing, CableDiameter, CableGMR, ConductorWeight, MaterialArea, RatedBreakingStrength, ResistancePerKft
+from transmissionlines.units import Distance, ForcePerLength, Area, Force, ResistancePerLength
 
 
 def conductor() -> BareConductorEquipment:
     return BareConductorEquipment(
-        conductor_diameter=CableDiameter(1, "inch"),
-        conductor_gmr=CableGMR(0.04, "foot"),
-        capacitance_radius=CableGMR(0.02, "foot"),
-        ac_resistance=ResistancePerKft(0.1, "ohm / kilofoot"),
+        conductor_diameter=Distance(1, "inch"),
+        conductor_gmr=Distance(0.04, "foot"),
+        capacitance_radius=Distance(0.02, "foot"),
+        ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
     )
 
 
@@ -19,7 +19,7 @@ def test_phase_specs_are_independent_per_circuit() -> None:
     first = BundleSpec(subconductor_count=1)
     second = BundleSpec(
         subconductor_count=2,
-        subconductor_spacing=BundleSpacing(18, "inch"),
+        subconductor_spacing=Distance(18, "inch"),
     )
     first_gmr, first_radius = derived_bundle_values(selected.equipment, first.subconductor_count, first.subconductor_spacing)
     second_gmr, second_radius = derived_bundle_values(selected.equipment, second.subconductor_count, second.subconductor_spacing)
@@ -39,9 +39,9 @@ def test_capacitance_radius_is_optional_parity_extension() -> None:
     spec = ConductorSpec(
         name="source",
         equipment=BareConductorEquipment(
-            conductor_gmr=CableGMR(0.04, "foot"),
-            capacitance_radius=CableGMR(0.02, "foot"),
-            ac_resistance=ResistancePerKft(0.1, "ohm / kilofoot"),
+            conductor_gmr=Distance(0.04, "foot"),
+            capacitance_radius=Distance(0.02, "foot"),
+            ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
         ),
     )
     assert spec.equipment.conductor_diameter is None
@@ -52,9 +52,9 @@ def test_capacitance_radius_is_optional_parity_extension() -> None:
 
 def test_mechanical_quantities_round_trip_and_reject_wrong_dimensions() -> None:
     equipment = BareConductorEquipment(
-        weight=ConductorWeight(0.5, "pound_force / foot"),
-        rated_breaking_strength=RatedBreakingStrength(2000, "pound_force"),
-        total_material_area=MaterialArea(0.75, "inch ** 2"),
+        weight=ForcePerLength(0.5, "pound_force / foot"),
+        rated_breaking_strength=Force(2000, "pound_force"),
+        total_material_area=Area(0.75, "inch ** 2"),
     )
     restored = BareConductorEquipment.model_validate_json(equipment.model_dump_json())
 
@@ -65,4 +65,4 @@ def test_mechanical_quantities_round_trip_and_reject_wrong_dimensions() -> None:
     assert restored.total_material_area is not None
     assert restored.total_material_area.magnitude == pytest.approx(0.75)
     with pytest.raises(ValueError):
-        BareConductorEquipment(weight=ConductorWeight(1, "inch"))
+        BareConductorEquipment(weight=ForcePerLength(1, "inch"))

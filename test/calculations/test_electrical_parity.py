@@ -11,11 +11,12 @@ from transmissionlines.catalog.schemas import ConductorRecord, GroundWireRecord,
 from transmissionlines.models.assets import CrossSectionTransmissionLine, RoutedTransmissionLine
 from transmissionlines.models.common import Bus, GeographicPoint, IdentificationInfo
 from transmissionlines.models.configurations import TowerConfiguration
+from transmissionlines.models.geometry import TowerGeometry
 from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.system import TransmissionLineSystem
 from transmissionlines.builders.system import assemble_line_into_system
-from transmissionlines.units import Angle, BundleSpacing, EarthResistivity, Frequency, VoltageKV
+from transmissionlines.units import Angle, Distance, Resistivity, Frequency, Voltage
 
 CATALOG = CatalogRepository("data/catalog/v1")
 
@@ -28,9 +29,9 @@ def _line(geometry, phases, ground, voltage: int, kind: str):
         geometry=geometry, circuits=phases, ground_wire_spec=ground,
     )
     electrical = dict(
-        name="fixture-line", nominal_voltage=VoltageKV(voltage, "kilovolt"),
+        name="fixture-line", nominal_voltage=Voltage(voltage, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     if kind == "cross-section":
         return CrossSectionTransmissionLine(**electrical, configuration=configuration)
@@ -102,7 +103,7 @@ def test_two_circuit_3l11_reference_fixture_matches_all_numeric_outputs(kind: st
     conductor = ConductorRecord.model_validate(conductors[(conductors.family == "ACSR") & (conductors.codeword == "Cardinal")].iloc[0].to_dict())
     wire = GroundWireRecord.model_validate(wires[(wires.family == "Alumoweld") & (wires.awg_or_stranding == "7/8")].iloc[0].to_dict())
     phases = [
-        phase_spec_from_record(conductor, circuit_id=circuit, insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch"), catalog_version="v1")
+        phase_spec_from_record(conductor, circuit_id=circuit, insulator_string=INSULATOR, subconductor_count=2, subconductor_spacing=Distance(18, "inch"), catalog_version="v1")
         for circuit in ("circuit-1", "circuit-2")
     ]
     ground = ground_wire_from_record(wire, catalog_version="v1")
@@ -157,7 +158,7 @@ def test_two_circuit_3l11_st_clair_curve_matches_reference_values(kind: str, rou
             circuit_id=circuit,
             insulator_string=INSULATOR,
             subconductor_count=2,
-            subconductor_spacing=BundleSpacing(18, "inch"),
+            subconductor_spacing=Distance(18, "inch"),
             catalog_version="v1",
         )
         for circuit in ("circuit-1", "circuit-2")
@@ -278,6 +279,20 @@ def test_kersting_nontransposed_and_transposed_matrix_outputs(kind: str, round_t
     assert result.scalars["surge_impedance_ohm"] == pytest.approx(301.24, rel=0.005)
     assert result.scalars["sil_mw"] == pytest.approx(3.6151, rel=0.005)
     assert result.matrices["Z_kron"] is result.matrices["Z_kron_nt"]
+
+
+def test_more_than_two_circuits_is_rejected() -> None:
+    geometry, phase, ground = _kersting_inputs()
+    ids = ["circuit-1", "circuit-2", "circuit-3"]
+    positions = [
+        position.model_copy(update={"circuit_id": circuit_id, "x": Distance(position.x.to("foot").magnitude + 40 * index, "foot")})
+        for index, circuit_id in enumerate(ids)
+        for position in geometry.phase_positions
+    ]
+    geometry = TowerGeometry(phase_positions=positions, ground_wire_positions=geometry.ground_wire_positions)
+    phases = [phase.model_copy(update={"circuit_id": circuit_id}) for circuit_id in ids]
+    with pytest.raises(ValueError, match="3 circuits"):
+        _calculated(geometry, phases, ground, 33, "cross-section")
 
 
 @pytest.mark.parametrize("kind", ["cross-section", "routed"])

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from transmissionlines.catalog.accc_pdf import extract_accc
+from transmissionlines.catalog.pdf_tables import extract
 from transmissionlines.catalog.accc_variants import stage_accc_variants
 
 
@@ -15,7 +15,7 @@ PDF = Path(__file__).resolve().parents[2] / "data/raw/conductors/ACCC_electrical
 
 
 def test_accc_variant_ids_and_strengths_are_source_backed() -> None:
-    rows = extract_accc(PDF)
+    rows = extract(PDF)
     records = stage_accc_variants(rows)
 
     assert len(records) == 48
@@ -49,7 +49,7 @@ def test_accc_variant_ids_and_strengths_are_source_backed() -> None:
 
 
 def test_accc_missing_standard_strength_is_rejected() -> None:
-    oceanside = extract_accc(PDF)[0]
+    oceanside = extract(PDF)[0]
     cells = dict(oceanside.cells)
     cells["strength_standard_klbf"] = replace(cells["strength_standard_klbf"], raw=None)
 
@@ -58,7 +58,7 @@ def test_accc_missing_standard_strength_is_rejected() -> None:
 
 
 def test_accc_duplicate_variant_ids_are_rejected() -> None:
-    oceanside = extract_accc(PDF)[0]
+    oceanside = extract(PDF)[0]
 
     with pytest.raises(ValueError, match="duplicate ACCC variant ID"):
         stage_accc_variants([oceanside, oceanside])

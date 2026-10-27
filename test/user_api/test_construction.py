@@ -67,3 +67,24 @@ def test_published_gmr_takes_precedence_and_external_completions_have_distinct_n
     assert first.catalog_reference == second.catalog_reference
     with pytest.raises(ValueError, match="positive"):
         build.conductor(catalog, record_id=acsr_id, gmr_ft=-0.03)
+
+def test_tower_rejects_positions_missing_a_declared_circuit(monkeypatch) -> None:
+    catalog = build.open_catalog()
+    geometry_id = catalog.towers(structure_code="3L11")[0]["record_id"]
+    kept, dropped = catalog.tower_circuits(geometry_id)
+    original = catalog.repository.table
+
+    def one_circuit(table):
+        frame = original(table)
+        return frame[frame.circuit_id != dropped] if table == "phase_positions" else frame
+
+    monkeypatch.setattr(catalog.repository, "table", one_circuit)
+    conductor = build.conductor(catalog, record_id=catalog.conductors(family="ACSR")[0]["record_id"], gmr_ft=0.03)
+    wire = build.ground_wire(catalog, record_id=catalog.ground_wires(family="ACSR")[0]["record_id"])
+    insulator = dict(insulator_type="glass", number_of_insulators=12,
+                     insulator_code="U120B", insulator_coupling="ball_and_socket")
+    with pytest.raises(ValueError, match="circuit count disagrees"):
+        build.tower(
+            catalog, geometry_id=geometry_id, name="tower", ground_wire=wire,
+            circuits=[dict(circuit_id=kept, conductor=conductor, bundle=build.bundle(subconductor_count=1), insulator=insulator)],
+        )

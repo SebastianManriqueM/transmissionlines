@@ -7,7 +7,7 @@ see :doc:`../how-to/conductor`. The ``ACCC`` family has standard and ULS
 variants, ACSS has strength variants, and ACSS/TW contains shaped-wire rows. A codeword
 alone is not a unique selector. The PDF-backed fields include weight (lb/kft),
 rated breaking strength (lb), total material area (in2), and temperature-specific
-resistance and ampacity. Missing measurements remain null. ``ConductorV2Record``
+resistance and ampacity. Missing measurements remain null. ``ConductorRecord``
 retains the original conditions; the runtime equipment maps weight and strength
 to force units (lbf/kft and lbf) and only a published 75 C ampacity to the
 unqualified ``ampacity`` field.

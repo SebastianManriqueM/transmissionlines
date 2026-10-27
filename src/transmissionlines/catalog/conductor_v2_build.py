@@ -11,19 +11,12 @@ from typing import Any
 import pandas as pd
 import pymupdf
 
-from transmissionlines.catalog.aac_pdf import extract_aac
-from transmissionlines.catalog.accc_pdf import extract_accc
-from transmissionlines.catalog.acsr_aw_pdf import extract_acsr_aw
-from transmissionlines.catalog.acsr_pdf import extract_acsr
-from transmissionlines.catalog.acsr_tw_pdf import extract_acsr_tw_areas
-from transmissionlines.catalog.acss_hs285_tw_pdf import HS285TWSourceRow, extract_acss_hs285_tw
-from transmissionlines.catalog.acss_pdf import extract_acss
-from transmissionlines.catalog.acss_tw_pdf import extract_acss_tw_areas
 from transmissionlines.catalog.conductor_staging import StagingIssue, stage_sources
 from transmissionlines.catalog.conductor_v2 import project_conductor
 from transmissionlines.catalog.importer import sha256_file
 from transmissionlines.catalog.mechanical_area import resolve_areas
-from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorV2Record
+from transmissionlines.catalog.pdf_tables import SourceRow, extract
+from transmissionlines.catalog.schemas import ConductorFieldProvenance, ConductorRecord
 
 
 PINNED_SOURCES = {
@@ -55,7 +48,7 @@ def _issue_row(issue: StagingIssue) -> dict[str, Any]:
     }
 
 
-def _crosswalk(v1: pd.DataFrame, records: list[ConductorV2Record]) -> list[dict[str, Any]]:
+def _crosswalk(v1: pd.DataFrame, records: list[ConductorRecord]) -> list[dict[str, Any]]:
     index: dict[tuple[str, str, Decimal, str | None], list[str]] = {}
     for record in records:
         if record.codeword is None or record.size is None:
@@ -123,8 +116,8 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
         if digest != PINNED_SOURCES[name]:
             raise ValueError(f"source checksum mismatch: {name}")
         source_info.append({"path": name, "sha256": digest})
-    hs285_rows = extract_acss_hs285_tw(sources[7])
-    electrical_index: dict[tuple[str, str | None, str, str | None], HS285TWSourceRow] = {}
+    hs285_rows = extract(sources[7])
+    electrical_index: dict[tuple[str, str | None, str, str | None], SourceRow] = {}
     for row in hs285_rows:
         if row.page not in (4, 6):
             continue
@@ -133,13 +126,12 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
             raise ValueError(f"duplicate HS285 electrical identity: {key}")
         electrical_index[key] = row
     staged = stage_sources(
-        aac=extract_aac(sources[1]), acsr=extract_acsr(sources[2]),
-        acsr_aw=extract_acsr_aw(sources[3]), acss=extract_acss(sources[5]),
-        hs285_tw=hs285_rows, accc=extract_accc(sources[8]),
+        aac=extract(sources[1]), acsr=extract(sources[2]),
+        acsr_aw=extract(sources[3]), acss=extract(sources[5]),
+        hs285_tw=hs285_rows, accc=extract(sources[8]),
     )
     resolved = resolve_areas(
-        staged, acsr_tw=extract_acsr_tw_areas(sources[4]),
-        acss_tw=extract_acss_tw_areas(sources[6]),
+        staged, acsr_tw=extract(sources[4]), acss_tw=extract(sources[6]),
     )
     if len(resolved.records) != 641 or any(record.area is None for record in resolved.records):
         raise ValueError("unexpected conductor inventory or missing area")
@@ -170,7 +162,7 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
         shutil.copyfile(v1 / f"{name}.parquet", output / f"{name}.parquet")
     tables["conductors"] = _write_table(
         output, "conductors", (record.model_dump(mode="json") for record in records),
-        list(ConductorV2Record.model_fields),
+        list(ConductorRecord.model_fields),
     )
     tables["conductor_provenance"] = _write_table(
         output, "conductor_provenance", (entry.model_dump(mode="json") for entry in provenance),
@@ -189,7 +181,7 @@ def build_conductor_catalog(root: str | Path, output: str | Path) -> dict[str, A
     for name, metadata in tables.items():
         metadata["sha256"] = sha256_file(output / f"{name}.parquet")
     manifest = {
-        "catalog_version": "v2", "schema_version": "4.2.0",
+        "catalog_version": "v2", "schema_version": "5.0.0",
         "extraction_version": "1", "parser_version": pymupdf.VersionBind,
         "sources": source_info, "tables": dict(sorted(tables.items())),
         "normalization": "PDF source row keys and explicit strength variants; no workbook conductor values",

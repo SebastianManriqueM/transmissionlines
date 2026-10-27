@@ -1,6 +1,7 @@
 """Selected cable components and per-circuit installation inputs."""
 
 from abc import ABC, abstractmethod
+import math
 from typing import Literal
 
 from infrasys import Component
@@ -9,37 +10,44 @@ from pydantic import model_validator
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.units import (
-    BundleSpacing,
-    CableDiameter,
-    CableGMR,
-    ConductorWeight,
+    Distance,
+    ForcePerLength,
     Current,
-    MaterialArea,
-    RatedBreakingStrength,
-    ResistancePerKft,
+    Area,
+    Force,
+    ResistancePerLength,
 )
 
 
 class BareConductorEquipment(LineDataModel):
     """Measured or manufacturer-provided conductor properties."""
 
-    conductor_diameter: CableDiameter | None = None
-    conductor_gmr: CableGMR | None = None
-    capacitance_radius: CableGMR | None = None
+    conductor_diameter: Distance | None = None
+    conductor_gmr: Distance | None = None
+    capacitance_radius: Distance | None = None
     ampacity: Current | None = None
-    ac_resistance: ResistancePerKft | None = None
+    ac_resistance: ResistancePerLength | None = None
     emergency_ampacity: Current | None = None
-    dc_resistance: ResistancePerKft | None = None
-    weight: ConductorWeight | None = None
-    rated_breaking_strength: RatedBreakingStrength | None = None
-    total_material_area: MaterialArea | None = None
+    dc_resistance: ResistancePerLength | None = None
+    weight: ForcePerLength | None = None
+    rated_breaking_strength: Force | None = None
+    total_material_area: Area | None = None
+
+    @model_validator(mode="after")
+    def validate_measurements(self) -> "BareConductorEquipment":
+        """Reject nonpositive or non-finite measurements; absent ones stay None."""
+        for field in type(self).model_fields:
+            value = getattr(self, field)
+            if value is not None and not (math.isfinite(value.magnitude) and value.magnitude > 0):
+                raise ValueError(f"{field} must be finite and positive")
+        return self
 
 
 class BundleSpec(LineDataModel):
     """Describe the number and separation of installed subconductors."""
 
     subconductor_count: int
-    subconductor_spacing: BundleSpacing | None = None
+    subconductor_spacing: Distance | None = None
 
     @model_validator(mode="after")
     def validate_spacing(self) -> "BundleSpec":

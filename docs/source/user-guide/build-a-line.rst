@@ -17,8 +17,8 @@ The :doc:`../quickstart` walks through this workflow, and the complete
 :doc:`../how-to/build-cross-section-line` script runs from the checkout.
 For uncataloged equipment or routed lines with real terminal buses and
 ordered spans, use the lower-level model and builder APIs.
-The functions :func:`transmissionlines.api.build_transmission_line` and
-:func:`transmissionlines.api.assemble_line_into_system` are helpers for
+The functions :func:`transmissionlines.builders.system.build_transmission_line` and
+:func:`transmissionlines.builders.system.assemble_line_into_system` are helpers for
 resolving and registering buses, configuration,
 route components, and line into a ``TransmissionLineSystem``. System assembly
 validates the candidate before registering new components.

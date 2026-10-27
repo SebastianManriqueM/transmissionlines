@@ -22,7 +22,7 @@ def test_build_v2_preserves_v1_and_publishes_auditable_conductors(tmp_path: Path
     manifest = build_conductor_catalog(ROOT, output)
 
     assert manifest["catalog_version"] == "v2"
-    assert manifest["schema_version"] == "4.2.0"
+    assert manifest["schema_version"] == "5.0.0"
     assert "generated_at" not in manifest
     assert validate_catalog(output, source_root=ROOT) == []
     assert {file.name: file.read_bytes() for file in v1.iterdir() if file.is_file()} == original

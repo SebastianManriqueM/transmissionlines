@@ -12,14 +12,14 @@ from pydantic import ValidationError
 
 from transmissionlines.models.base import LineDataModel, OperationAttribute
 from transmissionlines.system import SCHEMA_VERSION, TransmissionLineSystem
-from transmissionlines.units import Current, TowerCoordinate, VoltageKV
+from transmissionlines.units import Current, Distance, Voltage
 
 
 class ProbeValue(LineDataModel):
     """Embedded value used to prove value-model serialization."""
 
     label: str
-    clearance: TowerCoordinate
+    clearance: Distance
 
 
 class ProbeBus(Component):
@@ -33,7 +33,7 @@ class ProbeLine(Component):
 
     from_bus: ProbeBus
     to_bus: ProbeBus
-    design_voltage: VoltageKV
+    design_voltage: Voltage
     embedded: ProbeValue
 
 
@@ -57,17 +57,17 @@ class ProbeNestedReferenceLine(Component):
 
 
 def test_line_data_model_is_frozen_and_rejects_extra_fields() -> None:
-    value = ProbeValue(label="clearance", clearance=TowerCoordinate(12, "foot"))
+    value = ProbeValue(label="clearance", clearance=Distance(12, "foot"))
 
     with pytest.raises(ValidationError, match="frozen"):
         value.label = "mutated"
 
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        ProbeValue(label="clearance", clearance=TowerCoordinate(12, "foot"), extra=1)  # type: ignore[call-arg]
+        ProbeValue(label="clearance", clearance=Distance(12, "foot"), extra=1)  # type: ignore[call-arg]
 
 
 def test_component_names_are_required_and_immutable_but_attributes_are_unnamed() -> None:
-    value = ProbeValue(label="substation", clearance=TowerCoordinate(1, "foot"))
+    value = ProbeValue(label="substation", clearance=Distance(1, "foot"))
     bus = ProbeBus(name="bus-a", location=value)
     attribute = ProbeAttribute(metric_name="rating", nominal_current=Current(500, "ampere"))
 
@@ -87,18 +87,18 @@ def test_project_quantities_share_infrasys_registry_and_preserve_units_in_json_r
     system = TransmissionLineSystem(name="quantity-test")
     bus_a = ProbeBus(
         name="bus-a",
-        location=ProbeValue(label="a", clearance=TowerCoordinate(36, "inch")),
+        location=ProbeValue(label="a", clearance=Distance(36, "inch")),
     )
     bus_b = ProbeBus(
         name="bus-b",
-        location=ProbeValue(label="b", clearance=TowerCoordinate(2, "foot")),
+        location=ProbeValue(label="b", clearance=Distance(2, "foot")),
     )
     line = ProbeLine(
         name="line-a-b",
         from_bus=bus_a,
         to_bus=bus_b,
-        design_voltage=VoltageKV(230, "kilovolt"),
-        embedded=ProbeValue(label="embedded", clearance=TowerCoordinate(1.5, "foot")),
+        design_voltage=Voltage(230, "kilovolt"),
+        embedded=ProbeValue(label="embedded", clearance=Distance(1.5, "foot")),
     )
     system.add_components(bus_a, bus_b, line)
 
@@ -116,15 +116,15 @@ def test_project_quantities_share_infrasys_registry_and_preserve_units_in_json_r
     assert loaded_line.design_voltage.magnitude == 230
     assert loaded_line.embedded.clearance.units == ureg.Unit("foot")
     assert loaded_line.embedded.clearance.magnitude == 1.5
-    assert TowerCoordinate._REGISTRY is ureg
-    assert VoltageKV._REGISTRY is ureg
+    assert Distance._REGISTRY is ureg
+    assert Voltage._REGISTRY is ureg
 
 
 def test_supplemental_attribute_and_time_series_sidecar_round_trip(tmp_path: Path) -> None:
     system = TransmissionLineSystem(name="attribute-test")
     bus = ProbeBus(
         name="bus-a",
-        location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+        location=ProbeValue(label="a", clearance=Distance(1, "foot")),
     )
     attribute = ProbeAttribute(metric_name="rating", nominal_current=Current(750, "ampere"))
     samples = SingleTimeSeries(
@@ -159,7 +159,7 @@ def test_legacy_system_format_is_rejected(tmp_path: Path) -> None:
     system = TransmissionLineSystem(name="schema-test")
     bus = ProbeBus(
         name="bus-a",
-        location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+        location=ProbeValue(label="a", clearance=Distance(1, "foot")),
     )
     system.add_component(bus)
     path = tmp_path / "system.json"
@@ -185,7 +185,7 @@ def test_legacy_package_schema_is_rejected_when_infrasys_format_is_current(
     system.add_component(
         ProbeBus(
             name="bus-a",
-            location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+            location=ProbeValue(label="a", clearance=Distance(1, "foot")),
         )
     )
     path = tmp_path / "legacy-package-schema.json"
@@ -211,7 +211,7 @@ def test_unknown_package_schema_is_rejected_when_infrasys_format_is_current(
     system.add_component(
         ProbeBus(
             name="bus-a",
-            location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+            location=ProbeValue(label="a", clearance=Distance(1, "foot")),
         )
     )
     path = tmp_path / "unknown-package-schema.json"
@@ -236,7 +236,7 @@ def test_infrasys_does_not_round_trip_component_references_nested_inside_value_m
     system = TransmissionLineSystem(name="nested-reference-test")
     bus = ProbeBus(
         name="bus-a",
-        location=ProbeValue(label="a", clearance=TowerCoordinate(1, "foot")),
+        location=ProbeValue(label="a", clearance=Distance(1, "foot")),
     )
     line = ProbeNestedReferenceLine(name="line", nested=NestedReferenceValue(owner=bus))
     system.add_components(bus, line)
@@ -250,3 +250,23 @@ def test_infrasys_does_not_round_trip_component_references_nested_inside_value_m
 
     assert loaded_line.nested.owner.uuid == loaded_bus.uuid
     assert loaded_line.nested.owner is not loaded_bus
+
+
+@pytest.mark.parametrize("ampacity", [0.0, -1.0, float("nan"), float("inf")])
+def test_conductor_equipment_rejects_nonpositive_measurements(ampacity: float) -> None:
+    from transmissionlines.models.cables import BareConductorEquipment
+
+    assert BareConductorEquipment(ampacity=None).ampacity is None
+    with pytest.raises(ValidationError, match="ampacity must be finite and positive"):
+        BareConductorEquipment(ampacity=Current(ampacity, "ampere"))
+
+
+def test_quantity_fields_reject_bare_numbers() -> None:
+    from transmissionlines.models.cables import BundleSpec
+    from transmissionlines.models.geometry import CablePosition
+
+    assert CablePosition(x=Distance(3, "foot"), y=Distance(30, "foot")).x == Distance(3, "foot")
+    with pytest.raises(ValidationError, match="x needs explicit units"):
+        CablePosition(x=3, y=Distance(30, "foot"))
+    with pytest.raises(ValidationError, match="subconductor_spacing needs explicit units"):
+        BundleSpec(subconductor_count=2, subconductor_spacing=18)

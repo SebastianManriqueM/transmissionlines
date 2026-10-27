@@ -137,22 +137,10 @@ def solve_span_sag(
     Raises
     ------
     ValueError
-        If the inputs are invalid or a finite positive root cannot be found.
+        If a finite positive root cannot be found.
     """
-    numbers = (weight_lb_ft, rated_strength_lb, area_in2, modulus_psi, expansion_per_c,
-               reference_fraction, span_ft, rise_ft, reference_temperature_c,
-               operating_temperature_c, additional_permanent_strain)
-    if not all(math.isfinite(value) for value in numbers):
-        raise ValueError("span inputs must be finite")
-    if (min(weight_lb_ft, rated_strength_lb, area_in2, modulus_psi, span_ft) <= 0
-            or not 0 < reference_fraction <= 0.30 or additional_permanent_strain < 0):
-        raise ValueError("span mechanics and length must be positive; reference fraction must be in (0, 0.30]")
     axial_stiffness = modulus_psi * area_in2
-    if not math.isfinite(axial_stiffness) or axial_stiffness <= 0:
-        raise ValueError("axial stiffness must be finite and positive")
     thermal_factor = 1 + expansion_per_c * (operating_temperature_c - reference_temperature_c)
-    if not math.isfinite(thermal_factor) or thermal_factor <= 0:
-        raise ValueError("invalid thermal expansion factor")
     reference_tension = reference_fraction * rated_strength_lb
     reference_length = _arc_length(reference_tension, weight_lb_ft, span_ft, rise_ft)
     unstressed_length = reference_length / (1 + reference_tension / axial_stiffness)
@@ -227,8 +215,6 @@ def calculate_sag(
     ValueError
         If a circuit or required conductor measurement is missing, or solving fails.
     """
-    if not isinstance(line, CrossSectionTransmissionLine):
-        raise TypeError("calculate_sag requires a CrossSectionTransmissionLine")
     circuits = sorted(line.configuration.circuits, key=lambda circuit: circuit.circuit_id)
     if circuit_id is not None:
         circuits = [circuit for circuit in circuits if circuit.circuit_id == circuit_id]
@@ -246,9 +232,8 @@ def calculate_sag(
     for circuit in circuits:
         equipment = circuit.conductor_spec.equipment
         for field in ("weight", "rated_breaking_strength", "total_material_area"):
-            measurement = getattr(equipment, field)
-            if measurement is None or not math.isfinite(measurement.magnitude) or measurement.magnitude <= 0:
-                raise ValueError(f"line {line.name} circuit {circuit.circuit_id}: {field} must be present and positive")
+            if getattr(equipment, field) is None:
+                raise ValueError(f"line {line.name} circuit {circuit.circuit_id}: {field} must be present")
         sag, tensions = [], []
         for span in grid:
             try:

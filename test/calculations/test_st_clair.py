@@ -9,7 +9,6 @@ from transmissionlines.calculations.st_clair import (
     calculate_st_clair,
     nominal_pi_to_equivalent_pi,
 )
-from transmissionlines.api import calculate_st_clair_curve, plot_st_clair_curve
 from transmissionlines.models.st_clair import StClairOptions
 from transmissionlines.plotting.st_clair import plot_st_clair_curve as plot_st_clair_result
 
@@ -147,8 +146,8 @@ def test_public_explicit_api_and_numerical_import_do_not_require_plotting(monkey
         return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", reject_matplotlib)
-    result = calculate_st_clair_curve(
-        positive_sequence=_input(),
+    result = calculate_st_clair(
+        _input(),
         options=StClairOptions(line_length_start_mi=20, line_length_stop_mi=20),
     )
     assert result.curves[0].circuit_id == "c1"
@@ -197,7 +196,7 @@ def test_plotting_shows_voltage_limit_when_stability_is_binding() -> None:
     assert min(curve.abs_er_pu) > options.receiving_voltage_limit_pu
     assert max(curve.abs_er_pu) > min(curve.abs_er_pu)
 
-    axes = plot_st_clair_curve(result, show_voltage_limit=True)
+    axes = plot_st_clair_result(result, show_voltage_limit=True)
     voltage_axes = axes.figure.axes[1]
     voltage_lines = {line.get_label(): line for line in voltage_axes.lines}
     legend_labels = [text.get_text() for text in axes.get_legend().get_texts()]

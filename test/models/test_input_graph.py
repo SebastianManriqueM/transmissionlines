@@ -19,7 +19,7 @@ from transmissionlines.models.configurations import CircuitConfiguration, TowerC
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.routing import ElectricalTower, LineSpan, RouteGeometry, StartEnd
 from transmissionlines.system import TransmissionLineSystem
-from transmissionlines.units import Angle, BundleSpacing, EarthResistivity, Frequency, TowerCoordinate, VoltageKV
+from transmissionlines.units import Angle, Distance, Resistivity, Frequency, Voltage
 
 
 def _configuration() -> TowerConfiguration:
@@ -30,10 +30,10 @@ def _configuration() -> TowerConfiguration:
         identification_info=IdentificationInfo(),
         geometry=TowerGeometry(
             phase_positions=[
-                PhasePosition(circuit_id="c1", phase=phase, x=TowerCoordinate(0, "foot"), y=TowerCoordinate(30, "foot"))
+                PhasePosition(circuit_id="c1", phase=phase, x=Distance(0, "foot"), y=Distance(30, "foot"))
                 for phase in ("A", "B", "C")
             ],
-            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=TowerCoordinate(0, "foot"), y=TowerCoordinate(40, "foot"))],
+            ground_wire_positions=[GroundWirePosition(wire_id="g1", x=Distance(0, "foot"), y=Distance(40, "foot"))],
         ),
         ground_wire_spec=ground,
         circuits=[CircuitConfiguration(
@@ -52,9 +52,9 @@ def test_cross_section_requires_representative_configuration_without_route() -> 
     configuration = _configuration()
     electrical = dict(
         name="cross",
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
 
     assert issubclass(AbstractTransmissionLine, ABC)
@@ -118,9 +118,9 @@ def test_wgs84_boundaries_accept_radian_coordinates() -> None:
 def test_routed_line_requires_real_ordered_spans_and_terminal_towers() -> None:
     from_bus, to_bus, start, end, span = _route()
     electrical = dict(
-        name="route", nominal_voltage=VoltageKV(230, "kilovolt"),
+        name="route", nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
         from_bus=from_bus, to_bus=to_bus,
     )
     line = RoutedTransmissionLine(**electrical, spans=[span])
@@ -142,9 +142,9 @@ def test_routed_line_requires_real_ordered_spans_and_terminal_towers() -> None:
 def test_routed_line_rejects_disconnected_or_mismatched_geometry() -> None:
     from_bus, to_bus, start, end, span = _route()
     electrical = dict(
-        name="route", nominal_voltage=VoltageKV(230, "kilovolt"),
+        name="route", nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
         from_bus=from_bus, to_bus=to_bus,
     )
     with pytest.raises(ValidationError, match="endpoint"):
@@ -171,9 +171,9 @@ def test_route_rejects_missing_physical_roles_duplicate_ids_and_same_endpoints()
             name="route", from_bus=Bus(name="from", location=start.location),
             to_bus=Bus(name="to", location=end.location),
             spans=[span.model_copy(update={"sequence": 1})],
-            nominal_voltage=VoltageKV(230, "kilovolt"),
+            nominal_voltage=Voltage(230, "kilovolt"),
             nominal_frequency=Frequency(60, "hertz"),
-            earth_resistivity=EarthResistivity(100, "ohm * meter"),
+            earth_resistivity=Resistivity(100, "ohm * meter"),
         )
 
 
@@ -190,9 +190,9 @@ def test_multiple_spans_require_shared_join_and_unique_support_and_span_ids() ->
     )
     electrical = dict(
         name="route", from_bus=from_bus, to_bus=Bus(name="to", location=end.location),
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     assert len(RoutedTransmissionLine(**electrical, spans=[first, second]).spans) == 2
     other_middle = ElectricalTower(
@@ -222,9 +222,9 @@ def test_routed_line_accepts_different_tower_configurations_without_line_configu
     span = span.model_copy(update={"start_end": StartEnd(name="new-endpoints", start=start, end=end)})
     line = RoutedTransmissionLine(
         name="route", from_bus=from_bus, to_bus=Bus(name="to", location=end.location),
-        spans=[span], nominal_voltage=VoltageKV(230, "kilovolt"),
+        spans=[span], nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
 
     assert line.spans[0].start_end.start.configuration.name == "standard"
@@ -239,7 +239,7 @@ def test_registered_circuits_can_share_one_conductor_after_reload(tmp_path) -> N
     configuration = _configuration()
     geometry = configuration.geometry
     second_positions = [
-        PhasePosition(circuit_id="c2", phase=phase, x=TowerCoordinate(10, "foot"), y=TowerCoordinate(30, "foot"))
+        PhasePosition(circuit_id="c2", phase=phase, x=Distance(10, "foot"), y=Distance(30, "foot"))
         for phase in ("A", "B", "C")
     ]
     second = CircuitConfiguration(
@@ -256,9 +256,9 @@ def test_registered_circuits_can_share_one_conductor_after_reload(tmp_path) -> N
     })
     line = CrossSectionTransmissionLine(
         name="shared-cable", configuration=configuration,
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     system = TransmissionLineSystem(name="shared-cable")
     assemble_line_into_system(system, line)
@@ -274,9 +274,9 @@ def test_registered_circuits_can_share_one_conductor_after_reload(tmp_path) -> N
 def test_builder_reuses_identical_configuration_and_rejects_conflicts_before_mutation() -> None:
     system = TransmissionLineSystem(name="inputs")
     electrical = dict(
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     first = assemble_line_into_system(system, CrossSectionTransmissionLine(
         name="first", configuration=_configuration(), **electrical,
@@ -312,9 +312,9 @@ def test_assembly_revalidates_route_after_canonicalizing_terminal_buses() -> Non
     })
     line = RoutedTransmissionLine(
         name="co-located-route", from_bus=from_bus, to_bus=to_bus, spans=[span],
-        nominal_voltage=VoltageKV(230, "kilovolt"),
+        nominal_voltage=Voltage(230, "kilovolt"),
         nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=EarthResistivity(100, "ohm * meter"),
+        earth_resistivity=Resistivity(100, "ohm * meter"),
     )
     system = TransmissionLineSystem(name="canonicalized-route")
 
@@ -336,7 +336,7 @@ def test_configuration_shares_conductor_but_keeps_bundle_and_insulator_per_circu
     )
     circuit_b = CircuitConfiguration(
         name="b", circuit_id="b", conductor_spec=conductor,
-        bundle_spec=BundleSpec(subconductor_count=2, subconductor_spacing=BundleSpacing(18, "inch")),
+        bundle_spec=BundleSpec(subconductor_count=2, subconductor_spacing=Distance(18, "inch")),
         insulator_string=insulator,
     )
 
@@ -355,15 +355,15 @@ def test_configuration_shares_conductor_but_keeps_bundle_and_insulator_per_circu
 def test_builder_registers_only_selected_input_graph_and_round_trips(variant: str, tmp_path) -> None:
     if variant == "cross":
         line = CrossSectionTransmissionLine(
-            name="cross", configuration=_configuration(), nominal_voltage=VoltageKV(230, "kilovolt"),
-            nominal_frequency=Frequency(60, "hertz"), earth_resistivity=EarthResistivity(100, "ohm * meter"),
+            name="cross", configuration=_configuration(), nominal_voltage=Voltage(230, "kilovolt"),
+            nominal_frequency=Frequency(60, "hertz"), earth_resistivity=Resistivity(100, "ohm * meter"),
         )
     else:
         from_bus, to_bus, _, _, span = _route()
         line = RoutedTransmissionLine(
             name="route", from_bus=from_bus, to_bus=to_bus, spans=[span],
-            nominal_voltage=VoltageKV(230, "kilovolt"), nominal_frequency=Frequency(60, "hertz"),
-            earth_resistivity=EarthResistivity(100, "ohm * meter"),
+            nominal_voltage=Voltage(230, "kilovolt"), nominal_frequency=Frequency(60, "hertz"),
+            earth_resistivity=Resistivity(100, "ohm * meter"),
         )
     system = TransmissionLineSystem(name="input")
     registered = assemble_line_into_system(system, line)

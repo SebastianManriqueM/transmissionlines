@@ -68,9 +68,9 @@ Instead, place identity-bearing component references directly on registered comp
 ```python
 class LineTechnicalInfo(LineDataModel):
     line_name: str
-    nominal_voltage: VoltageKV
+    nominal_voltage: Voltage
     nominal_frequency: Frequency
-    earth_resistivity: EarthResistivity
+    earth_resistivity: Resistivity
 
 
 class TransmissionLine(Component):

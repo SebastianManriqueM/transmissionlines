@@ -4,18 +4,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Iterable
 
-from transmissionlines.catalog.aac_pdf import AACSourceRow
-from transmissionlines.catalog.accc_pdf import ACCCSourceRow
 from transmissionlines.catalog.accc_variants import stage_accc_variants
-from transmissionlines.catalog.acsr_aw_pdf import ACSRAWSourceRow
-from transmissionlines.catalog.acsr_pdf import ACSRSourceRow, SourceCell
-from transmissionlines.catalog.acsr_tw_pdf import TWAreaSourceRow
-from transmissionlines.catalog.acss_hs285_tw_pdf import HS285TWSourceRow
-from transmissionlines.catalog.acss_pdf import ACSSSourceRow
-from transmissionlines.catalog.acss_tw_pdf import ACSSTWAreaSourceRow
-
-
-SourceRow = ACSRSourceRow | ACSRAWSourceRow | ACSSSourceRow | AACSourceRow | ACCCSourceRow | HS285TWSourceRow
+from transmissionlines.catalog.pdf_tables import SourceCell, SourceRow
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -42,7 +32,7 @@ class StagingIssue:
     row_key: str
     reason: str
     field: str
-    source_values: tuple[tuple[SourceRow | TWAreaSourceRow | ACSSTWAreaSourceRow, Decimal], ...] = ()
+    source_values: tuple[tuple[SourceRow, Decimal], ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,12 +43,12 @@ class StagingResult:
     issues: list[StagingIssue]
 
 
-def stage_acss(rows: Iterable[ACSSSourceRow]) -> list[ConductorCandidate]:
+def stage_acss(rows: Iterable[SourceRow]) -> list[ConductorCandidate]:
     """Stage one ACSS candidate for each printed strength grade.
 
     Parameters
     ----------
-    rows : Iterable[ACSSSourceRow]
+    rows : Iterable[SourceRow]
         Round-wire source rows from the ACSS PDF.
 
     Returns
@@ -94,12 +84,12 @@ def stage_acss(rows: Iterable[ACSSSourceRow]) -> list[ConductorCandidate]:
 
 def stage_sources(
     *,
-    acsr: Iterable[ACSRSourceRow] = (),
-    acsr_aw: Iterable[ACSRAWSourceRow] = (),
-    acss: Iterable[ACSSSourceRow] = (),
-    aac: Iterable[AACSourceRow] = (),
-    accc: Iterable[ACCCSourceRow] = (),
-    hs285_tw: Iterable[HS285TWSourceRow] = (),
+    acsr: Iterable[SourceRow] = (),
+    acsr_aw: Iterable[SourceRow] = (),
+    acss: Iterable[SourceRow] = (),
+    aac: Iterable[SourceRow] = (),
+    accc: Iterable[SourceRow] = (),
+    hs285_tw: Iterable[SourceRow] = (),
 ) -> StagingResult:
     """Stage strength-backed PDF candidates without writing catalog files.
 

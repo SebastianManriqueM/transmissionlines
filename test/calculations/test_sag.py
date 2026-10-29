@@ -14,30 +14,22 @@ from transmissionlines.models.cables import BareConductorEquipment
 from transmissionlines.models.configurations import TowerConfiguration
 from transmissionlines.models.geometry import PhasePosition, TowerGeometry
 from transmissionlines.models.sag import SagCurveResult, SagOptions
-from transmissionlines.units import (
-    Distance,
-    ForcePerLength,
-    Pressure,
-    Area,
-    Force,
-    Temperature,
-    InverseTemperature,
-)
+from transmissionlines.units import Quantity
 from test.integration.test_line_electrical_orchestration import _circuit, _line
 
 
 def _options(**overrides: object) -> SagOptions:
-    values = {"elastic_modulus": Pressure(11.5e6, "psi"),
-              "thermal_expansion_coefficient": InverseTemperature(19.3e-6, "1 / kelvin"), **overrides}
+    values = {"elastic_modulus_psi": 11.5e6,
+              "thermal_expansion_per_k": 19.3e-6, **overrides}
     return SagOptions(**values)
 
 
 def _mechanical_line():
     line = _line()
     line.configuration.circuits[0].conductor_spec.equipment = BareConductorEquipment(
-        weight=ForcePerLength(656, "pound_force / kilofoot"),
-        rated_breaking_strength=Force(19500, "pound_force"),
-        total_material_area=Area(0.435, "inch ** 2"),
+        weight_lb_kft=656,
+        rated_strength_lb=19500,
+        total_area_in2=0.435,
     )
     return line
 
@@ -52,31 +44,31 @@ def test_solver_numerical_limits_are_named() -> None:
 
 def test_options_require_physical_quantities_and_convert_mixed_units() -> None:
     defaults = _options()
-    assert defaults.reference_temperature.to("degC").magnitude == pytest.approx(25)
-    assert defaults.operating_temperature.to("degC").magnitude == pytest.approx(75)
-    assert defaults.span_start.to("foot").magnitude == pytest.approx(20)
-    assert defaults.span_stop.to("foot").magnitude == pytest.approx(2000)
-    assert defaults.span_step.to("foot").magnitude == pytest.approx(10)
-    assert defaults.elevation_difference.to("foot").magnitude == pytest.approx(0)
+    assert defaults.reference_temperature_c == pytest.approx(25)
+    assert defaults.operating_temperature_c == pytest.approx(75)
+    assert defaults.span_start_ft == pytest.approx(20)
+    assert defaults.span_stop_ft == pytest.approx(2000)
+    assert defaults.span_step_ft == pytest.approx(10)
+    assert defaults.elevation_difference_ft == pytest.approx(0)
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
     mixed = _options(
-        reference_temperature=Temperature(77, "degF"),
-        operating_temperature=Temperature(348.15, "kelvin"),
-        span_start=Distance(121.92, "meter"),
-        span_stop=Distance(400, "foot"),
-        span_step=Distance(3.048, "meter"),
-        elevation_difference=Distance(30.48, "meter"),
+        reference_temperature_c=Quantity(77, "degF"),
+        operating_temperature_c=Quantity(348.15, "kelvin"),
+        span_start_ft=Quantity(121.92, "meter"),
+        span_stop_ft=400,
+        span_step_ft=Quantity(3.048, "meter"),
+        elevation_difference_ft=Quantity(30.48, "meter"),
     )
     result = calculate_sag(line, options=mixed)
     expected = calculate_sag(line, options=_options(
-        span_start=Distance(400, "foot"), span_stop=Distance(400, "foot"),
-        elevation_difference=Distance(100, "foot"),
+        span_start_ft=400, span_stop_ft=400,
+        elevation_difference_ft=100,
     ))
     assert result.curves[0].span_lengths_ft == pytest.approx([400])
     assert result.curves[0].sag_ft == pytest.approx(expected.curves[0].sag_ft)
     restored = SagCurveResult.model_validate_json(result.model_dump_json())
-    assert restored.options.elevation_difference.to("foot").magnitude == pytest.approx(100)
+    assert restored.options.elevation_difference_ft == pytest.approx(100)
     for field in ("reference_temperature", "operating_temperature", "span_start", "span_stop", "span_step", "elevation_difference"):
         with pytest.raises(ValidationError, match=field):
             _options(**{field: 25.0})
@@ -84,7 +76,7 @@ def test_options_require_physical_quantities_and_convert_mixed_units() -> None:
 
 def test_default_cross_section_grid_and_reference_sag() -> None:
     line = _mechanical_line()
-    options = _options(operating_temperature=Temperature(25, "degC"))
+    options = _options(operating_temperature_c=25)
 
     with pytest.warns(UserWarning, match="20%"):
         result = calculate_sag(line, options=options)
@@ -142,11 +134,11 @@ def test_permanent_strain_at_reference_temperature_still_changes_tension() -> No
 def test_custom_grid_exact_endpoint_and_bundle_uses_one_conductor() -> None:
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.30
-    base = calculate_sag(line, options=_options(span_start=Distance(21, "foot"), span_stop=Distance(42, "foot")))
+    base = calculate_sag(line, options=_options(span_start_ft=21, span_stop_ft=42))
     line.configuration.circuits[0].bundle_spec = line.configuration.circuits[0].bundle_spec.model_copy(
-        update={"subconductor_count": 2, "subconductor_spacing": Distance(18, "inch")}
+        update={"subconductor_count": 2, "subconductor_spacing_in": 18}
     )
-    result = calculate_sag(line, options=_options(span_start=Distance(21, "foot"), span_stop=Distance(42, "foot"), span_step=Distance(10, "foot")))
+    result = calculate_sag(line, options=_options(span_start_ft=21, span_stop_ft=42, span_step_ft=10))
     assert len(result.curves) == 1
     assert result.curves[0].span_lengths_ft == [21, 31, 41, 42]
     assert result.curves[0].horizontal_tension_lb[0] < 5850
@@ -158,7 +150,7 @@ def test_custom_grid_exact_endpoint_and_bundle_uses_one_conductor() -> None:
 def test_custom_grid_preserves_short_interval_beyond_absolute_tolerance() -> None:
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
-    result = calculate_sag(line, options=_options(span_stop=Distance(2000.000001, "foot")))
+    result = calculate_sag(line, options=_options(span_stop_ft=2000.000001))
 
     assert len(result.curves[0].span_lengths_ft) == 200
     assert result.curves[0].span_lengths_ft[-2:] == [2000, 2000.000001]
@@ -168,12 +160,12 @@ def test_all_circuits_and_explicit_selection_preserve_conductor_identity() -> No
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
     other = _circuit("c2", BareConductorEquipment(
-        weight=ForcePerLength(800, "pound_force / kilofoot"),
-        rated_breaking_strength=Force(22000, "pound_force"),
-        total_material_area=Area(0.5, "inch ** 2"),
+        weight_lb_kft=800,
+        rated_strength_lb=22000,
+        total_area_in2=0.5,
     ))
     phases = [*line.configuration.geometry.phase_positions, *[
-        PhasePosition(circuit_id="c2", phase=phase, x=Distance(index * 4, "foot"), y=Distance(30, "foot"))
+        PhasePosition(circuit_id="c2", phase=phase, x_ft=index * 4, y_ft=30)
         for index, phase in enumerate(("A", "B", "C"), start=4)
     ]]
     line.configuration = TowerConfiguration(
@@ -183,7 +175,7 @@ def test_all_circuits_and_explicit_selection_preserve_conductor_identity() -> No
         ground_wire_spec=line.configuration.ground_wire_spec,
         circuits=[other, *line.configuration.circuits],
     )
-    options = _options(span_start=Distance(400, "foot"), span_stop=Distance(400, "foot"), operating_temperature=Temperature(25, "degC"))
+    options = _options(span_start_ft=400, span_stop_ft=400, operating_temperature_c=25)
     result = calculate_sag(line, options=options)
     assert [curve.circuit_id for curve in result.curves] == ["c1", "c2"]
     assert result.curves[0].horizontal_tension_lb == [3900]
@@ -194,26 +186,24 @@ def test_all_circuits_and_explicit_selection_preserve_conductor_identity() -> No
         calculate_sag(line, options=options, circuit_id="absent")
 
 
-@pytest.mark.parametrize("field", ["weight", "rated_breaking_strength", "total_material_area"])
+@pytest.mark.parametrize("field", ["weight_lb_kft", "rated_strength_lb", "total_area_in2"])
 def test_missing_mechanics_identifies_circuit_and_field(field: str) -> None:
     line = _mechanical_line()
     line.configuration.circuits[0].conductor_spec.equipment = line.configuration.circuits[0].conductor_spec.equipment.model_copy(update={field: None})
     with pytest.warns(UserWarning, match="20%"):
         with pytest.raises(ValueError, match=f"circuit c1: {field}"):
-            calculate_sag(line, options=_options(span_stop=Distance(20, "foot")))
+            calculate_sag(line, options=_options(span_stop_ft=20))
 
 
 def test_options_and_line_tension_reject_invalid_inputs() -> None:
-    with pytest.raises(ValidationError):
-        _options(elastic_modulus=11.5e6)
-    with pytest.raises(ValidationError):
-        _options(thermal_expansion_coefficient=ForcePerLength(1, "pound_force / kilofoot"))
+    with pytest.raises(ValidationError, match="convertible to 1 / kelvin"):
+        _options(thermal_expansion_per_k=Quantity(1, "pound_force / kilofoot"))
     with pytest.raises(ValidationError, match="elastic_modulus"):
-        _options(elastic_modulus=Pressure(0, "psi"))
+        _options(elastic_modulus_psi=0)
     with pytest.raises(ValidationError, match="span lengths"):
-        _options(span_step=Distance(0, "foot"))
+        _options(span_step_ft=0)
     with pytest.raises(ValidationError, match="sag options must be finite"):
-        _options(elevation_difference=Distance(float("nan"), "foot"))
+        _options(elevation_difference_ft=float("nan"))
     line = _mechanical_line()
     with pytest.raises(ValidationError, match="everyday_tension_fraction"):
         line.everyday_tension_fraction = 0.31
@@ -241,11 +231,11 @@ def test_public_plot_and_result_round_trip() -> None:
     matplotlib.use("Agg")
     line = _mechanical_line()
     line.everyday_tension_fraction = 0.2
-    result = calculate_sag(line, options=_options(span_stop=Distance(40, "foot")))
+    result = calculate_sag(line, options=_options(span_stop_ft=40))
     restored = SagCurveResult.model_validate_json(result.model_dump_json())
     axes = plot_sag_curve(restored, circuit_id="c1")
 
-    assert restored.options.elastic_modulus.to("psi").magnitude == pytest.approx(11.5e6)
+    assert restored.options.elastic_modulus_psi == pytest.approx(11.5e6)
     assert restored.curves[0].conductor_uuid == line.configuration.circuits[0].conductor_spec.uuid
     assert axes.lines[0].get_xdata().tolist() == [20, 30, 40]
     assert axes.get_xlabel() == "Horizontal span (ft)"

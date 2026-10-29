@@ -29,7 +29,6 @@ from transmissionlines.models.electrical import ElectricalParameters, MatrixResu
 from transmissionlines.models.routing import ElectricalTower
 from transmissionlines.models.st_clair import StClairOptions, StClairResult
 from transmissionlines.models.geometry import CablePosition, TowerGeometry
-from transmissionlines.units import Frequency, Voltage
 
 def _matrix_result(
     name: str,
@@ -152,21 +151,21 @@ def _ordered_inputs(
         spec = phase_specs[phase.circuit_id]
         conductor = spec.conductor_spec.equipment
         bundle_gmr, equivalent_radius = derived_bundle_values(
-            conductor, spec.bundle_spec.subconductor_count, spec.bundle_spec.subconductor_spacing
+            conductor, spec.bundle_spec.subconductor_count, spec.bundle_spec.subconductor_spacing_in
         )
-        if bundle_gmr is None or equivalent_radius is None or conductor.ac_resistance is None:
+        if bundle_gmr is None or equivalent_radius is None or conductor.ac_resistance_ohm_kft is None:
             raise ValueError(f"missing required conductor value for circuit {phase.circuit_id}")
-        gmrs.append(bundle_gmr.to("foot").magnitude)
-        radii.append(equivalent_radius.to("foot").magnitude)
-        resistances.append(conductor.ac_resistance.to("ohm / kilofoot").magnitude)
+        gmrs.append(bundle_gmr)
+        radii.append(equivalent_radius)
+        resistances.append(conductor.ac_resistance_ohm_kft)
         counts.append(spec.bundle_spec.subconductor_count)
-    if ground_spec.equipment.conductor_diameter is None or ground_spec.equipment.dc_resistance is None:
+    ground = ground_spec.equipment
+    if ground.diameter_in is None or ground.dc_resistance_ohm_kft is None:
         raise ValueError("ground wire requires diameter and dc_resistance")
     for _ in grounds:
-        diameter = ground_spec.equipment.conductor_diameter.to("inch").magnitude
-        gmrs.append(ground_wire_gmr(diameter))
-        radii.append(diameter / 24.0)
-        resistances.append(ground_spec.equipment.dc_resistance.to("ohm / kilofoot").magnitude)
+        gmrs.append(ground_wire_gmr(ground.diameter_in))
+        radii.append(ground.diameter_in / 24.0)
+        resistances.append(ground.dc_resistance_ohm_kft)
         counts.append(1)
     return positions, gmrs, radii, resistances, counts, labels, len(phases)
 
@@ -250,9 +249,9 @@ def _line_electrical(
         configuration.geometry,
         phase_specs=configuration.circuits,
         ground_wire_spec=configuration.ground_wire_spec,
-        voltage=line.nominal_voltage.to("kilovolt"),
-        frequency=line.nominal_frequency.to("hertz"),
-        earth_resistivity=line.earth_resistivity.to("ohm * meter").magnitude,
+        voltage_kv=line.nominal_voltage_kv,
+        frequency_hz=line.nominal_frequency_hz,
+        earth_resistivity_ohm_m=line.earth_resistivity_ohm_m,
     )
 
 
@@ -265,18 +264,18 @@ def _st_clair_inputs(
     inputs = []
     for spec in configuration.circuits:
         equipment = spec.conductor_spec.equipment
-        if equipment.ampacity is None:
+        if equipment.ampacity_a is None:
             raise ValueError(f"missing conductor ampacity for {spec.circuit_id}")
         scalars = electrical.circuit_scalars[spec.circuit_id]
         inputs.append({
             "circuit_id": spec.circuit_id,
             "conductor_family": spec.conductor_spec.family,
             "conductor_codeword": spec.conductor_spec.codeword,
-            "nominal_voltage_kv": line.nominal_voltage.to("kilovolt").magnitude,
+            "nominal_voltage_kv": line.nominal_voltage_kv,
             "r_ohm_per_mile": scalars["r1"],
             "x_ohm_per_mile": scalars["x1"],
             "b_microsiemens_per_mile": scalars["b1"],
-            "conductor_ampacity_a": equipment.ampacity.to("ampere").magnitude,
+            "conductor_ampacity_a": equipment.ampacity_a,
             "subconductor_count": spec.bundle_spec.subconductor_count,
         })
     return inputs
@@ -308,9 +307,9 @@ def calculate_electrical(
     *,
     phase_specs: list[CircuitConfiguration],
     ground_wire_spec: GroundWireSpec,
-    voltage: Voltage,
-    frequency: Frequency,
-    earth_resistivity: float,
+    voltage_kv: float,
+    frequency_hz: float,
+    earth_resistivity_ohm_m: float,
 ) -> ElectricalParameters:
     """Calculate all Julia-parity electrical result matrices and scalars.
 
@@ -322,12 +321,8 @@ def calculate_electrical(
         One conductor/bundle specification per geometry circuit.
     ground_wire_spec : GroundWireSpec
         Shared ground-wire conductor properties.
-    voltage : Voltage
-        Nominal line-to-line system voltage.
-    frequency : Frequency
-        Power frequency.
-    earth_resistivity : float
-        Earth resistivity in ohm-meter.
+    voltage_kv, frequency_hz, earth_resistivity_ohm_m : float
+        Nominal line-to-line voltage, power frequency, and earth resistivity.
 
     Returns
     -------
@@ -341,16 +336,14 @@ def calculate_electrical(
         If required physical cable values are absent, or the geometry has more
         than two circuits.
     """
-    voltage = voltage.to("kilovolt")
-    frequency = frequency.to("hertz")
     specs = {spec.circuit_id: spec for spec in phase_specs}
     positions, gmrs, radii, resistances, counts, labels, phase_count = _ordered_inputs(geometry, specs, ground_wire_spec)
     ground_count = len(geometry.ground_wire_positions)
-    z_primitive = build_primitive_z(positions, gmrs=gmrs, resistances=resistances, bundle_counts=counts, frequency=frequency.magnitude, earth_resistivity=earth_resistivity)
-    p_primitive = build_primitive_p(positions, radii=radii, frequency=frequency.magnitude)
+    z_primitive = build_primitive_z(positions, gmrs=gmrs, resistances=resistances, bundle_counts=counts, frequency=frequency_hz, earth_resistivity=earth_resistivity_ohm_m)
+    p_primitive = build_primitive_p(positions, radii=radii, frequency=frequency_hz)
     z_kron = kron_reduce(z_primitive, phase_count, ground_count)
     p_kron = kron_reduce(p_primitive, phase_count, ground_count)
-    y_kron = shunt_admittance(p_kron, frequency.magnitude)
+    y_kron = shunt_admittance(p_kron, frequency_hz)
     z_sequence_nt = sequence_matrix(z_kron)
     y_sequence_nt = sequence_matrix(y_kron)
     circuits = phase_count // 3
@@ -371,7 +364,7 @@ def calculate_electrical(
     }
     r1, x1, b1 = (circuit_scalars[circuit_ids[0]][name] for name in ("r1", "x1", "b1"))
     z_sil = (x1 / (b1 / 1e6)) ** 0.5
-    scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage.magnitude**2 / z_sil)}
+    scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage_kv**2 / z_sil)}
     if circuits == 2:
         scalars.update({"r0_mutual": float(z_sequence[3, 0].real), "x0_mutual": float(z_sequence[3, 0].imag), "b0_mutual": float(y_sequence[3, 0].imag)})
     phase_labels = labels[:phase_count]
@@ -424,8 +417,8 @@ def calculate_electrical(
             for key in circuit_scalars
         },
         circuit_ampacity_a={
-            spec.circuit_id: spec.conductor_spec.equipment.ampacity.to("ampere").magnitude
-            for spec in phase_specs if spec.conductor_spec.equipment.ampacity is not None
+            spec.circuit_id: spec.conductor_spec.equipment.ampacity_a
+            for spec in phase_specs if spec.conductor_spec.equipment.ampacity_a is not None
         },
         circuit_subconductor_count={
             spec.circuit_id: spec.bundle_spec.subconductor_count for spec in phase_specs

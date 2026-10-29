@@ -4,7 +4,6 @@ from transmissionlines.builders.system import assemble_line_into_system
 from transmissionlines.models.assets import CrossSectionTransmissionLine
 from transmissionlines.models.configurations import TowerConfiguration
 from transmissionlines.system import TransmissionLineSystem
-from transmissionlines.units import Resistivity, Frequency, Voltage
 
 
 def cross_section_line(
@@ -13,9 +12,8 @@ def cross_section_line(
 ) -> CrossSectionTransmissionLine:
     """Create a standalone line with explicitly named engineering units."""
     return CrossSectionTransmissionLine(
-        name=name, configuration=tower, nominal_voltage=Voltage(voltage_kv, "kilovolt"),
-        nominal_frequency=Frequency(frequency_hz, "hertz"),
-        earth_resistivity=Resistivity(earth_resistivity_ohm_m, "ohm * meter"),
+        name=name, configuration=tower, nominal_voltage_kv=voltage_kv,
+        nominal_frequency_hz=frequency_hz, earth_resistivity_ohm_m=earth_resistivity_ohm_m,
         everyday_tension_fraction=everyday_tension_fraction,
     )
 

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from math import pi, sin
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from transmissionlines.units import Distance
 
 if TYPE_CHECKING:
     from transmissionlines.models.cables import BareConductorEquipment
@@ -55,24 +54,18 @@ def equivalent_radius(radius: float, count: int, spacing: float | None) -> float
 def derived_bundle_values(
     conductor: BareConductorEquipment,
     count: int,
-    spacing: Any,
-) -> tuple[Distance | None, Distance | None]:
-    """Derive typed bundle values from a runtime conductor.
+    spacing_in: float | None,
+) -> tuple[float | None, float | None]:
+    """Derive bundle GMR and equivalent capacitance radius, both in feet.
 
     ``capacitance_radius`` is parity-only catalog data derived from
     ``C_60Hz_Mohm_kft`` and takes precedence over physical diameter for the
     equivalent-radius calculation. It is intentionally optional at the model
     boundary because general runtime models may not have that catalog field.
     """
-    spacing_value = None if spacing is None else spacing.to("inch").magnitude
-    gmr = None if conductor.conductor_gmr is None else bundle_gmr(
-        conductor.conductor_gmr.to("foot").magnitude, count, spacing_value
-    )
-    radius_source = conductor.capacitance_radius or conductor.conductor_diameter
-    radius = None if radius_source is None else equivalent_radius(
-        radius_source.to("foot").magnitude if conductor.capacitance_radius is not None else radius_source.to("foot").magnitude / 2,
-        count,
-        spacing_value,
-    )
-    return (None if gmr is None else Distance(gmr, "foot"),
-            None if radius is None else Distance(radius, "foot"))
+    gmr = None if conductor.gmr_ft is None else bundle_gmr(conductor.gmr_ft, count, spacing_in)
+    radius_ft = conductor.capacitance_radius_ft
+    if radius_ft is None and conductor.diameter_in is not None:
+        radius_ft = conductor.diameter_in / 24
+    radius = None if radius_ft is None else equivalent_radius(radius_ft, count, spacing_in)
+    return gmr, radius

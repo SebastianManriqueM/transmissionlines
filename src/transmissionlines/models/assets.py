@@ -2,16 +2,14 @@
 
 from abc import ABC, abstractmethod
 import math
-from typing import Any
 
 from infrasys import Component
 from pydantic import ConfigDict, model_validator
 
-from transmissionlines.models.base import reject_bare_numbers
 from transmissionlines.models.common import Bus
 from transmissionlines.models.configurations import TowerConfiguration
 from transmissionlines.models.routing import LineSpan
-from transmissionlines.units import Resistivity, Frequency, Voltage
+from transmissionlines.units import Hertz, Kilovolts, OhmMeters
 
 
 class AbstractTransmissionLine(Component, ABC):
@@ -19,15 +17,10 @@ class AbstractTransmissionLine(Component, ABC):
 
     model_config = ConfigDict(extra="forbid")
 
-    nominal_voltage: Voltage
-    nominal_frequency: Frequency
-    earth_resistivity: Resistivity
+    nominal_voltage_kv: Kilovolts
+    nominal_frequency_hz: Hertz
+    earth_resistivity_ohm_m: OhmMeters
     everyday_tension_fraction: float | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _reject_bare_numbers(cls, data: Any) -> Any:
-        return reject_bare_numbers(cls, data)
 
     @model_validator(mode="after")
     def validate_everyday_tension(self) -> "AbstractTransmissionLine":
@@ -44,8 +37,8 @@ class AbstractTransmissionLine(Component, ABC):
     @model_validator(mode="after")
     def validate_electrical_inputs(self) -> "AbstractTransmissionLine":
         if any(
-            value.magnitude <= 0
-            for value in (self.nominal_voltage, self.nominal_frequency, self.earth_resistivity)
+            value <= 0
+            for value in (self.nominal_voltage_kv, self.nominal_frequency_hz, self.earth_resistivity_ohm_m)
         ):
             raise ValueError("nominal voltage, frequency, and earth resistivity must be positive")
         return self
@@ -95,9 +88,7 @@ class RoutedTransmissionLine(AbstractTransmissionLine):
                 raise ValueError("adjacent spans must share an endpoint tower")
             coordinates = span.route_geometry.coordinates
             for coordinate, tower in ((coordinates[0], start), (coordinates[-1], end)):
-                longitude = tower.location.longitude.to("degree").magnitude
-                latitude = tower.location.latitude.to("degree").magnitude
-                if coordinate != (longitude, latitude):
+                if coordinate != (tower.location.longitude_deg, tower.location.latitude_deg):
                     raise ValueError("route_geometry endpoint must match its tower location")
         return self
 

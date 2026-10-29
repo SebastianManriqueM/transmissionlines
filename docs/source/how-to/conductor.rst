@@ -14,9 +14,9 @@ exact ``record_id`` or a combination that selects **one** row:
               if choice["codeword"] == "IRVING"]
    print(catalog.format_choices(choices))
    conductor = build.conductor(catalog, record_id="ACCC:609.5:irving:uls")
-   assert conductor.equipment.weight is not None
-   assert conductor.equipment.rated_breaking_strength is not None
-   assert conductor.equipment.total_material_area is not None
+   assert conductor.equipment.weight_lb_kft is not None
+   assert conductor.equipment.rated_strength_lb is not None
+   assert conductor.equipment.total_area_in2 is not None
 
 The IRVING choices include both ``standard`` and ``uls`` constructions. Select
 one full ``record_id``; ``build.conductor`` never chooses a variant for you.

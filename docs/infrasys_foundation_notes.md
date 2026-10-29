@@ -28,9 +28,7 @@ Time-series sample magnitudes, timestamps, resolution, and unit names are preser
 
 ### Project quantities
 
-Project quantity classes derive from `infrasys.BaseQuantity`, so they use the Infrasys Pint registry instead of creating an independent registry. Top-level quantity fields on registered components and supplemental attributes serialize with Infrasys metadata.
-
-Nested quantities inside local Pydantic value models require project-side support. `LineDataModel` serializes embedded quantities with Infrasys quantity metadata and restores them before Pydantic validation so values and units survive JSON round trips.
+Model fields store plain floats named by unit (`x_ft`, `nominal_voltage_kv`) and serialize natively. Fields accept Infrasys-registry Pint quantities at construction and convert them, so no quantity metadata is stored.
 
 ### Schema/version hooks
 
@@ -68,9 +66,9 @@ Instead, place identity-bearing component references directly on registered comp
 ```python
 class LineTechnicalInfo(LineDataModel):
     line_name: str
-    nominal_voltage: Voltage
-    nominal_frequency: Frequency
-    earth_resistivity: Resistivity
+    nominal_voltage_kv: Kilovolts
+    nominal_frequency_hz: Hertz
+    earth_resistivity_ohm_m: OhmMeters
 
 
 class TransmissionLine(Component):

@@ -19,7 +19,6 @@ from transmissionlines.electrical_constants import (
     R_C,
     SERIES_REACTANCE_COEFFICIENT,
 )
-from transmissionlines.units import Distance
 
 
 def test_v2_conductor_projects_mechanical_quantities() -> None:
@@ -30,12 +29,12 @@ def test_v2_conductor_projects_mechanical_quantities() -> None:
 
     spec = conductor_from_record(record, catalog_version="v2")
 
-    assert spec.equipment.weight is not None
-    assert spec.equipment.weight.to("pound_force / kilofoot").magnitude == pytest.approx(float(record.weight_lb_kft))
-    assert spec.equipment.rated_breaking_strength is not None
-    assert spec.equipment.rated_breaking_strength.to("pound_force").magnitude == pytest.approx(float(record.rated_strength_lb))
-    assert spec.equipment.total_material_area is not None
-    assert spec.equipment.total_material_area.to("inch ** 2").magnitude == pytest.approx(float(record.total_area_in2))
+    assert spec.equipment.weight_lb_kft is not None
+    assert spec.equipment.weight_lb_kft == pytest.approx(float(record.weight_lb_kft))
+    assert spec.equipment.rated_strength_lb is not None
+    assert spec.equipment.rated_strength_lb == pytest.approx(float(record.rated_strength_lb))
+    assert spec.equipment.total_area_in2 is not None
+    assert spec.equipment.total_area_in2 == pytest.approx(float(record.total_area_in2))
     assert spec.catalog_reference is not None
     assert spec.catalog_reference.catalog_version == "v2"
     phase = phase_spec_from_record(
@@ -59,15 +58,15 @@ def test_v2_conductor_uses_explicit_electrical_temperature_columns() -> None:
             (value for value in (record.ac_resistance_75c_ohm_kft, record.ac_resistance_50c_ohm_kft, record.ac_resistance_25c_ohm_kft) if value is not None),
             None,
         )
-        assert equipment.ac_resistance is not None
-        assert equipment.ac_resistance.magnitude == pytest.approx(float(resistance))
-        assert equipment.dc_resistance is not None
-        assert equipment.dc_resistance.magnitude == pytest.approx(float(record.dc_resistance_20c_ohm_kft))
+        assert equipment.ac_resistance_ohm_kft is not None
+        assert equipment.ac_resistance_ohm_kft == pytest.approx(float(resistance))
+        assert equipment.dc_resistance_ohm_kft is not None
+        assert equipment.dc_resistance_ohm_kft == pytest.approx(float(record.dc_resistance_20c_ohm_kft))
         if record.ampacity_75c_a is None:
-            assert equipment.ampacity is None
+            assert equipment.ampacity_a is None
         else:
-            assert equipment.ampacity is not None
-            assert equipment.ampacity.magnitude == pytest.approx(float(record.ampacity_75c_a))
+            assert equipment.ampacity_a is not None
+            assert equipment.ampacity_a == pytest.approx(float(record.ampacity_75c_a))
 
 
 def test_v2_conductor_preserves_absent_mechanical_fields() -> None:
@@ -77,18 +76,18 @@ def test_v2_conductor_preserves_absent_mechanical_fields() -> None:
     )
     equipment = conductor_from_record(record, catalog_version="v2").equipment
 
-    assert equipment.weight is None
-    assert equipment.rated_breaking_strength is None
-    assert equipment.total_material_area is None
-    assert equipment.ac_resistance is None
-    assert equipment.ampacity is None
+    assert equipment.weight_lb_kft is None
+    assert equipment.rated_strength_lb is None
+    assert equipment.total_area_in2 is None
+    assert equipment.ac_resistance_ohm_kft is None
+    assert equipment.ampacity_a is None
 
 
 def test_unrated_v1_ampacity_is_used_only_without_a_75c_rating() -> None:
     record = ConductorRecord(record_id="test", source_id="source", family="ACSR", ampacity_a=990)
-    assert conductor_from_record(record, catalog_version="v1").equipment.ampacity.magnitude == 990
+    assert conductor_from_record(record, catalog_version="v1").equipment.ampacity_a == 990
     rated = record.model_copy(update={"ampacity_75c_a": 996})
-    assert conductor_from_record(rated, catalog_version="v2").equipment.ampacity.magnitude == 996
+    assert conductor_from_record(rated, catalog_version="v2").equipment.ampacity_a == 996
 
 
 def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> None:
@@ -106,38 +105,38 @@ def test_backend_resolves_catalog_reactance_geometry_and_warned_radius_gmr() -> 
 
     with pytest.warns(UserWarning, match="equal.*current.*steel"):
         equipment = conductor_from_record(record, catalog_version="v2").equipment
-    assert equipment.conductor_gmr.to("foot").magnitude == pytest.approx(expected)
+    assert equipment.gmr_ft == pytest.approx(expected)
 
     with pytest.warns(UserWarning, match="ACSR.*solid-round-wire"):
         multilayer = conductor_from_record(
             record.model_copy(update={"stranding": "54/7"}), catalog_version="v2",
         )
-    assert multilayer.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(
+    assert multilayer.equipment.gmr_ft == pytest.approx(
         (0.398 / 24) * exp(-0.25)
     )
 
     with warnings.catch_warnings(record=True) as caught:
         published = conductor_from_record(record.model_copy(update={"gmr_ft": "0.04"}), catalog_version="v2")
     assert not caught
-    assert published.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(0.04)
+    assert published.equipment.gmr_ft == pytest.approx(0.04)
     with warnings.catch_warnings(record=True) as caught:
         reactive = conductor_from_record(
             record.model_copy(update={"internal_reactance_ohm_kft": 0.08}), catalog_version="v2",
         )
     assert not caught
-    assert reactive.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(gmr_from_xl(0.08))
+    assert reactive.equipment.gmr_ft == pytest.approx(gmr_from_xl(0.08))
 
     with warnings.catch_warnings(record=True) as caught:
         external = conductor_from_record(record, catalog_version="v2", gmr_ft=0.03)
     assert not caught
-    assert external.equipment.conductor_gmr.to("foot").magnitude == pytest.approx(0.03)
+    assert external.equipment.gmr_ft == pytest.approx(0.03)
     assert external.name.endswith("external-gmr-ft:0.03")
     with pytest.raises(ValueError, match="already available"):
         conductor_from_record(record.model_copy(update={"gmr_ft": "0.04"}), catalog_version="v2", gmr_ft=0.03)
 
     assert conductor_from_record(
         record.model_copy(update={"diameter_inch": None}), catalog_version="v2",
-    ).equipment.conductor_gmr is None
+    ).equipment.gmr_ft is None
 
 
 def test_overlapping_tolerated_six_one_strands_fall_back_to_outer_radius() -> None:
@@ -150,7 +149,7 @@ def test_overlapping_tolerated_six_one_strands_fall_back_to_outer_radius() -> No
     with pytest.warns(UserWarning, match="solid-round-wire"):
         equipment = conductor_from_record(record, catalog_version="v2").equipment
 
-    assert equipment.conductor_gmr.to("foot").magnitude == pytest.approx(
+    assert equipment.gmr_ft == pytest.approx(
         exp(-0.25) * 3.01 / 24
     )
 
@@ -192,7 +191,7 @@ def test_catalog_records_convert_to_runtime_specs_with_provenance() -> None:
     bundled_phase = phase_spec_from_record(
         ConductorRecord.model_validate(conductor.to_dict()),
         circuit_id="circuit-1", catalog_version="v1", subconductor_count=2,
-        subconductor_spacing=Distance(18, "inch"),
+        subconductor_spacing_in=18,
         insulator_string=dict(insulator_type="glass", number_of_insulators=12,
                               insulator_code="U120B", insulator_coupling="ball_and_socket"),
     )

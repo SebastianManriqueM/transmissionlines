@@ -4,12 +4,12 @@ Units and validation
 Unit boundary
 -------------
 
-The public data models use typed quantities backed by the Infrasys quantity
-system. Construct quantities with an explicit magnitude and unit, as in
-``Voltage(230, "kilovolt")``. Calculation orchestration converts compatible
-inputs to the unit required by each calculation; for example, voltage to kV,
-frequency to Hz, earth resistivity to ohm-meter, and conductor resistance to
-ohm/kilofoot.
+Model fields are plain floats whose name states the unit: ``x_ft``,
+``nominal_voltage_kv``, ``ac_resistance_ohm_kft``. A field also accepts a pint
+quantity of the right dimension, converted on the way in, so
+``nominal_voltage_kv=Quantity(230_000, "volt")`` stores ``230.0``; a quantity of
+the wrong dimension is rejected. ``Quantity`` is importable from
+``transmissionlines.units``. Calculations receive only the floats.
 
 .. list-table::
    :header-rows: 1

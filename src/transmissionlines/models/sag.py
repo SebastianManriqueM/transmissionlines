@@ -7,60 +7,37 @@ from pydantic import model_validator
 
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.result_base import CalculationResultModel
-from transmissionlines.units import Pressure, Distance, Temperature, InverseTemperature
+from transmissionlines.units import Celsius, Feet, PerKelvin, Psi
 
 
 class SagOptions(LineDataModel):
     """Specify effective material properties and a hypothetical span grid.
 
-    Parameters
-    ----------
-    elastic_modulus : Pressure
-        Effective modulus of one physical conductor; no catalog default exists.
-    thermal_expansion_coefficient : InverseTemperature
-        Effective expansion per degree Celsius (equivalently per kelvin).
-    reference_temperature, operating_temperature : Temperature
-        Reference and operating conductor temperatures; defaults are 25 and 75 C.
-    span_start, span_stop, span_step : Distance
-        Horizontal span grid endpoints and step; defaults are 20, 2000 and 10 ft.
-    elevation_difference : Distance
-        Signed end-minus-start attachment rise; defaults to zero feet.
-    additional_permanent_strain : float
-        Additional dimensionless strain after the reference state.
+    The modulus and expansion coefficient describe one physical conductor and have
+    no catalog default. Spans form a horizontal grid; ``elevation_difference_ft`` is
+    the signed end-minus-start attachment rise.
     """
 
-    elastic_modulus: Pressure
-    thermal_expansion_coefficient: InverseTemperature
-    reference_temperature: Temperature = Temperature(25, "degC")
-    operating_temperature: Temperature = Temperature(75, "degC")
+    elastic_modulus_psi: Psi
+    thermal_expansion_per_k: PerKelvin
+    reference_temperature_c: Celsius = 25.0
+    operating_temperature_c: Celsius = 75.0
     additional_permanent_strain: float = 0.0
-    span_start: Distance = Distance(20, "foot")
-    span_stop: Distance = Distance(2000, "foot")
-    span_step: Distance = Distance(10, "foot")
-    elevation_difference: Distance = Distance(0, "foot")
+    span_start_ft: Feet = 20.0
+    span_stop_ft: Feet = 2000.0
+    span_step_ft: Feet = 10.0
+    elevation_difference_ft: Feet = 0.0
 
     @model_validator(mode="after")
     def validate_sag_options(self) -> "SagOptions":
         """Reject non-finite and nonphysical material or span inputs."""
-        modulus_psi = self.elastic_modulus.to("psi").magnitude
-        start_ft = self.span_start.to("foot").magnitude
-        stop_ft = self.span_stop.to("foot").magnitude
-        step_ft = self.span_step.to("foot").magnitude
-        values = (
-            modulus_psi,
-            self.thermal_expansion_coefficient.to("1 / kelvin").magnitude,
-            self.reference_temperature.to("kelvin").magnitude,
-            self.operating_temperature.to("kelvin").magnitude,
-            self.additional_permanent_strain,
-            start_ft, stop_ft, step_ft, self.elevation_difference.to("foot").magnitude,
-        )
-        if not all(math.isfinite(value) for value in values):
+        if not all(math.isfinite(getattr(self, field)) for field in type(self).model_fields):
             raise ValueError("sag options must be finite")
-        if modulus_psi <= 0:
-            raise ValueError("elastic_modulus must be positive")
+        if self.elastic_modulus_psi <= 0:
+            raise ValueError("elastic_modulus_psi must be positive")
         if self.additional_permanent_strain < 0:
             raise ValueError("additional_permanent_strain must be nonnegative")
-        if start_ft <= 0 or stop_ft < start_ft or step_ft <= 0:
+        if self.span_start_ft <= 0 or self.span_stop_ft < self.span_start_ft or self.span_step_ft <= 0:
             raise ValueError("span lengths and step must be positive and stop must not precede start")
         return self
 

@@ -10,35 +10,36 @@ from pydantic import model_validator
 from transmissionlines.models.base import LineDataModel
 from transmissionlines.models.common import CatalogReference
 from transmissionlines.units import (
-    Distance,
-    ForcePerLength,
-    Current,
-    Area,
-    Force,
-    ResistancePerLength,
+    Amperes,
+    Feet,
+    Inches,
+    OhmsPerKilofoot,
+    Pounds,
+    PoundsPerKilofoot,
+    SquareInches,
 )
 
 
 class BareConductorEquipment(LineDataModel):
     """Measured or manufacturer-provided conductor properties."""
 
-    conductor_diameter: Distance | None = None
-    conductor_gmr: Distance | None = None
-    capacitance_radius: Distance | None = None
-    ampacity: Current | None = None
-    ac_resistance: ResistancePerLength | None = None
-    emergency_ampacity: Current | None = None
-    dc_resistance: ResistancePerLength | None = None
-    weight: ForcePerLength | None = None
-    rated_breaking_strength: Force | None = None
-    total_material_area: Area | None = None
+    diameter_in: Inches | None = None
+    gmr_ft: Feet | None = None
+    capacitance_radius_ft: Feet | None = None
+    ampacity_a: Amperes | None = None
+    ac_resistance_ohm_kft: OhmsPerKilofoot | None = None
+    emergency_ampacity_a: Amperes | None = None
+    dc_resistance_ohm_kft: OhmsPerKilofoot | None = None
+    weight_lb_kft: PoundsPerKilofoot | None = None
+    rated_strength_lb: Pounds | None = None
+    total_area_in2: SquareInches | None = None
 
     @model_validator(mode="after")
     def validate_measurements(self) -> "BareConductorEquipment":
         """Reject nonpositive or non-finite measurements; absent ones stay None."""
         for field in type(self).model_fields:
             value = getattr(self, field)
-            if value is not None and not (math.isfinite(value.magnitude) and value.magnitude > 0):
+            if value is not None and not (math.isfinite(value) and value > 0):
                 raise ValueError(f"{field} must be finite and positive")
         return self
 
@@ -47,18 +48,18 @@ class BundleSpec(LineDataModel):
     """Describe the number and separation of installed subconductors."""
 
     subconductor_count: int
-    subconductor_spacing: Distance | None = None
+    subconductor_spacing_in: Inches | None = None
 
     @model_validator(mode="after")
     def validate_spacing(self) -> "BundleSpec":
         if self.subconductor_count < 1:
             raise ValueError("subconductor_count must be positive")
         if self.subconductor_count > 1 and (
-            self.subconductor_spacing is None or self.subconductor_spacing.magnitude <= 0
+            self.subconductor_spacing_in is None or self.subconductor_spacing_in <= 0
         ):
-            raise ValueError("subconductor_spacing is required and positive for bundles")
-        if self.subconductor_count == 1 and self.subconductor_spacing is not None:
-            raise ValueError("single conductors cannot specify subconductor_spacing")
+            raise ValueError("subconductor_spacing_in is required and positive for bundles")
+        if self.subconductor_count == 1 and self.subconductor_spacing_in is not None:
+            raise ValueError("single conductors cannot specify subconductor_spacing_in")
         return self
 
 

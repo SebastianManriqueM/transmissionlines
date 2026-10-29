@@ -10,39 +10,31 @@ from transmissionlines.models.common import IdentificationInfo
 from transmissionlines.models.configurations import CircuitConfiguration, TowerConfiguration
 from transmissionlines.models.geometry import GroundWirePosition, PhasePosition, TowerGeometry
 from transmissionlines.models.st_clair import StClairOptions
-from transmissionlines.units import (
-    Distance,
-    Current,
-    Resistivity,
-    Frequency,
-    ResistancePerLength,
-    Voltage,
-)
 
 
 def _quickstart_line() -> CrossSectionTransmissionLine:
     conductor = BareConductorEquipment(
-        conductor_diameter=Distance(1, "inch"),
-        conductor_gmr=Distance(0.04, "foot"),
-        ampacity=Current(1000, "ampere"),
-        ac_resistance=ResistancePerLength(0.1, "ohm / kilofoot"),
-        dc_resistance=ResistancePerLength(0.2, "ohm / kilofoot"),
+        diameter_in=1,
+        gmr_ft=0.04,
+        ampacity_a=1000,
+        ac_resistance_ohm_kft=0.1,
+        dc_resistance_ohm_kft=0.2,
     )
     geometry = TowerGeometry(
         phase_positions=[
             PhasePosition(
                 circuit_id="c1",
                 phase=phase,
-                x=Distance(index * 4, "foot"),
-                y=Distance(30, "foot"),
+                x_ft=index * 4,
+                y_ft=30,
             )
             for index, phase in enumerate(("A", "B", "C"))
         ],
         ground_wire_positions=[
             GroundWirePosition(
                 wire_id="g1",
-                x=Distance(0, "foot"),
-                y=Distance(40, "foot"),
+                x_ft=0,
+                y_ft=40,
             )
         ],
     )
@@ -63,9 +55,9 @@ def _quickstart_line() -> CrossSectionTransmissionLine:
     )
     return CrossSectionTransmissionLine(
         name="example-line", configuration=configuration,
-        nominal_voltage=Voltage(230, "kilovolt"),
-        nominal_frequency=Frequency(60, "hertz"),
-        earth_resistivity=Resistivity(100, "ohm * meter"),
+        nominal_voltage_kv=230,
+        nominal_frequency_hz=60,
+        earth_resistivity_ohm_m=100,
     )
 
 

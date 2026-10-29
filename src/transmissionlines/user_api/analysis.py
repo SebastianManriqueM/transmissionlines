@@ -1,6 +1,5 @@
 """Run independent cross-section calculations into an external result envelope."""
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -13,7 +12,6 @@ from transmissionlines.models.assets import CrossSectionTransmissionLine
 from transmissionlines.models.electrical import ElectricalParameters
 from transmissionlines.models.sag import SagCurveResult, SagOptions
 from transmissionlines.models.st_clair import StClairOptions, StClairResult
-from transmissionlines.units import Pressure, Distance, Temperature, InverseTemperature
 
 
 @dataclass(frozen=True)
@@ -27,35 +25,16 @@ class CrossSectionCalculationResults:
     skipped: dict[str, str] = field(default_factory=dict)
 
 
-_SAG_UNITS = {
-    "elastic_modulus_psi": ("elastic_modulus", Pressure, "psi"),
-    "thermal_expansion_per_k": ("thermal_expansion_coefficient", InverseTemperature, "1 / kelvin"),
-    "span_start_ft": ("span_start", Distance, "foot"),
-    "span_stop_ft": ("span_stop", Distance, "foot"),
-    "span_step_ft": ("span_step", Distance, "foot"),
-    "elevation_difference_ft": ("elevation_difference", Distance, "foot"),
-    "reference_temperature_c": ("reference_temperature", Temperature, "degC"),
-    "operating_temperature_c": ("operating_temperature", Temperature, "degC"),
-}
-
-
 def _sag_options(options: Mapping[str, Any] | SagOptions) -> SagOptions | None:
     if isinstance(options, SagOptions):
         return options
-    unknown = set(options) - set(_SAG_UNITS) - {"additional_permanent_strain"}
+    unknown = set(options) - set(SagOptions.model_fields)
     if unknown:
         raise ValueError(f"unknown sag_options keys: {sorted(unknown)}")
-    converted = {
-        field: quantity_type(value, unit)
-        for key, (field, quantity_type, unit) in _SAG_UNITS.items()
-        if (value := options.get(key)) is not None
-    }
-    if "additional_permanent_strain" in options:
-        converted["additional_permanent_strain"] = options["additional_permanent_strain"]
     try:
-        return SagOptions.model_validate(converted)
+        return SagOptions.model_validate({key: value for key, value in options.items() if value is not None})
     except ValidationError as error:
-        missing_fields = {"elastic_modulus", "thermal_expansion_coefficient"}
+        missing_fields = {"elastic_modulus_psi", "thermal_expansion_per_k"}
         if error.errors() and all(
             item["type"] == "missing" and item["loc"][0] in missing_fields
             for item in error.errors()
@@ -67,11 +46,11 @@ def _sag_options(options: Mapping[str, Any] | SagOptions) -> SagOptions | None:
 def _missing_electrical(line: CrossSectionTransmissionLine) -> str | None:
     for circuit in line.configuration.circuits:
         equipment = circuit.conductor_spec.equipment
-        for field in ("conductor_gmr", "conductor_diameter", "ac_resistance"):
+        for field in ("gmr_ft", "diameter_in", "ac_resistance_ohm_kft"):
             if getattr(equipment, field) is None:
                 return f"circuit {circuit.circuit_id}: missing {field}"
     ground = line.configuration.ground_wire_spec.equipment
-    for field in ("conductor_diameter", "dc_resistance"):
+    for field in ("diameter_in", "dc_resistance_ohm_kft"):
         if getattr(ground, field) is None:
             return f"ground wire: missing {field}"
     return None
@@ -84,9 +63,8 @@ def _missing_sag(line: CrossSectionTransmissionLine, circuit_id: str | None) -> 
         if not circuits:
             raise ValueError(f"unknown sag_circuit_id {circuit_id!r}")
     for circuit in circuits:
-        for field in ("weight", "rated_breaking_strength", "total_material_area"):
-            value = getattr(circuit.conductor_spec.equipment, field)
-            if value is None or not math.isfinite(value.magnitude) or value.magnitude <= 0:
+        for field in ("weight_lb_kft", "rated_strength_lb", "total_area_in2"):
+            if getattr(circuit.conductor_spec.equipment, field) is None:
                 return f"circuit {circuit.circuit_id}: missing {field}"
     return None
 
@@ -140,8 +118,8 @@ def calculations(
             electrical = calculate_electrical(
                 configuration.geometry, phase_specs=configuration.circuits,
                 ground_wire_spec=configuration.ground_wire_spec,
-                voltage=line.nominal_voltage, frequency=line.nominal_frequency,
-                earth_resistivity=line.earth_resistivity.to("ohm * meter").magnitude,
+                voltage_kv=line.nominal_voltage_kv, frequency_hz=line.nominal_frequency_hz,
+                earth_resistivity_ohm_m=line.earth_resistivity_ohm_m,
             )
         if impedances and missing is not None:
             skipped["impedances"] = missing
@@ -151,7 +129,7 @@ def calculations(
             else:
                 missing_ampacity = next((
                     circuit.circuit_id for circuit in line.configuration.circuits
-                    if circuit.conductor_spec.equipment.ampacity is None
+                    if circuit.conductor_spec.equipment.ampacity_a is None
                 ), None)
                 if missing_ampacity is not None:
                     skipped["st_clair"] = f"circuit {missing_ampacity}: missing ampacity"

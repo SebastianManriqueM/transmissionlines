@@ -133,8 +133,9 @@ radius; mutual entries use both image and direct distances:
 
 The potential-coefficient matrix :math:`P` uses the implementation's
 :math:`1/(\mu\mathrm{S}/\mathrm{mile})` unit convention.
-The Python ``build_primitive_p`` function retains a frequency argument for
-interface compatibility but does not use it in this matrix.
+The Python ``build_primitive_p`` function accepts positions and radii, with no
+frequency argument. Frequency enters when converting potential coefficients
+to shunt admittance.
 
 Kron reduction and shunt admittance
 -----------------------------------
@@ -254,10 +255,9 @@ Notation and units
      - ohm, MW
 
 The current Python functions and tests determine the exact numerical and unit
-conventions used here. In particular, ``build_primitive_p`` retains but
-discards its ``frequency`` argument, and the potential/admittance matrices use
-the documented micro-unit convention rather than normalizing all intermediate
-values to SI units.
+conventions used here. In particular, ``build_primitive_p`` is independent of
+frequency, and the potential/admittance matrices use the documented micro-unit
+convention rather than normalizing all intermediate values to SI units.
 
 Reference
 ---------

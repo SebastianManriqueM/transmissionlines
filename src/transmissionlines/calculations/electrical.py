@@ -11,7 +11,7 @@ import numpy as np
 
 from transmissionlines.bundle import derived_bundle_values
 from transmissionlines.calculations.cable import ground_wire_gmr
-from transmissionlines.calculations.geometry import direct_distance, image_distance
+from transmissionlines.calculations.geometry import pairwise_distances, pairwise_image_distances
 from transmissionlines.calculations.input_resolver import resolve_configuration
 from transmissionlines.calculations.matrices import (
     fully_transpose,
@@ -60,7 +60,17 @@ def build_primitive_z(
     frequency: float,
     earth_resistivity: float,
 ) -> np.ndarray:
-    """Build the primitive series impedance matrix in ohm/mile.
+    r"""Build the primitive series impedance matrix in ohm/mile (modified Carson).
+
+    .. math::
+        z_{ii} &= \frac{r_i}{n_i} + R_C f + j L_C f \left( \ln\frac{1}{\mathrm{GMR}_i} + L_F
+                  + \tfrac12 \ln\frac{\rho}{f} \right) \\
+        z_{ij} &= R_C f + j L_C f \left( \ln\frac{1}{D_{ij}} + L_F + \tfrac12 \ln\frac{\rho}{f} \right)
+
+    with :math:`D_{ij}` and :math:`\mathrm{GMR}_i` in feet, :math:`r_i` in ohm/mile,
+    :math:`n_i` subconductors in parallel, and the coefficients derived in
+    :mod:`transmissionlines.electrical_constants`. At 60 Hz and 100 ohm-m this is
+    the familiar :math:`z_{ii} = r_i + 0.09530 + j\,0.12134 (\ln(1/\mathrm{GMR}_i) + 7.93402)`.
 
     Parameters
     ----------
@@ -82,29 +92,25 @@ def build_primitive_z(
     numpy.ndarray
         Complex square primitive series matrix in ohm/mile.
     """
-    n = len(positions)
-    result = np.zeros((n, n), dtype=complex)
+    distances = pairwise_distances(positions)
+    np.fill_diagonal(distances, gmrs)
+    resistance = np.diag(np.asarray(resistances) / np.asarray(bundle_counts) * KILOFEET_PER_MILE)
     correction = L_F + 0.5 * log(earth_resistivity / frequency)
-    for i, position in enumerate(positions):
-        for j in range(i, n):
-            if i == j:
-                distance = gmrs[i]
-                resistance = resistances[i] / bundle_counts[i] * KILOFEET_PER_MILE
-            else:
-                distance = direct_distance(position, positions[j])
-                resistance = 0.0
-            value = resistance + R_C * frequency + 1j * L_C * frequency * (log(1 / distance) + correction)
-            result[i, j] = result[j, i] = value
-    return result
+    return resistance + R_C * frequency + 1j * L_C * frequency * (np.log(1 / distances) + correction)
 
 
-def build_primitive_p(
-    positions: list[CablePosition],
-    *,
-    radii: list[float],
-    frequency: float,
-) -> np.ndarray:
-    """Build the primitive potential matrix in the Julia micro-unit contract.
+def build_primitive_p(positions: list[CablePosition], *, radii: list[float]) -> np.ndarray:
+    r"""Build the primitive potential-coefficient matrix in mile/µF (method of images).
+
+    Each conductor :math:`i` has an image at the mirrored height below ground, at
+    distance :math:`S_{ij}` from conductor :math:`j`:
+
+    .. math::
+        P_{ii} = \frac{1}{2\pi\varepsilon} \ln\frac{S_{ii}}{r_i}, \qquad
+        P_{ij} = \frac{1}{2\pi\varepsilon} \ln\frac{S_{ij}}{D_{ij}},
+
+    where :math:`S_{ii} = 2 h_i`, :math:`r_i` is the (equivalent) conductor radius,
+    and :math:`1/(2\pi\varepsilon) = 11.17689` mile/µF.
 
     Parameters
     ----------
@@ -112,9 +118,6 @@ def build_primitive_p(
         Ordered phase and ground-wire coordinates in feet.
     radii : list of float
         Equivalent phase radii or physical ground-wire radii in feet.
-    frequency : float
-        Retained for the calculation interface; the potential formula does not
-        use frequency.
 
     Returns
     -------
@@ -122,14 +125,9 @@ def build_primitive_p(
         Real square potential coefficient matrix using the parity
         ``1/(microSiemens/mile)`` contract.
     """
-    del frequency  # retained in the signature to make the unit boundary explicit
-    result = np.zeros((len(positions), len(positions)), dtype=float)
-    for i, position in enumerate(positions):
-        result[i, i] = log(image_distance(position, position) / radii[i]) / (2 * pi * EPSILON_AIR)
-        for j in range(i):
-            value = log(image_distance(position, positions[j]) / direct_distance(position, positions[j])) / (2 * pi * EPSILON_AIR)
-            result[i, j] = result[j, i] = value
-    return result
+    direct = pairwise_distances(positions)
+    np.fill_diagonal(direct, radii)
+    return np.log(pairwise_image_distances(positions) / direct) / (2 * pi * EPSILON_AIR)
 
 
 def _ordered_inputs(
@@ -340,7 +338,7 @@ def calculate_electrical(
     positions, gmrs, radii, resistances, counts, labels, phase_count = _ordered_inputs(geometry, specs, ground_wire_spec)
     ground_count = len(geometry.ground_wire_positions)
     z_primitive = build_primitive_z(positions, gmrs=gmrs, resistances=resistances, bundle_counts=counts, frequency=frequency_hz, earth_resistivity=earth_resistivity_ohm_m)
-    p_primitive = build_primitive_p(positions, radii=radii, frequency=frequency_hz)
+    p_primitive = build_primitive_p(positions, radii=radii)
     z_kron = kron_reduce(z_primitive, phase_count, ground_count)
     p_kron = kron_reduce(p_primitive, phase_count, ground_count)
     y_kron = shunt_admittance(p_kron, frequency_hz)
@@ -349,8 +347,8 @@ def calculate_electrical(
     circuits = phase_count // 3
     if circuits > 2:
         raise ValueError(f"only one- and two-circuit lines are supported, got {circuits} circuits")
-    z_transposed = fully_transpose(z_kron, circuits)
-    y_transposed = fully_transpose(y_kron, circuits)
+    z_transposed = fully_transpose(z_kron)
+    y_transposed = fully_transpose(y_kron)
     z_sequence = sequence_matrix(z_transposed)
     y_sequence = sequence_matrix(y_transposed)
     circuit_ids = list(dict.fromkeys(position.circuit_id for position in geometry.phase_positions))
@@ -363,6 +361,7 @@ def calculate_electrical(
         for index in range(circuits)
     }
     r1, x1, b1 = (circuit_scalars[circuit_ids[0]][name] for name in ("r1", "x1", "b1"))
+    # Lossless surge impedance Z_c = sqrt(L/C) = sqrt(x1 / b1); SIL = V_LL^2 / Z_c (kV^2 / ohm = MW).
     z_sil = (x1 / (b1 / 1e6)) ** 0.5
     scalars = {"r1": float(r1), "x1": float(x1), "b1": float(b1), "r0": float(z_sequence[0, 0].real), "x0": float(z_sequence[0, 0].imag), "b0": float(y_sequence[0, 0].imag), "surge_impedance_ohm": float(z_sil), "sil_mw": float(voltage_kv**2 / z_sil)}
     if circuits == 2:

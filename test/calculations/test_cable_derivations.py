@@ -12,7 +12,6 @@ from transmissionlines.calculations.cable import (
     strand_geometry_gmr,
 )
 from transmissionlines.calculations.electrical import build_primitive_p
-from transmissionlines.calculations.geometry import image_distance
 from transmissionlines.models.cables import BareConductorEquipment
 from transmissionlines.models.geometry import PhasePosition
 
@@ -60,8 +59,8 @@ def test_primitive_p_image_diagonal_and_matrix_metadata() -> None:
         PhasePosition(circuit_id="c1", phase="A", x_ft=0, y_ft=30),
         PhasePosition(circuit_id="c1", phase="B", x_ft=4, y_ft=40),
     ]
-    result = build_primitive_p(positions, radii=[0.1, 0.1], frequency=60)
-    assert result[0, 0] == pytest.approx(np.log(image_distance(positions[0], positions[0]) / 0.1) / (2 * np.pi * 1.4240e-2))
+    result = build_primitive_p(positions, radii=[0.1, 0.1])
+    assert result[0, 0] == pytest.approx(np.log(2 * 30 / 0.1) / (2 * np.pi * 1.4240e-2))
     assert result[0, 1] == pytest.approx(result[1, 0])
 
 

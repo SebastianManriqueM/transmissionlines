@@ -54,7 +54,16 @@ def nominal_pi_to_equivalent_pi(
     y_s_siemens: complex,
     y_r_siemens: complex,
 ) -> tuple[complex, complex, complex]:
-    """Extract an exact asymmetric pi from its ABCD two-port matrix.
+    r"""Convert nominal-pi parameters to the pi network with the same ABCD matrix.
+
+    For a nominal pi, :math:`A = 1 + Z Y_r`, :math:`B = Z`, :math:`D = 1 + Z Y_s`, and
+
+    .. math:: Z' = B = Z, \qquad Y'_s = \frac{D - 1}{B} = Y_s, \qquad Y'_r = \frac{A - 1}{B} = Y_r,
+
+    so the result equals the input up to rounding. It does **not** apply the
+    distributed-parameter (long-line) correction
+    :math:`Z' = Z \frac{\sinh \gamma\ell}{\gamma\ell}`,
+    :math:`Y'/2 = \frac{Y}{2} \frac{\tanh(\gamma\ell/2)}{\gamma\ell/2}`.
 
     Parameters
     ----------
@@ -80,9 +89,26 @@ def nominal_pi_to_equivalent_pi(
 
 
 def _solve_mesh(
-    constants: StClairLineConstants, options: StClairOptions, length_mi: float, angle_deg: float
-) -> dict[str, complex | float]:
-    """Solve one balanced phase-domain mesh point; angles enter in degrees."""
+    constants: StClairLineConstants, options: StClairOptions, length_mi: float, angle_deg: float | np.ndarray
+) -> dict[str, Any]:
+    r"""Solve the balanced three-mesh circuit at one line length for one or more angles.
+
+    Per phase, a sending source :math:`E_1 = |E_1| e^{j\delta}` behind :math:`Z_1` and a
+    receiving source :math:`E_2` behind :math:`Z_2` connect through the line's pi
+    (shunt impedances :math:`Z_{s,r} = 1/Y_{s,r}`, series :math:`Z`). Kirchhoff's
+    voltage law around the three meshes gives
+
+    .. math::
+        \begin{bmatrix} Z_1 + Z_s & -Z_s & 0 \\ -Z_s & Z_s + Z + Z_r & -Z_r \\ 0 & -Z_r & Z_2 + Z_r \end{bmatrix}
+        \begin{bmatrix} I_1 \\ I_2 \\ I_3 \end{bmatrix}
+        = \begin{bmatrix} E_1 \\ 0 \\ -E_2 \end{bmatrix},
+
+    with terminal voltages :math:`E_s = E_1 - Z_1 I_1`, :math:`E_r = E_2 + Z_2 I_3`, and
+    three-phase power :math:`P = 3\,\mathrm{Re}(V I_2^*)` at each terminal (the shunt
+    branches are lossless, so :math:`I_2` carries all the real power). The matrix
+    depends only on the line length; :math:`\delta` enters only through :math:`E_1`, so
+    all angles share one solve, and results have the shape of ``angle_deg``.
+    """
     r = constants.r_ohm_per_mile * length_mi
     x = constants.x_ohm_per_mile * length_mi * (1 - options.n_series_percent / 100)
     if abs(x) < ST_CLAIR_MIN_SERIES_REACTANCE_OHM and not options.allow_near_zero_series_reactance:
@@ -91,11 +117,17 @@ def _solve_mesh(
     b_total = constants.b_siemens_per_mile * length_mi
     y_s_nom = 1j * b_total / 2 * (1 - options.n_s_percent / 100)
     y_r_nom = 1j * b_total / 2 * (1 - options.n_r_percent / 100)
+    # Known limitation, likely inherited from the Julia original: this is the nominal pi at
+    # every length, with no distributed-parameter correction. For a 230 kV Cardinal circuit
+    # the exact long-line pi has Z' = Z sinh(gl)/gl about 0.94 Z at 300 mi and 0.76 Z at
+    # 600 mi, and Y' about 1.03 Y and 1.15 Y, so curves past ~200 mi overstate series
+    # impedance. Fix: scale Z and Y by those factors, with gamma = sqrt(z * y) per mile.
     z_line, y_s, y_r = nominal_pi_to_equivalent_pi(z_line, y_s_nom, y_r_nom)
     z_s, z_r = 1 / y_s, 1 / y_r
     z_1 = complex(options.r_system_1_ohm, options.x_system_1_ohm)
     z_2 = complex(options.r_system_2_ohm, options.x_system_2_ohm)
-    e1 = (constants.e1_v / sqrt(3)) * np.exp(1j * np.deg2rad(angle_deg))
+    angle = np.asarray(angle_deg, dtype=float)
+    e1 = (constants.e1_v / sqrt(3)) * np.exp(1j * np.deg2rad(angle))
     e2 = constants.e2_v / sqrt(3)
     matrix = np.array(
         [[z_1 + z_s, -z_s, 0], [-z_s, z_s + z_line + z_r, -z_r], [0, -z_r, z_2 + z_r]],
@@ -103,37 +135,59 @@ def _solve_mesh(
     )
     if np.linalg.cond(matrix) > ST_CLAIR_MAX_MESH_CONDITION_NUMBER:
         raise ValueError("three-mesh system is ill-conditioned")
+    rhs = np.stack([e1.ravel(), np.zeros(e1.size), np.full(e1.size, -e2)])
     try:
-        i1, i2, i3 = np.linalg.solve(matrix, np.array([e1, 0, -e2], dtype=complex))
+        i1, i2, i3 = (row.reshape(angle.shape) for row in np.linalg.solve(matrix, rhs))
     except np.linalg.LinAlgError as error:
         raise ValueError("three-mesh system is singular") from error
     es = e1 - z_1 * i1
     er = e2 + z_2 * i3
-    ps = 3 * float(np.real(es * np.conjugate(i2)))
-    pr = 3 * float(np.real(er * np.conjugate(i2)))
-    loss = ps - pr
+    ps = 3 * np.real(es * np.conjugate(i2))
+    pr = 3 * np.real(er * np.conjugate(i2))
     return {
-        "es": es,
-        "er": er,
-        "i2": i2,
-        "i1": i1,
-        "i3": i3,
-        "e1": e1,
-        "e2": e2,
-        "z_s": z_s,
-        "z_r": z_r,
-        "ps_w": ps,
-        "pr_w": pr,
-        "loss_w": loss,
-        "series_loss_w": 3 * r * abs(i2) ** 2,
-        "z_line": z_line,
+        "es": es, "er": er, "i1": i1, "i2": i2, "i3": i3, "e1": e1, "e2": e2,
+        "z_s": z_s, "z_r": z_r, "z_line": z_line, "ps_w": ps, "pr_w": pr, "loss_w": ps - pr,
+        "series_loss_w": 3 * r * np.abs(i2) ** 2,
     }
+
+
+def _first_limit(
+    constants: StClairLineConstants, options: StClairOptions, length_mi: float, angles: np.ndarray,
+    voltage_limit: float, ampacity: float,
+) -> tuple[tuple[complex, complex, complex], float, str]:
+    """Return (Es, Er, I2) where the first limit binds along the angle sweep, its angle, and its type.
+
+    The stability limit is the last angle itself. A voltage or thermal crossing is
+    refined by bisection between the last passing angle and the first failing one.
+    """
+    try:
+        sweep = _solve_mesh(constants, options, length_mi, angles)
+    except ValueError:
+        return (0j, 0j, 0j), 0.0, "numerically_invalid"
+    voltage_hit = np.abs(sweep["er"]) <= voltage_limit
+    hits = np.flatnonzero(voltage_hit | (np.abs(sweep["i2"]) >= ampacity))
+    if not hits.size:
+        return (sweep["es"][-1], sweep["er"][-1], sweep["i2"][-1]), float(angles[-1]), "steady_state_stability"
+    k = hits[0]
+    kind = "voltage_drop" if voltage_hit[k] else "thermal_ampacity"
+    point = (sweep["es"][k], sweep["er"][k], sweep["i2"][k])
+    lower, upper = (float(angles[k - 1]) if k else 0.0), float(angles[k])
+    for _ in range(ST_CLAIR_BOUNDARY_REFINEMENT_STEPS):
+        midpoint = (lower + upper) / 2
+        candidate = _solve_mesh(constants, options, length_mi, midpoint)
+        hit = (abs(candidate["er"]) <= voltage_limit if kind == "voltage_drop"
+               else abs(candidate["i2"]) >= ampacity)
+        if hit:
+            upper, point = midpoint, (candidate["es"], candidate["er"], candidate["i2"])
+        else:
+            lower = midpoint
+    return point, upper, kind
 
 
 def _make_curve(
     constants: StClairLineConstants, options: StClairOptions, *, name: str
 ) -> StClairCurve:
-    """Calculate and compact the first loadability boundary for each length.
+    """Calculate the first loadability boundary for each line length.
 
     The exact configured stability-angle endpoint is always evaluated, even
     when ``angle_step_deg`` does not divide it evenly. Unlike voltage and
@@ -145,106 +199,37 @@ def _make_curve(
         options.line_length_stop_mi + options.line_length_step_mi * ST_CLAIR_LENGTH_GRID_STOP_PADDING_STEPS,
         options.line_length_step_mi,
     )
-    angles = np.arange(0.0, options.stability_angle_limit_deg, options.angle_step_deg)
-    angles = np.append(angles, options.stability_angle_limit_deg)
+    angles = np.append(np.arange(0.0, options.stability_angle_limit_deg, options.angle_step_deg),
+                       options.stability_angle_limit_deg)
     ampacity = constants.conductor_ampacity_a * constants.subconductor_count
-    thermal_mw = sqrt(3) * constants.nominal_voltage_v * ampacity / 1e6
-    data: dict[str, list[Any]] = {key: [] for key in (
-        "pr_w", "ps_w", "loss_w", "abs_es_volt", "abs_er_volt", "abs_er_pu", "current_a",
-        "limiting_angle_deg", "limit_type", "es_real_volt", "es_imag_volt", "er_real_volt",
-        "er_imag_volt", "i2_real_a", "i2_imag_a",
-    )}
     voltage_limit = constants.nominal_voltage_v * options.receiving_voltage_limit_pu / sqrt(3)
-    for length in lengths:
-        boundary = None
-        boundary_type = "steady_state_stability"
-        previous_angle = 0.0
-        for angle in angles:
-            try:
-                point = _solve_mesh(constants, options, float(length), float(angle))
-            except ValueError:
-                boundary_type = "numerically_invalid"
-                break
-            current = abs(point["i2"])
-            if abs(point["er"]) <= voltage_limit:
-                boundary, boundary_type = point, "voltage_drop"
-            elif current >= ampacity:
-                boundary, boundary_type = point, "thermal_ampacity"
-            else:
-                boundary = point
-                previous_angle = float(angle)
-                if angle >= options.stability_angle_limit_deg:
-                    boundary_type = "steady_state_stability"
-                    break
-                continue
-            if boundary is not None:
-                lower, upper = previous_angle, float(angle)
-                for _ in range(ST_CLAIR_BOUNDARY_REFINEMENT_STEPS):
-                    midpoint = (lower + upper) / 2
-                    candidate = _solve_mesh(constants, options, float(length), midpoint)
-                    hit_limit = (
-                        abs(candidate["er"]) <= voltage_limit
-                        if boundary_type == "voltage_drop"
-                        else abs(candidate["i2"]) >= ampacity
-                    )
-                    if hit_limit:
-                        upper, boundary = midpoint, candidate
-                    else:
-                        lower = midpoint
-                angle = upper
-                break
-        if boundary is None:
-            data["pr_w"].append(0.0)
-            data["ps_w"].append(0.0)
-            data["loss_w"].append(0.0)
-            data["abs_es_volt"].append(0.0)
-            data["abs_er_volt"].append(0.0)
-            data["abs_er_pu"].append(0.0)
-            data["current_a"].append(0.0)
-            data["limiting_angle_deg"].append(float(previous_angle))
-            data["limit_type"].append("numerically_invalid")
-            for field in ("es_real_volt", "es_imag_volt", "er_real_volt", "er_imag_volt", "i2_real_a", "i2_imag_a"):
-                data[field].append(0.0)
-            continue
-        es, er, i2 = boundary["es"], boundary["er"], boundary["i2"]
-        data["pr_w"].append(boundary["pr_w"])
-        data["ps_w"].append(boundary["ps_w"])
-        data["loss_w"].append(boundary["loss_w"])
-        data["abs_es_volt"].append(abs(es) * sqrt(3))
-        data["abs_er_volt"].append(abs(er) * sqrt(3))
-        data["abs_er_pu"].append(abs(er) * sqrt(3) / constants.nominal_voltage_v)
-        data["current_a"].append(abs(i2))
-        data["limiting_angle_deg"].append(float(angle))
-        data["limit_type"].append(boundary_type)
-        data["es_real_volt"].append(float(es.real))
-        data["es_imag_volt"].append(float(es.imag))
-        data["er_real_volt"].append(float(er.real))
-        data["er_imag_volt"].append(float(er.imag))
-        data["i2_real_a"].append(float(i2.real))
-        data["i2_imag_a"].append(float(i2.imag))
+    limits = [_first_limit(constants, options, float(length), angles, voltage_limit, ampacity) for length in lengths]
+    es, er, i2 = (np.array([point[index] for point, _, _ in limits], dtype=complex) for index in range(3))
+    ps = 3 * np.real(es * np.conjugate(i2))
+    pr = 3 * np.real(er * np.conjugate(i2))
     return StClairCurve(
         name=name,
         circuit_id=constants.circuit_id,
-        lengths_mi=lengths[: len(data["pr_w"])].tolist(),
-        pr_w=data["pr_w"],
-        pr_mw=[value / 1e6 for value in data["pr_w"]],
-        ps_w=data["ps_w"],
-        ps_mw=[value / 1e6 for value in data["ps_w"]],
-        loss_w=data["loss_w"],
-        abs_es_volt=data["abs_es_volt"],
-        abs_er_volt=data["abs_er_volt"],
-        abs_er_pu=data["abs_er_pu"],
-        current_a=data["current_a"],
-        limiting_angle_deg=data["limiting_angle_deg"],
-        limit_type=data["limit_type"],
-        es_real_volt=data["es_real_volt"],
-        es_imag_volt=data["es_imag_volt"],
-        er_real_volt=data["er_real_volt"],
-        er_imag_volt=data["er_imag_volt"],
-        i2_real_a=data["i2_real_a"],
-        i2_imag_a=data["i2_imag_a"],
+        lengths_mi=lengths.tolist(),
+        pr_w=pr.tolist(),
+        pr_mw=(pr / 1e6).tolist(),
+        ps_w=ps.tolist(),
+        ps_mw=(ps / 1e6).tolist(),
+        loss_w=(ps - pr).tolist(),
+        abs_es_volt=(np.abs(es) * sqrt(3)).tolist(),
+        abs_er_volt=(np.abs(er) * sqrt(3)).tolist(),
+        abs_er_pu=(np.abs(er) * sqrt(3) / constants.nominal_voltage_v).tolist(),
+        current_a=np.abs(i2).tolist(),
+        limiting_angle_deg=[angle for _, angle, _ in limits],
+        limit_type=[kind for _, _, kind in limits],
+        es_real_volt=es.real.tolist(),
+        es_imag_volt=es.imag.tolist(),
+        er_real_volt=er.real.tolist(),
+        er_imag_volt=er.imag.tolist(),
+        i2_real_a=i2.real.tolist(),
+        i2_imag_a=i2.imag.tolist(),
         circuit_nominal_ampacity_a=ampacity,
-        thermal_power_mw=thermal_mw,
+        thermal_power_mw=sqrt(3) * constants.nominal_voltage_v * ampacity / 1e6,
     )
 
 
